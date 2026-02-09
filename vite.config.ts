@@ -10,9 +10,6 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
-    define: {
-        global: 'window',
-    },
     test: {
         globals: true,
         environment: 'jsdom',
