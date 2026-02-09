@@ -19,7 +19,7 @@ export function TariffVersionCard({ tariff }: TariffVersionCardProps) {
 
     return (
         <div
-            onClick={() => navigate(`/admin/tariffs/${tariff.batch_id}`)}
+            onClick={() => navigate(`/admin/tariffs/edit/${tariff.id}`)}
             className="card group cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg h-full flex flex-col hover:border-blue-400"
             style={{
                 borderLeft: '4px solid #0ea5e9',

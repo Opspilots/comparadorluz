@@ -10,6 +10,7 @@ import { Button } from '@/shared/components/ui/button';
 
 export default function TariffDashboard() {
     const [typeFilter, setTypeFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
     const [companyId, setCompanyId] = useState<string | null>(null);
 
     // Get current user's company
@@ -33,7 +34,7 @@ export default function TariffDashboard() {
     });
 
     const { data: tariffs, isLoading } = useQuery({
-        queryKey: ['tariff-versions', companyId, typeFilter],
+        queryKey: ['tariff-versions', companyId, typeFilter, statusFilter],
         queryFn: async () => {
             if (!companyId) return [];
 
@@ -41,9 +42,17 @@ export default function TariffDashboard() {
                 .from('tariff_versions')
                 .select('*, tariff_components(*)')
                 .eq('company_id', companyId)
-                .eq('is_active', true)
                 .order('created_at', { ascending: false });
 
+            // Status Filter
+            if (statusFilter === 'active') {
+                query = query.eq('is_active', true);
+            } else if (statusFilter === 'inactive') {
+                query = query.eq('is_active', false);
+            }
+            // 'all' doesn't need a filter on is_active
+
+            // Type Filter
             if (typeFilter !== 'all') {
                 query = query.eq('tariff_type', typeFilter);
             }
@@ -69,32 +78,79 @@ export default function TariffDashboard() {
     return (
         <div className="animate-fade-in">
             {/* Actions Bar - Removed Page Header */}
-            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="mb-6 flex flex-col space-y-4">
 
-                {/* Filters */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-                    <Button
-                        variant={typeFilter === 'all' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setTypeFilter('all')}
-                        className="rounded-full px-4"
-                    >
-                        Todas
-                    </Button>
-                    {tariffTypes.map((type) => (
+                {/* Top Row: Filters and Actions */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                    {/* Key Filters Group */}
+                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+
+                        {/* Status Filter */}
+                        <div className="bg-slate-100 p-1 rounded-lg flex items-center">
+                            <button
+                                onClick={() => setStatusFilter('active')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${statusFilter === 'active'
+                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Activas
+                            </button>
+                            <button
+                                onClick={() => setStatusFilter('inactive')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${statusFilter === 'inactive'
+                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Inactivas
+                            </button>
+                            <button
+                                onClick={() => setStatusFilter('all')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${statusFilter === 'all'
+                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Todas
+                            </button>
+                        </div>
+
+                        {/* Type Filter */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar border-l pl-4 border-slate-200">
+                            <Button
+                                variant={typeFilter === 'all' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setTypeFilter('all')}
+                                className="rounded-full px-4 h-8"
+                            >
+                                Todas
+                            </Button>
+                            {tariffTypes.map((type) => (
+                                <Button
+                                    key={type}
+                                    variant={typeFilter === type ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setTypeFilter(type)}
+                                    className="rounded-full px-4 h-8"
+                                >
+                                    {type}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2">
                         <Button
-                            key={type}
-                            variant={typeFilter === type ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setTypeFilter(type)}
-                            className="rounded-full px-4"
+                            variant="outline"
+                            onClick={() => window.location.href = '/admin/tariffs/new'}
                         >
-                            {type}
+                            + Crear Manualmente
                         </Button>
-                    ))}
+                        <TariffUploadDialog companyId={companyId} />
+                    </div>
                 </div>
-
-                <TariffUploadDialog companyId={companyId} />
             </div>
 
             {isLoading ? (
@@ -112,15 +168,22 @@ export default function TariffDashboard() {
                     <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                         <ZapOff className="w-8 h-8 text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900">No hay tarifas activas</h3>
+                    <h3 className="text-lg font-medium text-slate-900">No hay tarifas {statusFilter !== 'all' ? (statusFilter === 'active' ? 'activas' : 'inactivas') : ''}</h3>
                     <p className="text-slate-500 mt-1 max-w-sm mx-auto mb-6">
-                        No se encontraron tarifas {typeFilter !== 'all' ? `del tipo ${typeFilter}` : ''}.
+                        No se encontraron tarifas {typeFilter !== 'all' ? `del tipo ${typeFilter}` : ''} con los filtros seleccionados.
                     </p>
-                    {typeFilter !== 'all' && (
-                        <Button variant="outline" onClick={() => setTypeFilter('all')}>
-                            Ver todas
-                        </Button>
-                    )}
+                    <div className="flex gap-2 justify-center">
+                        {statusFilter !== 'all' && (
+                            <Button variant="outline" onClick={() => setStatusFilter('all')}>
+                                Ver todas los estados
+                            </Button>
+                        )}
+                        {typeFilter !== 'all' && (
+                            <Button variant="outline" onClick={() => setTypeFilter('all')}>
+                                Ver todos los tipos
+                            </Button>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

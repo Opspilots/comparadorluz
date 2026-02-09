@@ -78,6 +78,7 @@ function App() {
                                     <Route path="/admin/tariffs" element={<TariffDashboard />} />
                                     <Route path="/admin/tariffs/:batchId" element={<TariffReviewPage />} />
                                     <Route path="/admin/tariffs/new" element={<TariffEditorPage />} />
+                                    <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
                                     <Route path="/contracts" element={<ContractList />} />
                                     <Route path="/contracts/new" element={<ContractForm />} />
                                     <Route path="/contracts/:id" element={<ContractForm />} />

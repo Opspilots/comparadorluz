@@ -164,7 +164,7 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                     Subir Tarifas
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] bg-white">
                 <DialogHeader>
                     <DialogTitle>Subir Nuevas Tarifas</DialogTitle>
                     <DialogDescription>

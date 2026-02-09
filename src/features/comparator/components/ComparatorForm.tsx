@@ -27,19 +27,39 @@ export function ComparatorForm() {
         setSuppliers(data || [])
     }
 
-    // Helper to normalize European number format (comma to dot)
+    // Helper to normalize European number format (comma to dot, remove thousands separators)
     const normalizeNumber = (value: any): string => {
         if (!value) return ''
-        // Remove currency symbols, spaces, and convert comma to dot
-        return value.toString()
-            .replace(/[€$£¥\s]/g, '')  // Remove currency symbols and spaces
-            .replace(',', '.')          // Convert comma to dot
-            .replace(/[^\d.]/g, '')     // Keep only digits and dot
+        let str = value.toString().trim()
+            .replace(/[€$£¥\sA-Za-z]/g, '') // Remove currency, spaces, letters
+
+        // Handle European format: 1.234,56 -> 1234.56
+        // If it contains both . and ,
+        if (str.includes('.') && str.includes(',')) {
+            const dotIndex = str.indexOf('.')
+            const commaIndex = str.indexOf(',')
+
+            if (dotIndex < commaIndex) {
+                // 1.234,56 -> Remove dot, replace comma with dot
+                str = str.replace(/\./g, '').replace(',', '.')
+            } else {
+                // 1,234.56 -> Remove comma
+                str = str.replace(/,/g, '')
+            }
+        } else if (str.includes(',')) {
+            // Only comma, assume decimal separator (Spain)
+            str = str.replace(',', '.')
+        } else if (str.includes('.') && (str.match(/\./g) || []).length > 1) {
+            // Multiple dots (1.234.567) -> remove all
+            str = str.replace(/\./g, '')
+        }
+
+        // Final cleanup
+        return str.replace(/[^\d.-]/g, '')
     }
 
     const handleDataExtracted = (data: any) => {
         console.log('📄 OCR Data Received:', data)
-        // setExtractedData(data) - Removed
         const updates: any = {}
 
         if (data.customer_name) updates.customerName = data.customer_name
@@ -69,16 +89,20 @@ export function ComparatorForm() {
         const totalConsumption = p1 + p2 + p3 + p4 + p5 + p6
 
         if (totalConsumption > 0) {
-            // Use toFixed(2) for precision, avoid rounding errors causing > 100%
             updates.consP1 = ((p1 / totalConsumption) * 100).toFixed(2)
             updates.consP2 = ((p2 / totalConsumption) * 100).toFixed(2)
             updates.consP3 = ((p3 / totalConsumption) * 100).toFixed(2)
             if (p4 > 0) updates.consP4 = ((p4 / totalConsumption) * 100).toFixed(2)
             if (p5 > 0) updates.consP5 = ((p5 / totalConsumption) * 100).toFixed(2)
             if (p6 > 0) updates.consP6 = ((p6 / totalConsumption) * 100).toFixed(2)
+
+            // Auto-fill total annual consumption if missing or 0
+            if (!updates.consumption || parseFloat(updates.consumption) === 0) {
+                updates.consumption = totalConsumption.toFixed(0)
+            }
         }
 
-        if (data.current_supplier) {
+        if (data.current_supplier && typeof data.current_supplier === 'string') {
             // Try to find supplier by name
             const foundSupplier = suppliers.find(s =>
                 s.name.toLowerCase().includes(data.current_supplier.toLowerCase()) ||
@@ -91,6 +115,7 @@ export function ComparatorForm() {
             }
         }
 
+        console.log('🔄 Updates to apply:', updates)
         updateState(updates)
 
         if (data.cif) {

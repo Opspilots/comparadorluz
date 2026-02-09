@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import { Upload } from 'lucide-react'
 
 interface Supplier {
     id: string
@@ -24,6 +23,7 @@ interface TariffFormState {
     tariff_code: string
     tariff_type: '2.0TD' | '3.0TD' | '6.1TD'
     valid_from: string
+    is_active: boolean
     components: TariffComponent[]
 }
 
@@ -33,6 +33,7 @@ const INITIAL_STATE: TariffFormState = {
     tariff_code: '',
     tariff_type: '2.0TD',
     valid_from: new Date().toISOString().split('T')[0],
+    is_active: true,
     components: []
 }
 
@@ -44,36 +45,7 @@ export function TariffEditorPage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([])
     const [form, setForm] = useState<TariffFormState>(INITIAL_STATE)
 
-    async function handleCSVImport(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]
-        if (!file) return
 
-        const reader = new FileReader()
-        reader.onload = (event) => {
-            const text = event.target?.result as string
-            const lines = text.split('\n')
-            const newComponents: TariffComponent[] = []
-
-            lines.slice(1).forEach(line => {
-                const parts = line.split(',').map(s => s.trim())
-                if (parts.length < 3) return
-                const [type, period, price] = parts
-
-                if (type === 'energy_price') {
-                    newComponents.push({ component_type: 'energy_price', period, price_eur_kwh: parseFloat(price) })
-                } else if (type === 'power_price') {
-                    newComponents.push({ component_type: 'power_price', period, price_eur_kw_year: parseFloat(price) })
-                } else if (type === 'fixed_fee') {
-                    newComponents.push({ component_type: 'fixed_fee', fixed_price_eur_month: parseFloat(price) })
-                }
-            })
-
-            if (newComponents.length > 0) {
-                setForm(prev => ({ ...prev, components: newComponents }))
-            }
-        }
-        reader.readAsText(file)
-    }
 
     useEffect(() => {
         loadSuppliers()
@@ -129,6 +101,7 @@ export function TariffEditorPage() {
                 tariff_code: tariff.tariff_code || '',
                 tariff_type: tariff.tariff_type as any,
                 valid_from: tariff.valid_from,
+                is_active: tariff.is_active,
                 components: components || []
             })
         } catch (error) {
@@ -192,7 +165,7 @@ export function TariffEditorPage() {
                 tariff_code: form.tariff_code || null,
                 tariff_type: form.tariff_type,
                 valid_from: form.valid_from,
-                is_active: true
+                is_active: form.is_active
             }
 
             let versionId = id
@@ -332,34 +305,7 @@ export function TariffEditorPage() {
                 </p>
             </div>
 
-            {!id && (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr',
-                    gap: '1.5rem',
-                    marginBottom: '2rem'
-                }}>
-                    <div style={{
-                        backgroundColor: 'white',
-                        borderRadius: '12px',
-                        border: '2px dashed var(--border)',
-                        padding: '1.5rem',
-                        textAlign: 'center',
-                        transition: 'all 0.2s',
-                        cursor: 'pointer'
-                    }}
-                        onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
-                        onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                    >
-                        <label style={{ cursor: 'pointer', display: 'block' }}>
-                            <Upload size={24} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }} />
-                            <h3 style={{ fontSize: '0.95rem', fontWeight: '600', marginBottom: '0.25rem' }}>Importar CSV</h3>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Carga precios masivamente</p>
-                            <input type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
-                        </label>
-                    </div>
-                </div>
-            )}
+
 
             <form onSubmit={handleSubmit}>
                 {/* General Info */}
@@ -523,6 +469,22 @@ export function TariffEditorPage() {
                                     transition: 'all 0.2s'
                                 }}
                             />
+                        </div>
+                        <div className="flex items-end pb-2">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={form.is_active}
+                                        onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                    {form.is_active ? 'Tarifa Activa' : 'Tarifa Inactiva'}
+                                </span>
+                            </label>
                         </div>
                     </div>
                 </div>
