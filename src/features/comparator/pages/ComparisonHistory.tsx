@@ -202,7 +202,7 @@ export function ComparisonHistory() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                         <div>
                                             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                                                {result.tariff_version?.suppliers?.name || (result.tariff_version as any)?.supplier_name || 'Sin Comercializadora'}
+                                                {result.tariff_version?.supplier_name || 'Sin Comercializadora'}
                                             </div>
                                             <h4 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
                                                 {result.tariff_version?.tariff_name}

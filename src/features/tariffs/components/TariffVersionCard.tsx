@@ -1,7 +1,6 @@
-
 import { format } from 'date-fns';
 import { Calendar, CheckCircle, Zap } from 'lucide-react';
-import { TariffVersion, TariffComponent } from '@/shared/types';
+import { TariffVersion } from '@/shared/types';
 import { useNavigate } from 'react-router-dom';
 
 interface TariffVersionCardProps {
@@ -11,15 +10,11 @@ interface TariffVersionCardProps {
 export function TariffVersionCard({ tariff }: TariffVersionCardProps) {
     const navigate = useNavigate();
 
-    // Group components by period for display
+    // Group components by display period
     const components = tariff.tariff_components || [];
 
     const energyPrices = components
         .filter(c => c.component_type === 'energy_price')
-        .sort((a, b) => (a.period || '').localeCompare(b.period || ''));
-
-    const powerPrices = components
-        .filter(c => c.component_type === 'power_price')
         .sort((a, b) => (a.period || '').localeCompare(b.period || ''));
 
     return (
