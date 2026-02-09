@@ -40,10 +40,9 @@ export interface User {
 export type CustomerStatus =
     | 'prospecto'
     | 'contactado'
-    | 'calificado'
     | 'propuesta'
     | 'negociacion'
-    | 'cerrado'
+    | 'cliente'
     | 'perdido';
 
 export interface Customer {
@@ -149,7 +148,7 @@ export interface TariffVersion {
     company_id: string;
     batch_id: string;
     file_id?: string;
-    supplier_name: string;
+    supplier_name: string; // Matches schema
     tariff_name: string;
     tariff_code?: string;
     tariff_type: string;
@@ -158,7 +157,8 @@ export interface TariffVersion {
     is_active: boolean;
     created_at: string;
     updated_at: string;
-    components?: TariffComponent[];  // Joined data
+    tariff_components?: TariffComponent[]; // For joined data
+    // suppliers relation removed as it doesn't exist in schema
 }
 
 // ============================================================================
@@ -275,12 +275,15 @@ export interface CalculationInput {
     contracted_power_p4_kw?: number;
     contracted_power_p5_kw?: number;
     contracted_power_p6_kw?: number;
+    current_cost_eur?: number;
 }
 
 export interface CalculationResult {
     annual_cost_eur: number;
     monthly_cost_eur: number;
     breakdown: CalculationBreakdown;
+    annual_savings_eur?: number;
+    savings_pct?: number;
 }
 
 // ============================================================================
@@ -294,6 +297,22 @@ export type ContractStatus =
     | 'cancelled'
     | 'completed';
 
+
+export interface Commissioner {
+    id: string;
+    company_id: string;
+    user_id?: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+    nif?: string;
+    address?: string;
+    commission_default_pct?: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Contract {
     id: string;
     company_id: string;
@@ -301,7 +320,7 @@ export interface Contract {
     supply_point_id?: string;
     comparison_id?: string;
     comparison_result_id?: string;
-    commercial_id: string;
+    commercial_id: string; // references commissioners(id)
     tariff_version_id: string;
     contract_number?: string;
     status: ContractStatus;
@@ -313,12 +332,16 @@ export interface Contract {
     notes?: string;
     created_at: string;
     updated_at: string;
+    // Joined data
+    customers?: Customer;
+    commissioners?: Commissioner;
+    tariff_versions?: TariffVersion & { suppliers?: { name: string } };
 }
 
 export interface CommissionRule {
     id: string;
     company_id: string;
-    user_id: string;
+    commissioner_id: string; // Renamed from user_id
     supplier_name?: string;
     tariff_type?: string;
     commission_pct: number;
@@ -326,4 +349,5 @@ export interface CommissionRule {
     valid_to?: string;
     is_active: boolean;
     created_at: string;
+    commissioners?: { full_name: string };
 }

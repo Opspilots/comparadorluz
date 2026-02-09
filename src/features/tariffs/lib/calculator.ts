@@ -43,7 +43,8 @@ export const DEFAULT_CONSUMPTION_DISTRIBUTION = {
 } as const;
 
 /**
- * Default consumption distribution for 2-period tariffs
+ * Default consumption distribution for 2.0TD tariff (3 energy periods)
+ * Note: 2.0TD has 3 ENERGY periods (P1, P2, P3) but only 2 POWER periods
  */
 export const DEFAULT_CONSUMPTION_DISTRIBUTION_2P = {
     P1: 29,  // Peak (~29%)
@@ -71,9 +72,17 @@ function getConsumptionDistribution(
     customDistribution?: { [key: string]: number }
 ): { [key: string]: number } {
     if (customDistribution) {
-        const total = (customDistribution.P1 || 0) + (customDistribution.P2 || 0) + (customDistribution.P3 || 0);
-        if (Math.abs(total - 100) < 0.01) {
+        // Sum all P1-P6 values
+        const total = Object.values(customDistribution).reduce((sum, val) => sum + (val || 0), 0);
+
+        // If total is close to 100, use custom distribution
+        if (total > 50 && Math.abs(total - 100) < 5) {
             return customDistribution as { [key: string]: number };
+        }
+
+        // If user provided some values but they don't sum to 100, log a warning
+        if (total > 0) {
+            console.warn(`Consumption distribution sum is ${total}%, expected ~100%. Using defaults.`);
         }
     }
 
@@ -156,9 +165,14 @@ export function calculateEnergyComponent(
     let total = 0;
 
     for (const [period, percentage] of Object.entries(distribution)) {
+        // Skip periods with 0% distribution
+        if (percentage === 0) continue;
+
         const price = energyPrices.get(period);
         if (price === undefined) {
-            throw new Error(`Missing energy price for period ${period}`);
+            // Skip this period instead of throwing - tariff may not have all periods configured
+            console.warn(`Skipping period ${period} - no energy price configured for this tariff`);
+            continue;
         }
 
         const kwh = (totalConsumption * percentage) / 100;
@@ -301,10 +315,11 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
         contracted_power_p3_kw,
         contracted_power_p4_kw,
         contracted_power_p5_kw,
-        contracted_power_p6_kw
+        contracted_power_p6_kw,
+        current_cost_eur
     } = input;
 
-    if (!tariff_version.components || tariff_version.components.length === 0) {
+    if (!tariff_version.tariff_components || tariff_version.tariff_components.length === 0) {
         throw new Error('Tariff version has no components');
     }
 
@@ -315,8 +330,8 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
     );
 
     // 2. Extract price components
-    const energyPrices = getEnergyPrices(tariff_version.components);
-    const powerPrices = getPowerPrices(tariff_version.components);
+    const energyPrices = getEnergyPrices(tariff_version.tariff_components);
+    const powerPrices = getPowerPrices(tariff_version.tariff_components);
 
     if (energyPrices.size === 0) {
         throw new Error('No energy prices found in tariff');
@@ -344,13 +359,32 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
     // For 2.0TD, we only care about P1 and P2 usually, but we calculate what's priced
     const powerCost = calculatePowerComponent(powerPrices, powerInputs);
 
-    // 5. CALCULATE PENALTIES (Mock implementation for now)
-    // In a real scenario, this requires defining penalty rates or excess usage
+    // 5. CALCULATE PENALTIES
     const reactivePenalty = reactive_energy_kvarh * 0.041554; // Avg price EUR/kVarh
-    const excessPowerPenalty = 0; // Requires complex formula 
+
+    // Excess Power (Maximeter) - Simplified Model for 3.0TD/6.1TD
+    // Rule: Penalty if Demand > 105% of Contracted Power
+    // Formula: (Pd - 1.05 * Pc) * KP
+    // KP approx 3.36 EUR/kW/month for standard High Voltage / >50kW
+    const EXCESS_POWER_COEFFICIENT = 3.361213;
+
+    let excessPowerPenalty = 0;
+    if (max_demand_kw > 0) {
+        // Find the maximum contracted power across all periods
+        const maxContractedPower = Math.max(...Object.values(powerInputs).filter(p => p > 0));
+
+        // Apply penalty if max demand exceeds 105% of the highest contracted power
+        const limit = maxContractedPower * 1.05;
+        if (max_demand_kw > limit) {
+            const excess = max_demand_kw - limit;
+            // Monthly penalty * 12 months
+            excessPowerPenalty = excess * EXCESS_POWER_COEFFICIENT * 12;
+        }
+    }
+    excessPowerPenalty = round(excessPowerPenalty);
 
     // 6. FIXED FEES & EXTRAS
-    const fixedFee = calculateFixedFee(tariff_version.components);
+    const fixedFee = calculateFixedFee(tariff_version.tariff_components);
     const meterRental = round(meter_rental_eur_month * 12); // Add meter rental
 
     // 7. SUBTOTAL & TAXES
@@ -377,9 +411,13 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
         }
     };
 
+    // 9. Calculate savings compared to actual current cost if provided
+    const savings = calculateSavings(totalAnnual, current_cost_eur);
+
     return {
         annual_cost_eur: totalAnnual,
         monthly_cost_eur: totalMonthly,
         breakdown,
+        ...savings
     };
 }

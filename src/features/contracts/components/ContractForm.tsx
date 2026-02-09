@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import type { Customer, TariffVersion } from '@/shared/types'
+import type { Customer, TariffVersion, Commissioner } from '@/shared/types'
 
 export function ContractForm() {
     const navigate = useNavigate()
+    const location = useLocation()
     const [loading, setLoading] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -12,9 +13,11 @@ export function ContractForm() {
     // Data Sources
     const [customers, setCustomers] = useState<Customer[]>([])
     const [tariffs, setTariffs] = useState<TariffVersion[]>([])
+    const [commissioners, setCommissioners] = useState<Commissioner[]>([])
 
     // Form State
     const [customerId, setCustomerId] = useState('')
+    const [commercialId, setCommercialId] = useState('')
     const [tariffVersionId, setTariffVersionId] = useState('')
     const [annualValue, setAnnualValue] = useState('')
     const [signedAt, setSignedAt] = useState(new Date().toISOString().split('T')[0])
@@ -39,8 +42,27 @@ export function ContractForm() {
 
                 if (tariffError) throw tariffError
 
+                // Fetch Active Commissioners
+                const { data: commData, error: commError } = await supabase
+                    .from('commissioners')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('full_name')
+
+                if (commError) throw commError
+
                 setCustomers(custData || [])
                 setTariffs(tariffData || [])
+                setCommissioners(commData || [])
+
+                // Handle Autofill from Comparator
+                if (location.state?.prefillData) {
+                    const { customerId, tariffVersionId, annualValue } = location.state.prefillData
+                    if (customerId) setCustomerId(customerId)
+                    if (tariffVersionId) setTariffVersionId(tariffVersionId)
+                    if (annualValue) setAnnualValue(annualValue.toString())
+                }
+
             } catch (err) {
                 console.error('Error fetching form data:', err)
             } finally {
@@ -48,7 +70,7 @@ export function ContractForm() {
             }
         }
         fetchData()
-    }, [])
+    }, [location.state]) // Depend on location.state
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -76,7 +98,7 @@ export function ContractForm() {
                 .insert({
                     company_id: profile.company_id,
                     customer_id: customerId,
-                    commercial_id: user.id,
+                    commercial_id: commercialId || null, // Handle empty string as null
                     tariff_version_id: tariffVersionId,
                     contract_number: contractNumber,
                     status: 'signed', // Default to signed for manual entry
@@ -126,6 +148,23 @@ export function ContractForm() {
                         </select>
                     </div>
                     <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Comisionado Asignado</label>
+                        <select
+                            // required - Removed
+                            value={commercialId}
+                            onChange={(e) => setCommercialId(e.target.value)}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                        >
+                            <option value="">Seleccionar Comisionado...</option>
+                            {commissioners.map(c => (
+                                <option key={c.id} value={c.id}>{c.full_name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Tarifa Contratada *</label>
                         <select
                             required
@@ -135,13 +174,10 @@ export function ContractForm() {
                         >
                             <option value="">Seleccionar Tarifa...</option>
                             {tariffs.map(t => (
-                                <option key={t.id} value={t.id}>{t.supplier_name} - {t.tariff_name}</option>
+                                <option key={t.id} value={t.id}>{t.supplier_name || 'Desconocido'} - {t.tariff_name}</option>
                             ))}
                         </select>
                     </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Valor Anual (€) *</label>
                         <input

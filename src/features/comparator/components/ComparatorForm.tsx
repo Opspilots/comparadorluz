@@ -1,74 +1,119 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { rankTariffs } from '../lib/rankTariffs'
-import type { Customer, SupplyPoint, TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput } from '@/shared/types'
-import { ChevronDown, ChevronUp, Settings } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput } from '@/shared/types'
+import { useComparatorState } from '../hooks/useComparatorState'
+import { InvoiceUploader } from './InvoiceUploader'
+import { SaveComparisonDialog } from './SaveComparisonDialog'
 
 export function ComparatorForm() {
+    const navigate = useNavigate()
     const [searching, setSearching] = useState(false)
 
-    // Selection
-    const [customers, setCustomers] = useState<Customer[]>([])
-    const [selectedCustomer, setSelectedCustomer] = useState<string>('')
-    const [supplyPoints, setSupplyPoints] = useState<SupplyPoint[]>([])
-    const [selectedSP, setSelectedSP] = useState<string>('')
+    // Use persistence hook
+    const { state, updateState, clearState } = useComparatorState()
 
-    // Inputs
-    const [consumption, setConsumption] = useState('')
-    const [power, setPower] = useState('')
-    const [tariffType, setTariffType] = useState('2.0TD')
-    const [mode, setMode] = useState<ComparisonMode>('client_first')
-
-    // Advanced Inputs
-    const [showAdvanced, setShowAdvanced] = useState(false)
-    const [reactiveEnergy, setReactiveEnergy] = useState('')
-    const [maxDemand, setMaxDemand] = useState('')
-
-    // Power by period (optional)
-    const [powerP1, setPowerP1] = useState('')
-    const [powerP2, setPowerP2] = useState('')
-    const [powerP3, setPowerP3] = useState('')
-    const [powerP4, setPowerP4] = useState('')
-    const [powerP5, setPowerP5] = useState('')
-    const [powerP6, setPowerP6] = useState('')
-
-    // Consumption % by period (optional)
-    const [consP1, setConsP1] = useState('')
-    const [consP2, setConsP2] = useState('')
-    const [consP3, setConsP3] = useState('')
-    const [consP4, setConsP4] = useState('')
-    const [consP5, setConsP5] = useState('')
-    const [consP6, setConsP6] = useState('')
-
-    // Results
     const [results, setResults] = useState<ComparisonResult[]>([])
+    const [showSaveDialog, setShowSaveDialog] = useState(false)
+    const [suppliers, setSuppliers] = useState<{ id: string, name: string }[]>([])
 
     useEffect(() => {
-        fetchCustomers()
+        fetchSuppliers()
     }, [])
 
-    useEffect(() => {
-        if (selectedCustomer) fetchSupplyPoints(selectedCustomer)
-    }, [selectedCustomer])
-
-    const fetchCustomers = async () => {
-        const { data } = await supabase.from('customers').select('*').order('name')
-        setCustomers(data || [])
+    const fetchSuppliers = async () => {
+        const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
+        setSuppliers(data || [])
     }
 
-    const fetchSupplyPoints = async (custId: string) => {
-        const { data } = await supabase.from('supply_points').select('*').eq('customer_id', custId)
-        setSupplyPoints(data || [])
+    // Helper to normalize European number format (comma to dot)
+    const normalizeNumber = (value: any): string => {
+        if (!value) return ''
+        // Remove currency symbols, spaces, and convert comma to dot
+        return value.toString()
+            .replace(/[€$£¥\s]/g, '')  // Remove currency symbols and spaces
+            .replace(',', '.')          // Convert comma to dot
+            .replace(/[^\d.]/g, '')     // Keep only digits and dot
     }
 
-    const handleSPChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const spId = e.target.value
-        setSelectedSP(spId)
-        const sp = supplyPoints.find(p => p.id === spId)
-        if (sp) {
-            setConsumption(sp.annual_consumption_kwh?.toString() || '')
-            setPower(sp.contracted_power_kw?.toString() || '')
-            setTariffType(sp.tariff_type || '2.0TD')
+    const handleDataExtracted = (data: any) => {
+        console.log('📄 OCR Data Received:', data)
+        // setExtractedData(data) - Removed
+        const updates: any = {}
+
+        if (data.customer_name) updates.customerName = data.customer_name
+        if (data.cif) updates.cif = data.cif
+        if (data.tariff_type) updates.tariffType = data.tariff_type
+        if (data.annual_consumption) updates.consumption = normalizeNumber(data.annual_consumption)
+        if (data.contracted_power) updates.power = normalizeNumber(data.contracted_power)
+        if (data.cups) updates.cups = data.cups
+        if (data.current_cost) updates.currentCost = normalizeNumber(data.current_cost)
+
+        // Map power periods
+        if (data.power_p1) updates.powerP1 = normalizeNumber(data.power_p1)
+        if (data.power_p2) updates.powerP2 = normalizeNumber(data.power_p2)
+        if (data.power_p3) updates.powerP3 = normalizeNumber(data.power_p3)
+        if (data.power_p4) updates.powerP4 = normalizeNumber(data.power_p4)
+        if (data.power_p5) updates.powerP5 = normalizeNumber(data.power_p5)
+        if (data.power_p6) updates.powerP6 = normalizeNumber(data.power_p6)
+
+        // Calculate consumption percentages from OCR values (which are likely kWh)
+        const p1 = parseFloat(normalizeNumber(data.p1_consumption_pct) || '0')
+        const p2 = parseFloat(normalizeNumber(data.p2_consumption_pct) || '0')
+        const p3 = parseFloat(normalizeNumber(data.p3_consumption_pct) || '0')
+        const p4 = parseFloat(normalizeNumber(data.p4_consumption_pct) || '0')
+        const p5 = parseFloat(normalizeNumber(data.p5_consumption_pct) || '0')
+        const p6 = parseFloat(normalizeNumber(data.p6_consumption_pct) || '0')
+
+        const totalConsumption = p1 + p2 + p3 + p4 + p5 + p6
+
+        if (totalConsumption > 0) {
+            // Use toFixed(2) for precision, avoid rounding errors causing > 100%
+            updates.consP1 = ((p1 / totalConsumption) * 100).toFixed(2)
+            updates.consP2 = ((p2 / totalConsumption) * 100).toFixed(2)
+            updates.consP3 = ((p3 / totalConsumption) * 100).toFixed(2)
+            if (p4 > 0) updates.consP4 = ((p4 / totalConsumption) * 100).toFixed(2)
+            if (p5 > 0) updates.consP5 = ((p5 / totalConsumption) * 100).toFixed(2)
+            if (p6 > 0) updates.consP6 = ((p6 / totalConsumption) * 100).toFixed(2)
+        }
+
+        if (data.current_supplier) {
+            // Try to find supplier by name
+            const foundSupplier = suppliers.find(s =>
+                s.name.toLowerCase().includes(data.current_supplier.toLowerCase()) ||
+                data.current_supplier.toLowerCase().includes(s.name.toLowerCase())
+            );
+            if (foundSupplier) {
+                updates.currentSupplier = foundSupplier.name
+            } else {
+                updates.currentSupplier = data.current_supplier
+            }
+        }
+
+        updateState(updates)
+
+        if (data.cif) {
+            checkExistingClientByCIF(data.cif)
+        }
+    }
+
+    const checkExistingClientByCIF = async (cif: string) => {
+        // setCupsNotFound(false) - Removed
+        console.log('🔍 Checking existing client by CIF:', cif)
+
+        const { data: customerData } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('cif', cif)
+            .maybeSingle()
+
+        if (customerData) {
+            console.log('✅ Customer found by CIF:', customerData)
+            updateState({ selectedCustomer: customerData.id })
+        } else {
+            console.log('ℹ️ New customer (CIF not found)')
+            updateState({ selectedCustomer: '' })
         }
     }
 
@@ -77,48 +122,51 @@ export function ComparatorForm() {
         setSearching(true)
 
         try {
-            // Prepare input object
             const inputData: ComparisonInput = {
-                cif: 'MOCK',
+                cif: state.cif || 'MOCK', // Use extracted CIF if available
                 customer_type: 'empresa',
-                annual_consumption_kwh: parseFloat(consumption),
-                contracted_power_kw: parseFloat(power),
-                tariff_type: tariffType,
-                consumption_distribution: (consP1 || consP2) ? {
-                    P1: parseFloat(consP1) || 0,
-                    P2: parseFloat(consP2) || 0,
-                    P3: parseFloat(consP3) || 0,
-                    P4: parseFloat(consP4) || 0,
-                    P5: parseFloat(consP5) || 0,
-                    P6: parseFloat(consP6) || 0,
+                annual_consumption_kwh: parseFloat(state.consumption),
+                contracted_power_kw: parseFloat(state.power),
+                tariff_type: state.tariffType,
+                consumption_distribution: (state.consP1 || state.consP2) ? {
+                    P1: parseFloat(state.consP1) || 0,
+                    P2: parseFloat(state.consP2) || 0,
+                    P3: parseFloat(state.consP3) || 0,
+                    P4: parseFloat(state.consP4) || 0,
+                    P5: parseFloat(state.consP5) || 0,
+                    P6: parseFloat(state.consP6) || 0,
                 } : undefined,
-                reactive_energy_kvarh: parseFloat(reactiveEnergy) || 0,
-                max_demand_kw: parseFloat(maxDemand) || 0,
-                contracted_power_p1_kw: parseFloat(powerP1) || undefined,
-                contracted_power_p2_kw: parseFloat(powerP2) || undefined,
-                contracted_power_p3_kw: parseFloat(powerP3) || undefined,
-                contracted_power_p4_kw: parseFloat(powerP4) || undefined,
-                contracted_power_p5_kw: parseFloat(powerP5) || undefined,
-                contracted_power_p6_kw: parseFloat(powerP6) || undefined,
+                reactive_energy_kvarh: parseFloat(state.reactiveEnergy) || 0,
+                max_demand_kw: parseFloat(state.maxDemand) || 0,
+                contracted_power_p1_kw: parseFloat(state.powerP1) || undefined,
+                contracted_power_p2_kw: parseFloat(state.powerP2) || undefined,
+                contracted_power_p3_kw: parseFloat(state.powerP3) || undefined,
+                contracted_power_p4_kw: parseFloat(state.powerP4) || undefined,
+                contracted_power_p5_kw: parseFloat(state.powerP5) || undefined,
+                contracted_power_p6_kw: parseFloat(state.powerP6) || undefined,
             }
 
-            // 1. Fetch ALL active tariffs of the given type
-            // (For MVP we fetch all, in production we'd filter better)
             const { data: tariffs, error } = await supabase
                 .from('tariff_versions')
-                .select('*, components:tariff_components(*)')
+                .select('*, tariff_components(*)')
                 .eq('is_active', true)
-                .eq('tariff_type', tariffType)
+                .eq('tariff_type', state.tariffType)
 
             if (error) throw error
 
-            // 2. Rank them
             const rankedResults = rankTariffs(
                 tariffs as TariffVersion[],
-                tariffs as TariffVersion[],
                 inputData,
-                { mode }
+                {
+                    mode: state.mode,
+                    currentAnnualCostEur: state.currentCost ? parseFloat(state.currentCost) * 12 : undefined // Crude estimation if monthly, or annual? Label says €/mes
+                }
             )
+
+            // Adjust annual cost comparison if user entered monthly cost
+            // The rankTariffs might expect annual cost to calculate savings, 
+            // but for now let's just pass what we have. 
+            // If the label is "Coste Factura Actual (€/mes)", then "Annual" is * 12.
 
             setResults(rankedResults)
         } catch (err) {
@@ -129,152 +177,191 @@ export function ComparatorForm() {
         }
     }
 
+    const handleClear = () => {
+        clearState()
+        setResults([])
+    }
+
     return (
         <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-            <h1>Comparador de Tarifas</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h1 style={{ margin: 0 }}>Comparador de Tarifas</h1>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button onClick={() => navigate('/comparator/history')} style={{ fontSize: '0.9rem', color: '#0070f3', background: 'none', border: '1px solid #0070f3', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer' }}>
+                        Ver Historial
+                    </button>
+                    <button onClick={handleClear} style={{ fontSize: '0.9rem', color: '#666', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                        Limpiar formulario
+                    </button>
+                </div>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '2rem', alignItems: 'start' }}>
                 {/* Form Panel */}
                 <section style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                    <form onSubmit={handleCompare} style={{ display: 'grid', gap: '1rem' }}>
-                        <div>
-                            <label style={labelStyle}>Cliente (Opcional)</label>
-                            <select
-                                value={selectedCustomer}
-                                onChange={(e) => setSelectedCustomer(e.target.value)}
-                                style={inputStyle}
-                            >
-                                <option value="">-- Nuevo / Genérico --</option>
-                                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
 
-                        {selectedCustomer && (
-                            <div>
-                                <label style={labelStyle}>Punto de Suministro</label>
-                                <select value={selectedSP} onChange={handleSPChange} style={inputStyle}>
-                                    <option value="">-- Personalizado --</option>
-                                    {supplyPoints.map(p => <option key={p.id} value={p.id}>{p.cups || p.address}</option>)}
-                                </select>
-                            </div>
-                        )}
+                    <InvoiceUploader onDataExtracted={handleDataExtracted} />
+
+                    {/* Create Client Banner if data extracted but new client? 
+                        Maybe simplified logic here as per user request.
+                    */}
+
+                    <form onSubmit={handleCompare} style={{ display: 'grid', gap: '1rem' }}>
+
+                        {/* Client Name Input (Replaces Dropdown) */}
+                        <div>
+                            <label style={labelStyle}>Nombre del Cliente (Opcional)</label>
+                            <input
+                                type="text"
+                                value={state.customerName}
+                                onChange={(e) => updateState({ customerName: e.target.value })}
+                                placeholder="Nombre del cliente o empresa"
+                                style={inputStyle}
+                            />
+                        </div>
 
                         <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '0.5rem 0' }} />
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                                <label style={labelStyle}>Consumo Anual (kWh)</label>
+
+                        {/* INPUTS GRID (Compact) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '0.8rem', alignItems: 'end' }}>
+
+                            {/* Row 0: CUPS & Supplier (New) */}
+                            <div style={{ gridColumn: 'span 12' }}>
+                                <label style={labelStyleCompact}>CUPS</label>
                                 <input
-                                    type="number"
-                                    value={consumption}
-                                    onChange={(e) => setConsumption(e.target.value)}
-                                    required
-                                    style={inputStyle}
+                                    type="text"
+                                    value={state.cups}
+                                    onChange={e => updateState({ cups: e.target.value })}
+                                    placeholder="ES00..."
+                                    style={inputStyleCompact}
                                 />
                             </div>
-                            <div>
-                                <label style={labelStyle}>Potencia (kW)</label>
+
+                            <div style={{ gridColumn: 'span 6' }}>
+                                <label style={labelStyleCompact}>Comercializadora Actual</label>
+                                <select
+                                    value={state.currentSupplier}
+                                    onChange={e => updateState({ currentSupplier: e.target.value })}
+                                    style={inputStyleCompact}
+                                >
+                                    <option value="">Seleccionar...</option>
+                                    {suppliers.map(s => (
+                                        <option key={s.id} value={s.name}>{s.name}</option>
+                                    ))}
+                                    {state.currentSupplier && !suppliers.find(s => s.name === state.currentSupplier) && (
+                                        <option value={state.currentSupplier}>{state.currentSupplier} (Detectada)</option>
+                                    )}
+                                </select>
+                            </div>
+
+                            <div style={{ gridColumn: 'span 6' }}>
+                                <label style={labelStyleCompact}>Coste Factura Actual (€/mes)</label>
                                 <input
                                     type="number"
-                                    value={power}
-                                    onChange={(e) => setPower(e.target.value)}
-                                    required
-                                    style={inputStyle}
+                                    value={state.currentCost}
+                                    onChange={e => updateState({ currentCost: e.target.value })}
+                                    placeholder="0.00"
+                                    style={inputStyleCompact}
                                 />
                             </div>
-                        </div>
 
-                        <div>
-                            <label style={labelStyle}>Tipo de Tarifa</label>
-                            <select value={tariffType} onChange={(e) => setTariffType(e.target.value)} style={inputStyle}>
-                                <option value="2.0TD">2.0TD (Hogar/Negocio &lt; 15kW)</option>
-                                <option value="3.0TD">3.0TD (Negocio &gt; 15kW)</option>
-                            </select>
-                        </div>
+                            {/* Row 1: Main Inputs */}
+                            <div style={{ gridColumn: 'span 4' }}>
+                                <label style={labelStyleCompact}>Consumo Anual (kWh)</label>
+                                <input type="number" value={state.consumption} onChange={e => updateState({ consumption: e.target.value })} required style={inputStyleCompact} />
+                            </div>
+                            <div style={{ gridColumn: 'span 4' }}>
+                                <label style={labelStyleCompact}>Potencia (kW)</label>
+                                <input type="number" value={state.power} onChange={e => updateState({ power: e.target.value })} required style={inputStyleCompact} />
+                            </div>
+                            <div style={{ gridColumn: 'span 4' }}>
+                                <label style={labelStyleCompact}>Tarifa</label>
+                                <select value={state.tariffType} onChange={e => updateState({ tariffType: e.target.value })} style={inputStyleCompact}>
+                                    <option value="2.0TD">2.0TD (&lt;15kW)</option>
+                                    <option value="3.0TD">3.0TD (&gt;15kW)</option>
+                                    <option value="6.1TD">6.1TD</option>
+                                </select>
+                            </div>
 
+                            {/* Row 2: Periods Consumption */}
+                            <div style={{ gridColumn: 'span 12', marginTop: '0.5rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
+                                    CONSUMO POR PERIODOS (%) {state.tariffType === '2.0TD' ? '- 3 periodos' : '- 6 periodos'}
+                                </span>
+                                <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
+                                    <input placeholder="P1%" type="number" step="0.01" value={state.consP1} onChange={e => updateState({ consP1: e.target.value })} style={inputStyleMini} />
+                                    <input placeholder="P2%" type="number" step="0.01" value={state.consP2} onChange={e => updateState({ consP2: e.target.value })} style={inputStyleMini} />
+                                    <input placeholder="P3%" type="number" step="0.01" value={state.consP3} onChange={e => updateState({ consP3: e.target.value })} style={inputStyleMini} />
+                                    {state.tariffType !== '2.0TD' && (
+                                        <>
+                                            <input placeholder="P4%" type="number" step="0.01" value={state.consP4} onChange={e => updateState({ consP4: e.target.value })} style={inputStyleMini} />
+                                            <input placeholder="P5%" type="number" step="0.01" value={state.consP5} onChange={e => updateState({ consP5: e.target.value })} style={inputStyleMini} />
+                                            <input placeholder="P6%" type="number" step="0.01" value={state.consP6} onChange={e => updateState({ consP6: e.target.value })} style={inputStyleMini} />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
 
+                            {/* Row 3: Periods Power */}
+                            <div style={{ gridColumn: 'span 12', marginTop: '0.2rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
+                                    POTENCIA POR PERIODOS (kW) {state.tariffType === '2.0TD' ? '- 2 periodos' : '- 6 periodos'}
+                                </span>
+                                <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
+                                    <input placeholder="P1 kW" type="number" value={state.powerP1} onChange={e => updateState({ powerP1: e.target.value })} style={inputStyleMini} />
+                                    <input placeholder="P2 kW" type="number" value={state.powerP2} onChange={e => updateState({ powerP2: e.target.value })} style={inputStyleMini} />
+                                    {state.tariffType !== '2.0TD' && (
+                                        <>
+                                            <input placeholder="P3 kW" type="number" value={state.powerP3} onChange={e => updateState({ powerP3: e.target.value })} style={inputStyleMini} />
+                                            <input placeholder="P4 kW" type="number" value={state.powerP4} onChange={e => updateState({ powerP4: e.target.value })} style={inputStyleMini} />
+                                            <input placeholder="P5 kW" type="number" value={state.powerP5} onChange={e => updateState({ powerP5: e.target.value })} style={inputStyleMini} />
+                                            <input placeholder="P6 kW" type="number" value={state.powerP6} onChange={e => updateState({ powerP6: e.target.value })} style={inputStyleMini} />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
 
-                        {/* ADVANCED TOGGLE */}
-                        <div style={{ borderTop: '1px solid #eee', paddingTop: '1rem' }}>
+                            {/* Row 4: Penalties */}
+                            <div style={{ gridColumn: 'span 12', display: 'flex', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #eee' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={labelStyleCompact}>E. Reactiva (kVArh)</label>
+                                    <input type="number" value={state.reactiveEnergy} onChange={e => updateState({ reactiveEnergy: e.target.value })} style={inputStyleCompact} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={labelStyleCompact}>Max. Demanda (kW)</label>
+                                    <input type="number" value={state.maxDemand} onChange={e => updateState({ maxDemand: e.target.value })} style={inputStyleCompact} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={labelStyleCompact}>Modo</label>
+                                    <select value={state.mode} onChange={(e) => updateState({ mode: e.target.value as ComparisonMode })} style={inputStyleCompact}>
+                                        <option value="client_first">Ahorro</option>
+                                        <option value="commercial_first">Margen</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <button
-                                type="button"
-                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                type="submit"
+                                disabled={searching}
                                 style={{
-                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                    background: 'none', border: 'none', color: '#666', cursor: 'pointer',
-                                    fontSize: '0.9rem', fontWeight: '500', padding: 0
+                                    gridColumn: 'span 12',
+                                    padding: '0.7rem',
+                                    background: '#0070f3',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    marginTop: '0.5rem',
+                                    fontSize: '0.9rem',
+                                    transition: 'background 0.2s',
+                                    opacity: searching ? 0.7 : 1
                                 }}
                             >
-                                <Settings size={16} />
-                                Configuración Avanzada (Periodos, Reactiva...)
-                                {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                {searching ? 'Calculando...' : 'Obtener Comparativa'}
                             </button>
                         </div>
-
-                        {showAdvanced && (
-                            <div className="animate-fade-in" style={{
-                                display: 'grid', gap: '1rem',
-                                background: '#f9fafb', padding: '1rem', borderRadius: '8px', border: '1px solid #eee'
-                            }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#666', textTransform: 'uppercase' }}>Consumo por Periodos (%)</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                                    <input placeholder="P1 %" type="number" value={consP1} onChange={e => setConsP1(e.target.value)} style={inputStyle} />
-                                    <input placeholder="P2 %" type="number" value={consP2} onChange={e => setConsP2(e.target.value)} style={inputStyle} />
-                                    <input placeholder="P3 %" type="number" value={consP3} onChange={e => setConsP3(e.target.value)} style={inputStyle} />
-                                    {tariffType !== '2.0TD' && (
-                                        <>
-                                            <input placeholder="P4 %" type="number" value={consP4} onChange={e => setConsP4(e.target.value)} style={inputStyle} />
-                                            <input placeholder="P5 %" type="number" value={consP5} onChange={e => setConsP5(e.target.value)} style={inputStyle} />
-                                            <input placeholder="P6 %" type="number" value={consP6} onChange={e => setConsP6(e.target.value)} style={inputStyle} />
-                                        </>
-                                    )}
-                                </div>
-
-                                <h4 style={{ margin: '0.5rem 0 0.5rem 0', fontSize: '0.85rem', color: '#666', textTransform: 'uppercase' }}>Potencias por Periodo (kW)</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                                    <input placeholder="P1 kW" type="number" value={powerP1} onChange={e => setPowerP1(e.target.value)} style={inputStyle} />
-                                    <input placeholder="P2 kW" type="number" value={powerP2} onChange={e => setPowerP2(e.target.value)} style={inputStyle} />
-                                    {tariffType === '2.0TD' ? (
-                                        <div /> // Filler
-                                    ) : (
-                                        <>
-                                            <input placeholder="P3 kW" type="number" value={powerP3} onChange={e => setPowerP3(e.target.value)} style={inputStyle} />
-                                            <input placeholder="P4 kW" type="number" value={powerP4} onChange={e => setPowerP4(e.target.value)} style={inputStyle} />
-                                            <input placeholder="P5 kW" type="number" value={powerP5} onChange={e => setPowerP5(e.target.value)} style={inputStyle} />
-                                            <input placeholder="P6 kW" type="number" value={powerP6} onChange={e => setPowerP6(e.target.value)} style={inputStyle} />
-                                        </>
-                                    )}
-                                </div>
-
-                                <h4 style={{ margin: '0.5rem 0 0.5rem 0', fontSize: '0.85rem', color: '#666', textTransform: 'uppercase' }}>Penalizaciones</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>E. Reactiva (kVArh)</label>
-                                        <input type="number" value={reactiveEnergy} onChange={e => setReactiveEnergy(e.target.value)} style={inputStyle} />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Max. Demanda (kW)</label>
-                                        <input type="number" value={maxDemand} onChange={e => setMaxDemand(e.target.value)} style={inputStyle} />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <label style={labelStyle}>Modo de Comparativa</label>
-                            <select value={mode} onChange={(e) => setMode(e.target.value as ComparisonMode)} style={inputStyle}>
-                                <option value="client_first">💰 Ahorro Cliente (Precio más bajo)</option>
-                                <option value="commercial_first">📈 Beneficio Comercial (Mayor comisión)</option>
-                            </select>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={searching}
-                            style={{ padding: '1rem', background: '#0070f3', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', marginTop: '1rem' }}
-                        >
-                            {searching ? 'Calculando...' : 'Obtener Comparativa'}
-                        </button>
                     </form>
                 </section>
 
@@ -286,57 +373,119 @@ export function ComparatorForm() {
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gap: '1rem' }}>
-                            <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Top {results.length} Ofertas Encontradas</h2>
-                            {results.map((res, idx) => (
-                                <div key={idx} style={{
-                                    background: 'white',
-                                    padding: '1.5rem',
-                                    borderRadius: '12px',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                                    borderLeft: idx === 0 ? '6px solid #10b981' : '1px solid #eee'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase' }}>{res.tariff_version?.supplier_name}</span>
-                                            <h3 style={{ margin: '0.2rem 0' }}>{res.tariff_version?.tariff_name}</h3>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#0070f3' }}>{Math.round(res.annual_cost_eur)}€</span>
-                                            <span style={{ display: 'block', fontSize: '0.9rem', color: '#666' }}>al año (IVA inc.)</span>
-                                        </div>
-                                    </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Top {results.length} Ofertas Encontradas</h2>
+                                <button
+                                    onClick={() => setShowSaveDialog(true)}
+                                    style={{ padding: '0.4rem 0.8rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
+                                >
+                                    Guardar Propuesta
+                                </button>
+                            </div>
 
-                                    <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem', borderTop: '1px solid #f0f0f0', paddingTop: '1rem' }}>
-                                        <div>
-                                            <span style={{ display: 'block', fontSize: '0.8rem', color: '#666' }}>Pago Mensual Estimado</span>
-                                            <span style={{ fontWeight: 'bold' }}>{res.monthly_cost_eur}€</span>
+                            {results.map((res, idx) => {
+
+                                return (
+                                    <div key={idx} style={{
+                                        background: 'white',
+                                        padding: '1.5rem',
+                                        borderRadius: '12px',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                        borderLeft: idx === 0 ? '6px solid #10b981' : '1px solid #eee',
+                                        position: 'relative'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase' }}>{res.tariff_version?.supplier_name || 'Unknown Supplier'}</span>
+                                                <h3 style={{ margin: '0.2rem 0' }}>{res.tariff_version?.tariff_name}</h3>
+
+                                                {/* Savings Indicator */}
+                                                {state.currentCost && (
+                                                    <div style={{ marginTop: '0.5rem' }}>
+                                                        {(res.annual_savings_eur || 0) > 0 ? (
+                                                            <span style={{ color: '#059669', fontSize: '0.9rem', fontWeight: '600', background: '#ecfdf5', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                                                Ahorro: {Math.round(res.annual_savings_eur || 0)}€ / año
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ color: '#dc2626', fontSize: '0.9rem', fontWeight: '600', background: '#fef2f2', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                                                Sobrecoste: {Math.round(Math.abs(res.annual_savings_eur || 0))}€ / año
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#0070f3' }}>{Math.round(res.annual_cost_eur)}€</span>
+                                                <span style={{ display: 'block', fontSize: '0.9rem', color: '#666' }}>al año (IVA inc.)</span>
+                                            </div>
                                         </div>
-                                        {mode === 'commercial_first' && (
-                                            <div style={{ background: '#fef3c7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                                                <span style={{ display: 'block', fontSize: '0.8rem', color: '#92400e' }}>Comisión Líquida</span>
-                                                <span style={{ fontWeight: 'bold', color: '#92400e' }}>{res.commission_eur}€</span>
+
+                                        <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem', borderTop: '1px solid #f0f0f0', paddingTop: '1rem', alignItems: 'center' }}>
+                                            <div>
+                                                <span style={{ display: 'block', fontSize: '0.8rem', color: '#666' }}>Pago Mensual Estimado</span>
+                                                <span style={{ fontWeight: 'bold' }}>{res.monthly_cost_eur}€</span>
                                             </div>
-                                        )}
-                                        {res.calculation_breakdown.penalties && (res.calculation_breakdown.penalties.reactive > 0 || res.calculation_breakdown.penalties.excess_power > 0) && (
-                                            <div style={{ background: '#fee2e2', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                                                <span style={{ display: 'block', fontSize: '0.8rem', color: '#991b1b' }}>Penalizaciones</span>
-                                                <span style={{ fontWeight: 'bold', color: '#991b1b' }}>
-                                                    {Math.round(res.calculation_breakdown.penalties.reactive + res.calculation_breakdown.penalties.excess_power)}€
-                                                </span>
-                                            </div>
-                                        )}
-                                        <button style={{ marginLeft: 'auto', padding: '0.5rem 1rem', background: '#eef2ff', color: '#4338ca', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>
-                                            Generar Propuesta
-                                        </button>
+                                            {state.mode === 'commercial_first' && (
+                                                <div style={{ background: '#fef3c7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                                    <span style={{ display: 'block', fontSize: '0.8rem', color: '#92400e' }}>Comisión Líquida</span>
+                                                    <span style={{ fontWeight: 'bold', color: '#92400e' }}>{res.commission_eur}€</span>
+                                                </div>
+                                            )}
+                                            {res.calculation_breakdown.penalties && (res.calculation_breakdown.penalties.reactive > 0 || res.calculation_breakdown.penalties.excess_power > 0) && (
+                                                <div style={{ background: '#fee2e2', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                                    <span style={{ display: 'block', fontSize: '0.8rem', color: '#991b1b' }}>Penalizaciones</span>
+                                                    <span style={{ fontWeight: 'bold', color: '#991b1b' }}>
+                                                        {Math.round(res.calculation_breakdown.penalties.reactive + res.calculation_breakdown.penalties.excess_power)}€
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() => navigate('/contracts/new', {
+                                                    state: {
+                                                        prefillData: {
+                                                            customerId: state.selectedCustomer,
+                                                            tariffVersionId: res.tariff_version?.id,
+                                                            cups: state.cups,
+                                                            annualValue: Math.round(res.annual_cost_eur)
+                                                        }
+                                                    }
+                                                })}
+                                                style={{ marginLeft: 'auto', padding: '0.5rem 1rem', background: '#eef2ff', color: '#4338ca', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+                                            >
+                                                Generar Contrato
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </section>
             </div>
+
+            <SaveComparisonDialog
+                isOpen={showSaveDialog}
+                onClose={() => setShowSaveDialog(false)}
+                comparisonData={{
+                    consumption_p1: parseFloat(state.consP1) || 0,
+                    consumption_p2: parseFloat(state.consP2) || 0,
+                    consumption_p3: parseFloat(state.consP3) || 0,
+                    consumption_p4: parseFloat(state.consP4) || 0,
+                    consumption_p5: parseFloat(state.consP5) || 0,
+                    consumption_p6: parseFloat(state.consP6) || 0,
+                    contracted_power_p1: parseFloat(state.powerP1) || parseFloat(state.power) || 0,
+                    contracted_power_p2: parseFloat(state.powerP2) || parseFloat(state.power) || 0,
+                    results: results
+                }}
+                customerId={state.selectedCustomer}
+            />
         </div>
     )
 }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: '500' }
 const inputStyle: React.CSSProperties = { width: '100%', padding: '0.7rem', borderRadius: '6px', border: '1px solid #ddd' }
+
+// Compact Styles
+const labelStyleCompact: React.CSSProperties = { display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', fontWeight: '600', color: '#555' }
+const inputStyleCompact: React.CSSProperties = { width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', fontSize: '0.85rem' }
+const inputStyleMini: React.CSSProperties = { width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #ddd', fontSize: '0.8rem', textAlign: 'center' }

@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
+import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye } from 'lucide-react'
 
 export function ContractList() {
     const [loading, setLoading] = useState(true)
     const [contracts, setContracts] = useState<Contract[]>([])
     const [filter, setFilter] = useState('all')
+    const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
 
     useEffect(() => {
         fetchContracts()
@@ -19,7 +21,10 @@ export function ContractList() {
             .select(`
                 *,
                 customers (name, cif),
-                tariff_versions (tariff_name, supplier_name)
+                tariff_versions (
+                    tariff_name,
+                    suppliers (name)
+                )
             `)
             .order('created_at', { ascending: false })
 
@@ -28,11 +33,26 @@ export function ContractList() {
         setLoading(false)
     }
 
-
-
     const filteredContracts = filter === 'all'
         ? contracts
         : contracts.filter(c => c.status === filter)
+
+    // Spanish translations for status
+    const statusLabels: Record<string, string> = {
+        'pending': 'Pendiente',
+        'signed': 'Firmado',
+        'active': 'Activo',
+        'cancelled': 'Cancelado',
+        'completed': 'Completado'
+    }
+
+    const filterLabels: Record<string, string> = {
+        'all': 'Todos',
+        'pending': 'Pendiente',
+        'signed': 'Firmado',
+        'active': 'Activo',
+        'cancelled': 'Cancelado'
+    }
 
     // Helper for inline styles (since we don't have full Tailwind config yet)
     const badgeStyle = (status: string) => {
@@ -46,86 +66,240 @@ export function ContractList() {
         }
     }
 
+    const handleDelete = async (id: string) => {
+        if (window.confirm('¿Estás seguro de eliminar este contrato?')) {
+            const { error } = await supabase.from('contracts').delete().eq('id', id)
+            if (error) {
+                console.error(error)
+                alert('Error al eliminar')
+            } else {
+                fetchContracts()
+            }
+        }
+    }
+
+
     return (
-        <div className="animate-fade-in">
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Contratos</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Gestiona tus ventas firmadas y su estado.</p>
-                </div>
-                <Link to="/contracts/new" className="btn btn-primary">
-                    <span>+</span> Nuevo Contrato
-                </Link>
-            </header>
+        <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>Contratos</h1>
 
-            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                {/* Filters */}
-                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
-                    {['all', 'pending', 'signed', 'active', 'cancelled'].map(f => (
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    {/* Filters */}
+                    <div style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
+                        {['all', 'pending', 'signed', 'active', 'cancelled'].map(f => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                style={{
+                                    padding: '0.4rem 0.8rem',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    background: filter === f ? 'white' : 'transparent',
+                                    color: filter === f ? '#111827' : '#6b7280',
+                                    boxShadow: filter === f ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {filterLabels[f]}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* View Toggle */}
+                    <div style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
                         <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={filter === f ? 'btn btn-primary' : 'btn btn-secondary'}
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', textTransform: 'capitalize' }}
+                            onClick={() => setViewMode('list')}
+                            style={{
+                                padding: '0.4rem',
+                                border: 'none',
+                                background: viewMode === 'list' ? 'white' : 'transparent',
+                                borderRadius: '6px',
+                                boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                                cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: viewMode === 'list' ? '#111827' : '#6b7280'
+                            }}
+                            title="Vista Lista"
                         >
-                            {f === 'all' ? 'Todos' : f}
+                            <ListIcon size={18} />
                         </button>
-                    ))}
-                </div>
+                        <button
+                            onClick={() => setViewMode('board')}
+                            style={{
+                                padding: '0.4rem',
+                                border: 'none',
+                                background: viewMode === 'board' ? 'white' : 'transparent',
+                                borderRadius: '6px',
+                                boxShadow: viewMode === 'board' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                                cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: viewMode === 'board' ? '#111827' : '#6b7280'
+                            }}
+                            title="Vista Tablero"
+                        >
+                            <LayoutGrid size={18} />
+                        </button>
+                    </div>
 
-                {/* Table */}
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ textAlign: 'left', background: 'var(--border-light)', borderBottom: '1px solid var(--border)' }}>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ref. Contrato</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cliente</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Comercializadora / Tarifa</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estado</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Valor Anual</th>
-                                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Firmado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center' }}>Cargando contratos...</td></tr>
-                            ) : filteredContracts.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        No hay contratos registrados.
-                                    </td>
+                    <Link to="/contracts/new" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem' }}>
+                        <Plus size={18} /> Nuevo Contrato
+                    </Link>
+                </div>
+            </div>
+
+            <div className="card" style={{ padding: '0', overflow: 'hidden', background: viewMode === 'board' ? 'transparent' : 'white', border: viewMode === 'board' ? 'none' : '1px solid var(--border)', boxShadow: viewMode === 'board' ? 'none' : 'var(--shadow-sm)' }}>
+
+                {/* View Content */}
+                {viewMode === 'list' ? (
+                    /* LIST VIEW */
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ textAlign: 'left', background: 'var(--border-light)', borderBottom: '1px solid var(--border)' }}>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ref. Contrato</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cliente</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Comercializadora / Tarifa</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estado</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Valor Anual</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Firmado</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Acciones</th>
                                 </tr>
-                            ) : (
-                                filteredContracts.map((contract: any) => (
-                                    <tr key={contract.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                        <td style={{ padding: '1rem 1.5rem', fontFamily: 'monospace', fontWeight: 600 }}>
-                                            {contract.contract_number || '---'}
-                                        </td>
-                                        <td style={{ padding: '1rem 1.5rem' }}>
-                                            <div style={{ fontWeight: 500 }}>{contract.customers?.name || 'Cliente desconocido'}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{contract.customers?.cif}</div>
-                                        </td>
-                                        <td style={{ padding: '1rem 1.5rem' }}>
-                                            <div style={{ fontWeight: 500 }}>{contract.tariff_versions?.supplier_name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{contract.tariff_versions?.tariff_name}</div>
-                                        </td>
-                                        <td style={{ padding: '1rem 1.5rem' }}>
-                                            <span style={badgeStyle(contract.status)}>
-                                                {contract.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 600 }}>
-                                            {contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                                        </td>
-                                        <td style={{ padding: '1rem 1.5rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                            {contract.signed_at || '-'}
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center' }}>Cargando contratos...</td></tr>
+                                ) : filteredContracts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            No hay contratos registrados.
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                ) : (
+                                    filteredContracts.map((contract) => (
+                                        <tr key={contract.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                            <td style={{ padding: '1rem 1.5rem', fontFamily: 'monospace', fontWeight: 600 }}>
+                                                {contract.contract_number || '---'}
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem' }}>
+                                                <div style={{ fontWeight: 500 }}>{contract.customers?.name || 'Cliente desconocido'}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{contract.customers?.cif}</div>
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem' }}>
+                                                <div style={{ fontWeight: 500 }}>{contract.tariff_versions?.suppliers?.name}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{contract.tariff_versions?.tariff_name}</div>
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem' }}>
+                                                <span style={badgeStyle(contract.status)}>
+                                                    {statusLabels[contract.status] || contract.status}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 600 }}>
+                                                {contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                                {contract.signed_at || '-'}
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                    <Link
+                                                        to={`/contracts/${contract.id}/view`}
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.4rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                                                        title="Ver"
+                                                    >
+                                                        <Eye size={14} />
+                                                    </Link>
+                                                    <Link
+                                                        to={`/contracts/${contract.id}`}
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.4rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => handleDelete(contract.id)}
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.4rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger-light)', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    /* BOARD VIEW */
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                        {loading ? (
+                            <div style={{ gridColumn: '1/-1', padding: '2rem', textAlign: 'center' }}>Cargando contratos...</div>
+                        ) : filteredContracts.length === 0 ? (
+                            <div style={{ gridColumn: '1/-1', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'white', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                No hay contratos registrados con estos filtros.
+                            </div>
+                        ) : (
+                            filteredContracts.map((contract) => (
+                                <div key={contract.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <span style={badgeStyle(contract.status)}>{statusLabels[contract.status] || contract.status}</span>
+                                            <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem' }}>{contract.customers?.name}</h3>
+                                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{contract.customers?.cif}</p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                            <Link
+                                                to={`/contracts/${contract.id}/view`}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.3rem', fontSize: '0.8rem', border: 'none', background: 'transparent' }}
+                                                title="Ver"
+                                            >
+                                                <Eye size={16} color="var(--primary)" />
+                                            </Link>
+                                            <Link
+                                                to={`/contracts/${contract.id}`}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.3rem', fontSize: '0.8rem', border: 'none', background: 'transparent' }}
+                                                title="Editar"
+                                            >
+                                                <Pencil size={16} color="#64748b" />
+                                            </Link>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ padding: '1rem', background: 'var(--background)', borderRadius: '6px', fontSize: '0.9rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>Tarifa:</span>
+                                            <span style={{ fontWeight: 500 }}>{contract.tariff_versions?.tariff_name}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>Comercializadora:</span>
+                                            <span style={{ fontWeight: 500 }}>{contract.tariff_versions?.suppliers?.name}</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-light)' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>VALOR ANUAL</div>
+                                            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                            {contract.signed_at ? `Firmado: ${contract.signed_at}` : 'Sin fecha'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )

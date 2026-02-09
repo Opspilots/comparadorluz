@@ -1,0 +1,10 @@
+﻿
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/pelay/OneDrive/Escritorio/crmluz[39m
+
+ [32mÔ£ô[39m src/features/tariffs/lib/calculator.test.ts [2m ([22m[2m23 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m   Start at [22m 18:29:34
+[2m   Duration [22m 2.18s[2m (transform 100ms, setup 0ms, collect 111ms, tests 13ms, environment 1.52s, prepare 261ms)[22m
+

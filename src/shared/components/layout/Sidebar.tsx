@@ -1,11 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
+import { LayoutDashboard, Users, FileText, Scale, FileSignature, HelpCircle, Zap, Settings, Wallet } from 'lucide-react'
+import { NotificationBell } from '@/shared/components/notifications/NotificationBell'
 
 const navItems = [
-    { id: 'dashboard', label: 'Inicio', path: '/', icon: '🏠' },
-    { id: 'crm', label: 'CRM / Clientes', path: '/crm', icon: '👥' },
-    { id: 'tariffs', label: 'Tarifario', path: '/tariffs', icon: '📄' },
-    { id: 'comparator', label: 'Comparador', path: '/comparator', icon: '⚖️' },
-    { id: 'contracts', label: 'Contratos', path: '/contracts', icon: '📝' },
+    { id: 'dashboard', label: 'Inicio', path: '/', icon: <LayoutDashboard size={20} /> },
+    { id: 'crm', label: 'CRM / Clientes', path: '/crm', icon: <Users size={20} /> },
+    { id: 'tariffs', label: 'Tarifario', path: '/admin/tariffs', icon: <FileText size={20} /> },
+    { id: 'comparator', label: 'Comparador', path: '/comparator', icon: <Scale size={20} /> },
+    { id: 'contracts', label: 'Contratos', path: '/contracts', icon: <FileSignature size={20} /> },
+    { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: <Wallet size={20} /> },
 ]
 
 export function Sidebar() {
@@ -26,7 +29,7 @@ export function Sidebar() {
         }}>
             <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 <h1 style={{ color: 'white', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ fontSize: '1.5rem' }}>⚡</span> EnergyDeal
+                    <Zap size={24} fill="currentColor" /> EnergyDeal
                 </h1>
             </div>
 
@@ -54,7 +57,7 @@ export function Sidebar() {
                             onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)' }}
                             onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent' }}
                         >
-                            <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+                            {item.icon}
                             {item.label}
                         </Link>
                     )
@@ -62,9 +65,29 @@ export function Sidebar() {
             </nav>
 
             <div style={{ padding: '1.5rem', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>Soporte</div>
-                <a href="#" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>❔</span> Ayuda y Guía
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <Link
+                        to="/settings"
+                        style={{
+                            color: location.pathname === '/settings' ? 'white' : '#94a3b8',
+                            textDecoration: 'none',
+                            fontSize: '0.875rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem',
+                            borderRadius: '6px',
+                            backgroundColor: location.pathname === '/settings' ? 'rgba(255,255,255,0.1)' : 'transparent'
+                        }}
+                    >
+                        <Settings size={18} /> Ajustes
+                    </Link>
+                    <div style={{ color: 'white' }}>
+                        <NotificationBell />
+                    </div>
+                </div>
+                <a href="#" style={{ color: '#64748b', textDecoration: 'none', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem' }}>
+                    <HelpCircle size={18} /> Ayuda y Guía
                 </a>
             </div>
         </aside>

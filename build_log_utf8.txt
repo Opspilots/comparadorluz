@@ -1,0 +1,7 @@
+﻿src/features/commissions/components/CreateRuleDialog.tsx(9,11): error TS6196: 'CommissionerOption' is declared but never used.
+src/features/commissions/components/CreateRuleDialog.tsx(21,56): error TS2304: Cannot find name 'Commissioner'.
+src/features/contracts/components/ContractDocument.tsx(1,50): error TS6133: 'Image' is declared but its value is never read.
+src/features/dashboard/pages/DashboardPage.tsx(23,68): error TS6133: 'comparisonsRes' is declared but its value is never read.
+src/features/tariffs/components/TariffComponentsEditor.tsx(5,27): error TS6133: 'ComponentType' is declared but its value is never read.
+src/features/tariffs/components/TariffComponentsEditor.tsx(22,42): error TS6133: 'tariffVersionId' is declared but its value is never read.
+src/features/tariffs/pages/TariffDashboard.tsx(10,1): error TS6133: 'Input' is declared but its value is never read.

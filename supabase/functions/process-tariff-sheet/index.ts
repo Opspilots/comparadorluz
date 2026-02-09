@@ -1,0 +1,158 @@
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
+
+    try {
+        const authHeader = req.headers.get('Authorization')
+
+        // Create Supabase client
+        const supabase = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        const { company_id, file_path, file_id, batch_id } = await req.json()
+
+        if (!company_id || !file_path) {
+            throw new Error('Missing required fields: company_id, file_path')
+        }
+
+        console.log(`Processing tariff sheet: ${file_path} for company ${company_id}`)
+
+        // 1. Download file from Storage
+        const { data: fileData, error: downloadError } = await supabase.storage
+            .from('tariff-pdfs')
+            .download(file_path)
+
+        if (downloadError) {
+            throw new Error(`Failed to download file: ${downloadError.message}`)
+        }
+
+        // 2. Prepare AI Prompt for Gemini
+        const geminiKey = Deno.env.get('GEMINI_API_KEY')
+        if (!geminiKey) throw new Error('GEMINI_API_KEY not configured')
+
+        // Convert file to base64
+        const arrayBuffer = await fileData.arrayBuffer()
+        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''))
+
+        const geminiPrompt = `
+            Eres un experto en el mercado eléctrico español. Analiza esta hoja de tarifas o contrato de suministro eléctrico y extrae la información de precios en formato JSON.
+
+            BUSCAR DATOS DE LA TARIFA:
+            - supplier_name: Nombre de la comercializadora.
+            - tariff_name: Nombre comercial de la tarifa.
+            - tariff_type: Tipo de peaje (2.0TD, 3.0TD, 6.1TD, etc).
+            - valid_from: Fecha de inicio de vigencia (YYYY-MM-DD). Si no hay fecha, usa la fecha de hoy.
+            - valid_to: Fecha de fin de vigencia (YYYY-MM-DD) o null si es indefinida.
+            
+            PRECIOS DE ENERGÍA (Variable) - €/kWh:
+            - energy_p1: Precio P1
+            - energy_p2: Precio P2
+            - energy_p3: Precio P3
+            - energy_p4: Precio P4 (null si no existe)
+            - energy_p5: Precio P5 (null si no existe)
+            - energy_p6: Precio P6 (null si no existe)
+
+            PRECIOS DE POTENCIA (Fijo) - €/kW/año:
+            IMPORTANTE: Si los precios vienen en €/kW/día o €/kW/mes, CONVIÉRTELOS a €/kW/año.
+            - power_p1: Precio P1
+            - power_p2: Precio P2
+            - power_p3: Precio P3
+            - power_p4: Precio P4 (null si no existe)
+            - power_p5: Precio P5 (null si no existe)
+            - power_p6: Precio P6 (null si no existe)
+            
+            TÉRMINO FIJO (Si existe) - €/mes:
+            - fixed_fee: Cuota fija mensual si la tarifa la tiene (common fees, gestión, etc).
+
+            Responde SOLO con el JSON. Usa null para valores no encontrados.
+        `;
+
+        // 3. Call Gemini API
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: geminiPrompt },
+                        {
+                            inline_data: {
+                                mime_type: 'application/pdf', // Assuming PDF, strictly checking mime type would be better
+                                data: base64
+                            }
+                        }
+                    ]
+                }]
+            })
+        })
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            if (response.status === 429) {
+                throw new Error('OCR service quota exceeded. Please try again later.');
+            }
+            throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+        }
+
+        const aiResult = await response.json()
+        const textResponse = aiResult.candidates[0].content.parts[0].text
+
+        // 4. Extract JSON
+        let extractedData
+        try {
+            const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/) || textResponse.match(/```\s*([\s\S]*?)\s*```/)
+            if (jsonMatch) {
+                extractedData = JSON.parse(jsonMatch[1])
+            } else {
+                const cleanJson = textResponse.replace(/^```json/, '').replace(/```$/, '').trim();
+                extractedData = JSON.parse(cleanJson);
+            }
+        } catch (e) {
+            throw new Error('Failed to parse AI response as JSON: ' + textResponse.substring(0, 100))
+        }
+
+        // 5. Update DB (if file_id provided)
+        if (file_id) {
+            const { error: updateError } = await supabase
+                .from('tariff_files')
+                .update({
+                    extraction_status: 'completed',
+                    extracted_data: extractedData,
+                    extraction_error: null
+                })
+                .eq('id', file_id)
+
+            if (updateError) console.error('Error updating file status:', updateError)
+        }
+
+        return new Response(JSON.stringify(extractedData), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+        })
+
+    } catch (err: any) {
+        // If file_id is available, update status to failed
+        // We need to re-create client or just log it, but we can't do much if we don't have scope here easily
+        // In a real production app we would handle the error update transactionally if possible
+        console.error('Processing error:', err)
+
+        return new Response(JSON.stringify({ error: err.message }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+        })
+    }
+})

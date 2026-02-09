@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
+import { Upload } from 'lucide-react'
 
 interface Supplier {
     id: string
@@ -43,6 +44,37 @@ export function TariffEditorPage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([])
     const [form, setForm] = useState<TariffFormState>(INITIAL_STATE)
 
+    async function handleCSVImport(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            const text = event.target?.result as string
+            const lines = text.split('\n')
+            const newComponents: TariffComponent[] = []
+
+            lines.slice(1).forEach(line => {
+                const parts = line.split(',').map(s => s.trim())
+                if (parts.length < 3) return
+                const [type, period, price] = parts
+
+                if (type === 'energy_price') {
+                    newComponents.push({ component_type: 'energy_price', period, price_eur_kwh: parseFloat(price) })
+                } else if (type === 'power_price') {
+                    newComponents.push({ component_type: 'power_price', period, price_eur_kw_year: parseFloat(price) })
+                } else if (type === 'fixed_fee') {
+                    newComponents.push({ component_type: 'fixed_fee', fixed_price_eur_month: parseFloat(price) })
+                }
+            })
+
+            if (newComponents.length > 0) {
+                setForm(prev => ({ ...prev, components: newComponents }))
+            }
+        }
+        reader.readAsText(file)
+    }
+
     useEffect(() => {
         loadSuppliers()
         if (id) {
@@ -71,7 +103,7 @@ export function TariffEditorPage() {
         try {
             const { data: tariff, error: tError } = await supabase
                 .from('tariff_versions')
-                .select('*, suppliers(id, name)')
+                .select('*')
                 .eq('id', tariffId)
                 .single()
 
@@ -84,8 +116,15 @@ export function TariffEditorPage() {
 
             if (cError) throw cError
 
+            // Find supplier ID by name
+            const { data: supplierData } = await supabase
+                .from('suppliers')
+                .select('id')
+                .eq('name', tariff.supplier_name)
+                .single()
+
             setForm({
-                supplier_id: tariff.supplier_id,
+                supplier_id: supplierData?.id || '',
                 tariff_name: tariff.tariff_name,
                 tariff_code: tariff.tariff_code || '',
                 tariff_type: tariff.tariff_type as any,
@@ -142,15 +181,18 @@ export function TariffEditorPage() {
             const { data: profile } = await supabase.from('users').select('company_id').single()
             if (!profile) throw new Error('No se pudo obtener el perfil de usuario')
 
+            // Find supplier name
+            const selectedSupplier = suppliers.find(s => s.id === form.supplier_id)
+            if (!selectedSupplier) throw new Error('Comercializadora inválida')
+
             const tariffData: any = {
                 company_id: profile.company_id,
-                supplier_id: form.supplier_id,
+                supplier_name: selectedSupplier.name,
                 tariff_name: form.tariff_name,
                 tariff_code: form.tariff_code || null,
                 tariff_type: form.tariff_type,
                 valid_from: form.valid_from,
-                is_active: true,
-                batch_id: null
+                is_active: true
             }
 
             let versionId = id
@@ -180,8 +222,8 @@ export function TariffEditorPage() {
             // Insert new components
             const componentsToInsert = form.components
                 .filter(c => {
-                    if (c.component_type === 'energy_price') return c.price_eur_kwh !== undefined && c.price_eur_kwh > 0
-                    if (c.component_type === 'power_price') return c.price_eur_kw_year !== undefined && c.price_eur_kw_year > 0
+                    if (c.component_type === 'energy_price') return c.price_eur_kwh !== undefined && (c.price_eur_kwh as number) > 0
+                    if (c.component_type === 'power_price') return c.price_eur_kw_year !== undefined && (c.price_eur_kw_year as number) > 0
                     if (c.component_type === 'fixed_fee') return true
                     return false
                 })
@@ -199,7 +241,7 @@ export function TariffEditorPage() {
                 if (cError) throw cError
             }
 
-            navigate('/tariffs')
+            navigate('/admin/tariffs')
         } catch (error) {
             console.error('Error saving tariff:', error)
             alert('Error al guardar la tarifa: ' + (error as any).message)
@@ -253,7 +295,7 @@ export function TariffEditorPage() {
             {/* Header */}
             <div style={{ marginBottom: '2.5rem' }}>
                 <button
-                    onClick={() => navigate('/tariffs')}
+                    onClick={() => navigate('/admin/tariffs')}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -286,9 +328,38 @@ export function TariffEditorPage() {
                     color: 'var(--text-muted)',
                     fontSize: '0.95rem'
                 }}>
-                    {id ? 'Modifica los datos de la tarifa existente' : 'Configura una nueva tarifa eléctrica manualmente'}
+                    {id ? 'Modifica los datos de la tarifa existente' : 'Configura una nueva tarifa eléctrica manualmente o importa desde archivo'}
                 </p>
             </div>
+
+            {!id && (
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr',
+                    gap: '1.5rem',
+                    marginBottom: '2rem'
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        border: '2px dashed var(--border)',
+                        padding: '1.5rem',
+                        textAlign: 'center',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer'
+                    }}
+                        onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+                        onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                    >
+                        <label style={{ cursor: 'pointer', display: 'block' }}>
+                            <Upload size={24} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }} />
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: '600', marginBottom: '0.25rem' }}>Importar CSV</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Carga precios masivamente</p>
+                            <input type="file" accept=".csv" onChange={handleCSVImport} style={{ display: 'none' }} />
+                        </label>
+                    </div>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit}>
                 {/* General Info */}
@@ -680,7 +751,7 @@ export function TariffEditorPage() {
                 }}>
                     <button
                         type="button"
-                        onClick={() => navigate('/tariffs')}
+                        onClick={() => navigate('/admin/tariffs')}
                         style={{
                             padding: '0.625rem 1.25rem',
                             borderRadius: '8px',

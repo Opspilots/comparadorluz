@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import type { Customer, Contact, SupplyPoint } from '@/shared/types'
+import type { Customer, Contact, SupplyPoint, Contract } from '@/shared/types'
 
 export function CustomerDetails() {
     const { id } = useParams<{ id: string }>()
@@ -9,6 +9,7 @@ export function CustomerDetails() {
     const [customer, setCustomer] = useState<Customer | null>(null)
     const [contacts, setContacts] = useState<Contact[]>([])
     const [supplyPoints, setSupplyPoints] = useState<SupplyPoint[]>([])
+    const [contracts, setContracts] = useState<Contract[]>([])
 
     useEffect(() => {
         if (id) fetchCustomerData(id)
@@ -36,11 +37,67 @@ export function CustomerDetails() {
             .select('*')
             .eq('customer_id', customerId)
 
+        // 4. Fetch Contracts
+        const { data: contr, error: contrErr } = await supabase
+            .from('contracts')
+            .select(`
+                *,
+                tariff_versions (
+                    tariff_name,
+                    suppliers (name)
+                )
+            `)
+            .eq('customer_id', customerId)
+            .order('created_at', { ascending: false })
+
         if (!custErr) setCustomer(cust)
         if (!contErr) setContacts(cont || [])
         if (!spErr) setSupplyPoints(sps || [])
+        if (!contrErr) setContracts(contr || [])
 
         setLoading(false)
+    }
+
+    // Badge Style Helper
+    const badgeStyle = (status: string) => {
+        const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, border: '1px solid transparent', display: 'inline-block' }
+        switch (status) {
+            case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
+            case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
+            case 'pending': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
+            case 'cancelled': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
+            case 'cliente': return { ...base, background: '#dcfce7', color: '#10b981', borderColor: '#bbf7d0' }
+            case 'perdido': return { ...base, background: '#fee2e2', color: '#ef4444', borderColor: '#fecaca' }
+            case 'propuesta': return { ...base, background: '#e0f2fe', color: '#0ea5e9', borderColor: '#bae6fd' }
+            case 'negociacion': return { ...base, background: '#fef3c7', color: '#f59e0b', borderColor: '#fde68a' }
+            case 'contactado': return { ...base, background: '#f3e8ff', color: '#8b5cf6', borderColor: '#e9d5ff' }
+            default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
+        }
+    }
+
+    const statusLabels: Record<string, string> = {
+        'prospecto': 'Prospecto',
+        'contactado': 'Contactado',
+        'propuesta': 'Propuesta',
+        'negociacion': 'Negociación',
+        'cliente': 'Cliente',
+        'perdido': 'Perdido'
+    }
+
+    const handleStatusChange = async (newStatus: string) => {
+        if (!id || !customer) return
+        try {
+            const { error } = await supabase
+                .from('customers')
+                .update({ status: newStatus })
+                .eq('id', id)
+
+            if (error) throw error
+            setCustomer({ ...customer, status: newStatus as any })
+        } catch (err) {
+            console.error('Error updating status:', err)
+            alert('No se pudo actualizar el estado')
+        }
     }
 
     if (loading) return <div style={{ padding: '2rem' }}>Cargando ficha del cliente...</div>
@@ -54,14 +111,64 @@ export function CustomerDetails() {
                     <h1 style={{ margin: 0 }}>{customer.name}</h1>
                     <p style={{ color: '#666', margin: '0.5rem 0' }}>CIF: {customer.cif} | {customer.province || 'Sin provincia'}</p>
                 </div>
-                <div style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', borderRadius: '4px', textTransform: 'capitalize' }}>
-                    {customer.status}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <Link to={`/crm/${id}/edit`} className="btn btn-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>Editar Datos</Link>
+                    <select
+                        value={customer.status}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        style={{
+                            ...badgeStyle(customer.status),
+                            appearance: 'none',
+                            cursor: 'pointer',
+                            outline: 'none'
+                        }}
+                    >
+                        {Object.entries(statusLabels).map(([val, label]) => (
+                            <option key={val} value={val} style={{ background: 'white', color: 'black' }}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </header>
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
                 {/* Main Content */}
                 <div style={{ display: 'grid', gap: '2rem' }}>
+
+                    {/* Section: Contracts */}
+                    <section className="card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Contratos</h2>
+                            <Link to="/contracts/new" state={{ prefillData: { customerId: customer.id } }} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>+ Nuevo Contrato</Link>
+                        </div>
+                        {contracts.length === 0 ? (
+                            <p style={{ color: 'var(--text-muted)' }}>No hay contratos asociados a este cliente.</p>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                {contracts.map(contract => (
+                                    <div key={contract.id} style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{contract.contract_number}</span>
+                                                <span style={badgeStyle(contract.status)}>{contract.status}</span>
+                                            </div>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                                                {(contract.tariff_versions as unknown as { suppliers?: { name: string } })?.suppliers?.name || 'Comercializadora desconocida'} - {contract.tariff_versions?.tariff_name}
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                                Firmado el: {contract.signed_at || 'Pendiente'} | Valor: {contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Link to={`/contracts/${contract.id}/view`} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', textDecoration: 'none' }}>Ver Contrato</Link>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
                     {/* Section: Supply Points */}
                     <section className="card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -86,13 +193,6 @@ export function CustomerDetails() {
                         )}
                     </section>
 
-                    {/* Section: History/Activities placeholder */}
-                    <section className="card">
-                        <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Historial de Actividad</h2>
-                        <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '1.5rem', marginLeft: '0.5rem' }}>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Registro de llamadas, correos y visitas (Próximamente).</p>
-                        </div>
-                    </section>
                 </div>
 
                 {/* Sidebar */}
@@ -115,11 +215,6 @@ export function CustomerDetails() {
                                 ))}
                             </div>
                         )}
-                    </section>
-
-                    <section className="card">
-                        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Últimas Comparativas</h3>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Accede a las propuestas generadas (Próximamente).</p>
                     </section>
                 </aside>
             </div>

@@ -58,19 +58,10 @@ export function rankTariffs(
                 contracted_power_p4_kw: input.contracted_power_p4_kw,
                 contracted_power_p5_kw: input.contracted_power_p5_kw,
                 contracted_power_p6_kw: input.contracted_power_p6_kw,
+                current_cost_eur: currentAnnualCostEur,
             })
 
-            // Calculate annual savings if current cost is known
-            const annualSavings = currentAnnualCostEur
-                ? Math.round((currentAnnualCostEur - calcResult.annual_cost_eur) * 100) / 100
-                : undefined
-
-            const savingsPct = currentAnnualCostEur && annualSavings !== undefined
-                ? Math.round((annualSavings / currentAnnualCostEur) * 100 * 100) / 100
-                : undefined
-
             // Calculate commission (simplified: % of annual cost or fixed fee)
-            // In our real logic, this would fetch from commission_rules
             const commissionEur = Math.round((calcResult.annual_cost_eur * (commissionPct / 100)) * 100) / 100
 
             results.push({
@@ -81,8 +72,8 @@ export function rankTariffs(
                 rank: 0, // Assigned after sorting
                 annual_cost_eur: calcResult.annual_cost_eur,
                 monthly_cost_eur: calcResult.monthly_cost_eur,
-                annual_savings_eur: annualSavings,
-                savings_pct: savingsPct,
+                annual_savings_eur: (calcResult as any).annual_savings_eur,
+                savings_pct: (calcResult as any).savings_pct,
                 commission_eur: commissionEur,
                 calculation_breakdown: calcResult.breakdown,
                 created_at: new Date().toISOString(),
