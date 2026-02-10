@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import { TariffVersion } from '@/shared/types';
-import { TariffUploadDialog } from '../components/TariffUploadDialog';
+// import { TariffUploadDialog } from '../components/TariffUploadDialog';
 import { TariffVersionCard } from '../components/TariffVersionCard';
 import { Loader2, ZapOff } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -143,12 +143,11 @@ export default function TariffDashboard() {
 
                     <div className="flex gap-2">
                         <Button
-                            variant="outline"
                             onClick={() => window.location.href = '/admin/tariffs/new'}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
-                            + Crear Manualmente
+                            + Añadir Nueva Tarifa
                         </Button>
-                        <TariffUploadDialog companyId={companyId} />
                     </div>
                 </div>
             </div>

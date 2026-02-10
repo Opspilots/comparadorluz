@@ -5,6 +5,7 @@ import { MainLayout } from '@/shared/components/layout/MainLayout'
 import TariffDashboard from '@/features/tariffs/pages/TariffDashboard'
 import TariffReviewPage from '@/features/tariffs/pages/TariffReviewPage'
 import { TariffEditorPage } from '@/features/tariffs/pages/TariffEditorPage'
+import TariffDetailsPage from '@/features/tariffs/pages/TariffDetailsPage'
 import { Login } from '@/features/auth/components/Login'
 import { SettingsPage } from '@/features/auth/pages/SettingsPage'
 import { CustomerList } from '@/features/crm/components/CustomerList'
@@ -76,7 +77,7 @@ function App() {
 
                                     {/* Tariffs */}
                                     <Route path="/admin/tariffs" element={<TariffDashboard />} />
-                                    <Route path="/admin/tariffs/:batchId" element={<TariffReviewPage />} />
+                                    <Route path="/admin/tariffs/:id" element={<TariffDetailsPage />} />
                                     <Route path="/admin/tariffs/new" element={<TariffEditorPage />} />
                                     <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
                                     <Route path="/contracts" element={<ContractList />} />

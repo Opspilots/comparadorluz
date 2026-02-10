@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Users, FileText, Scale, FileSignature, HelpCircle, Zap, Settings, Wallet } from 'lucide-react'
-import { NotificationBell } from '@/shared/components/notifications/NotificationBell'
+
 
 const navItems = [
     { id: 'dashboard', label: 'Inicio', path: '/', icon: <LayoutDashboard size={20} /> },
@@ -82,9 +82,7 @@ export function Sidebar() {
                     >
                         <Settings size={18} /> Ajustes
                     </Link>
-                    <div style={{ color: 'white' }}>
-                        <NotificationBell />
-                    </div>
+
                 </div>
                 <a href="#" style={{ color: '#64748b', textDecoration: 'none', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem' }}>
                     <HelpCircle size={18} /> Ayuda y Guía

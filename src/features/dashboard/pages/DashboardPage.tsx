@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import { MetricCard } from '../components/MetricCard'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+
 import { Users, FileText, CheckCircle, Plus, Search, FileSignature } from 'lucide-react'
 
 export function DashboardPage() {
@@ -28,20 +28,11 @@ export function DashboardPage() {
 
             // Simple mock aggregation for the chart
             // (In production, use a dedicated RPC or proper aggregation)
-            const mockChartData = [
-                { name: 'Ene', comparisons: 4 },
-                { name: 'Feb', comparisons: 7 },
-                { name: 'Mar', comparisons: 5 },
-                { name: 'Abr', comparisons: 12 },
-                { name: 'May', comparisons: 9 },
-                { name: 'Jun', comparisons: 15 },
-            ]
-
             setStats({
                 totalCustomers: customersRes.count || 0,
                 totalContracts: contractsRes.count || 0,
                 activeContracts: activeContractsRes.count || 0,
-                monthlyComparisons: mockChartData
+                monthlyComparisons: []
             })
         } catch (error) {
             console.error('Error fetching dashboard stats:', error)
@@ -106,24 +97,7 @@ export function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Chart */}
-                    <div className="card" style={{ padding: '2rem', minHeight: '400px' }}>
-                        <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>Actividad de Comparativas</h2>
-                        <div style={{ height: '300px', width: '100%' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats.monthlyComparisons}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                    <YAxis axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        cursor={{ fill: '#f4f4f5' }}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    />
-                                    <Bar dataKey="comparisons" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
+
                 </div>
 
                 {/* Sidebar / Secondary Actions */}

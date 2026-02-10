@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
+import { NotificationBell } from '@/shared/components/notifications/NotificationBell'
 
 export function Header() {
     const [userName, setUserName] = useState<string | null>(null)
@@ -26,12 +27,7 @@ export function Header() {
             zIndex: 90
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button
-                    style={{ background: 'var(--background)', border: 'none', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                    title="Notificaciones"
-                >
-                    🔔
-                </button>
+                <NotificationBell />
                 <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border)' }}></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
                     <div style={{ textAlign: 'right' }}>
