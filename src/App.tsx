@@ -73,7 +73,7 @@ function App() {
                                     <Route path="/crm/:customerId/supply-points/new" element={<SupplyPointForm />} />
                                     <Route path="/commissioners" element={<CommissionersPage />} />
                                     <Route path="/commissioners/:id" element={<CommissionerDetailPage />} />
-                                    <Route path="/contracts/new" element={<ContractForm />} />
+
 
                                     {/* Tariffs */}
                                     <Route path="/admin/tariffs" element={<TariffDashboard />} />
