@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { TariffWizardState, TariffSchedule } from '@/types/tariff';
 import { Card } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 
 interface Step4Props {

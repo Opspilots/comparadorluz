@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { TariffRate, TariffWizardState } from '@/types/tariff';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';

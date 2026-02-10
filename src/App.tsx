@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { MainLayout } from '@/shared/components/layout/MainLayout'
 import TariffDashboard from '@/features/tariffs/pages/TariffDashboard'
-import TariffReviewPage from '@/features/tariffs/pages/TariffReviewPage'
+
 import { TariffEditorPage } from '@/features/tariffs/pages/TariffEditorPage'
 import TariffDetailsPage from '@/features/tariffs/pages/TariffDetailsPage'
 import { Login } from '@/features/auth/components/Login'

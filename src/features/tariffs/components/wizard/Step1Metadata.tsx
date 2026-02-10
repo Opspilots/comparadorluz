@@ -12,7 +12,7 @@ interface Step1Props {
         valid_from: string;
     };
     mode?: 'create' | 'edit';
-    onChange: (key: string, value: any) => void;
+    onChange: (key: keyof Step1Props['data'], value: any) => void;
 }
 
 export default function Step1Metadata({ data, mode = 'create', onChange }: Step1Props) {
