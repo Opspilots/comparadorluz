@@ -65,7 +65,7 @@ export function ContactForm() {
 
     return (
         <div style={{ maxWidth: '600px', margin: '2rem auto', padding: '2rem', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-            <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Nuevo Contacto</h1>
+
 
             {error && (
                 <div style={{ padding: '1rem', background: '#fee2e2', color: '#b91c1c', marginBottom: '1.5rem', borderRadius: '8px' }}>

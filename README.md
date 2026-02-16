@@ -196,32 +196,23 @@ supabase db push   # Cloud
 - [x] Coding standards
 - [x] SQL migrations
 
-### Phase 2: Core Engine (Next)
-- [ ] Calculation engine + tests
-- [ ] Tariff upload pipeline
+### Phase 2: Core Engine (Tariff Automation)
+- [ ] Tariff upload pipeline (Batch PDF Upload)
 - [ ] Batch validation workflow
 - [ ] Human review interface
 
-### Phase 3: CRM
-- [ ] Customer management
-- [ ] Contacts & supply points
-- [ ] Activity tracking
+### Phase 3: Messaging & Campaigns (New CRM)
+- [ ] Unified Messaging Center (Email/WhatsApp)
+- [ ] Client Sidebar + Chat Interface
+- [ ] Campaign Management (Broadcasts)
+- [ ] Message Scheduling
 
-### Phase 4: Comparator
+### Phase 4: Basic Comparator
 - [ ] Comparison input form
-- [ ] Ranking algorithm
-- [ ] Client-first vs commercial-first modes
+- [ ] Basic Ranking algorithm (Cost-based)
+- [ ] Client-first mode
 
-### Phase 5: Commissions
-- [ ] Commission rules
-- [ ] Event tracking
-- [ ] Monthly settlements
-
-### Phase 6: Fiscal
-- [ ] VAT reports
-- [ ] Payment exports
-
-### Phase 7: Testing & Deployment
+### Phase 5: Testing & Deployment
 - [ ] E2E tests
 - [ ] Seed data
 - [ ] Production deployment

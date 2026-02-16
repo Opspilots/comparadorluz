@@ -6,6 +6,11 @@ import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput }
 import { useComparatorState } from '../hooks/useComparatorState'
 import { InvoiceUploader } from './InvoiceUploader'
 import { SaveComparisonDialog } from './SaveComparisonDialog'
+import { useToast } from '@/hooks/use-toast'
+import { GAS_CONSTANTS } from '@/shared/constants'
+import { Zap, Flame } from 'lucide-react'
+
+import { mapOcrData } from '../lib/ocrMapper'
 
 export function ComparatorForm() {
     const navigate = useNavigate()
@@ -17,116 +22,85 @@ export function ComparatorForm() {
     const [results, setResults] = useState<ComparisonResult[]>([])
     const [showSaveDialog, setShowSaveDialog] = useState(false)
     const [suppliers, setSuppliers] = useState<{ id: string, name: string }[]>([])
+    const { toast } = useToast()
 
     useEffect(() => {
         fetchSuppliers()
     }, [])
+
+    // Auto-select Gas Tariff based on consumption
+    useEffect(() => {
+        if (state.supplyType === 'gas' && state.consumption) {
+            const consumption = parseFloat(state.consumption)
+            if (!isNaN(consumption)) {
+                let suggested = 'RL.4'
+                if (consumption <= GAS_CONSTANTS.THRESHOLDS.RL1) suggested = 'RL.1'
+                else if (consumption <= GAS_CONSTANTS.THRESHOLDS.RL2) suggested = 'RL.2'
+                else if (consumption <= GAS_CONSTANTS.THRESHOLDS.RL3) suggested = 'RL.3'
+
+                if (state.tariffType !== suggested) {
+                    updateState({ tariffType: suggested })
+                }
+            }
+        }
+    }, [state.consumption, state.supplyType])
 
     const fetchSuppliers = async () => {
         const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
         setSuppliers(data || [])
     }
 
-    // Helper to normalize European number format (comma to dot, remove thousands separators)
-    const normalizeNumber = (value: any): string => {
-        if (!value) return ''
-        let str = value.toString().trim()
-            .replace(/[€$£¥\sA-Za-z]/g, '') // Remove currency, spaces, letters
+    const handleDataExtracted = (data: Record<string, string | number | null | undefined>) => {
+        const updates = mapOcrData(data, suppliers);
+        // Force update state with new data, this might need to clear previous values if we want a fresh start
+        // But mapOcrData only returns found keys.
+        // If we want to ensure tariff type updates even if state has one, updateState merges it.
+        // The issue "fill fields but not change tariff type" suggests maybe the tariff type from OCR wasn't matching
+        // the dropdown values, so it was ignored or set to something invalid?
+        // Now that we normalized it in mapOcrData, it should work.
+        updateState(updates);
 
-        // Handle European format: 1.234,56 -> 1234.56
-        // If it contains both . and ,
-        if (str.includes('.') && str.includes(',')) {
-            const dotIndex = str.indexOf('.')
-            const commaIndex = str.indexOf(',')
-
-            if (dotIndex < commaIndex) {
-                // 1.234,56 -> Remove dot, replace comma with dot
-                str = str.replace(/\./g, '').replace(',', '.')
-            } else {
-                // 1,234.56 -> Remove comma
-                str = str.replace(/,/g, '')
-            }
-        } else if (str.includes(',')) {
-            // Only comma, assume decimal separator (Spain)
-            str = str.replace(',', '.')
-        } else if (str.includes('.') && (str.match(/\./g) || []).length > 1) {
-            // Multiple dots (1.234.567) -> remove all
-            str = str.replace(/\./g, '')
+        if (data.cif && typeof data.cif === 'string') {
+            checkExistingClientByCIF(data.cif);
         }
-
-        // Final cleanup
-        return str.replace(/[^\d.-]/g, '')
     }
 
-    const handleDataExtracted = (data: any) => {
-        console.log('📄 OCR Data Received:', data)
-        const updates: any = {}
+    const handleSupplyChange = (type: 'electricity' | 'gas') => {
+        // Keep only common fields: customerName, cif, cups
+        const commonState = {
+            customerName: state.customerName,
+            cif: state.cif,
+            cups: state.cups,
+            supplyType: type,
+            tariffType: type === 'electricity' ? '2.0TD' : 'RL.1',
+            // Clear specific fields
+            consumption: '',
+            power: '',
+            currentCost: '',
+            currentSupplier: '', // User said "name and cups" are same, usually supplier might differ? Let's clear it to be safe or keep it?
+            // "los unicos que son los mismos son nombre y cups". Use said cups too. Supplier is not mentioned as same.
+            // Let's clear supplier.
 
-        if (data.customer_name) updates.customerName = data.customer_name
-        if (data.cif) updates.cif = data.cif
-        if (data.tariff_type) updates.tariffType = data.tariff_type
-        if (data.annual_consumption) updates.consumption = normalizeNumber(data.annual_consumption)
-        if (data.contracted_power) updates.power = normalizeNumber(data.contracted_power)
-        if (data.cups) updates.cups = data.cups
-        if (data.current_cost) updates.currentCost = normalizeNumber(data.current_cost)
+            // Clear periods
+            powerP1: '', powerP2: '', powerP3: '', powerP4: '', powerP5: '', powerP6: '',
+            consP1: '', consP2: '', consP3: '', consP4: '', consP5: '', consP6: '',
 
-        // Map power periods
-        if (data.power_p1) updates.powerP1 = normalizeNumber(data.power_p1)
-        if (data.power_p2) updates.powerP2 = normalizeNumber(data.power_p2)
-        if (data.power_p3) updates.powerP3 = normalizeNumber(data.power_p3)
-        if (data.power_p4) updates.powerP4 = normalizeNumber(data.power_p4)
-        if (data.power_p5) updates.powerP5 = normalizeNumber(data.power_p5)
-        if (data.power_p6) updates.powerP6 = normalizeNumber(data.power_p6)
+            // Clear penalties/other
+            reactiveEnergy: '',
+            maxDemand: '',
+            conversionFactor: '',
 
-        // Calculate consumption percentages from OCR values (which are likely kWh)
-        const p1 = parseFloat(normalizeNumber(data.p1_consumption_pct) || '0')
-        const p2 = parseFloat(normalizeNumber(data.p2_consumption_pct) || '0')
-        const p3 = parseFloat(normalizeNumber(data.p3_consumption_pct) || '0')
-        const p4 = parseFloat(normalizeNumber(data.p4_consumption_pct) || '0')
-        const p5 = parseFloat(normalizeNumber(data.p5_consumption_pct) || '0')
-        const p6 = parseFloat(normalizeNumber(data.p6_consumption_pct) || '0')
+            // Reset results
+            mode: state.mode
+        };
 
-        const totalConsumption = p1 + p2 + p3 + p4 + p5 + p6
-
-        if (totalConsumption > 0) {
-            updates.consP1 = ((p1 / totalConsumption) * 100).toFixed(2)
-            updates.consP2 = ((p2 / totalConsumption) * 100).toFixed(2)
-            updates.consP3 = ((p3 / totalConsumption) * 100).toFixed(2)
-            if (p4 > 0) updates.consP4 = ((p4 / totalConsumption) * 100).toFixed(2)
-            if (p5 > 0) updates.consP5 = ((p5 / totalConsumption) * 100).toFixed(2)
-            if (p6 > 0) updates.consP6 = ((p6 / totalConsumption) * 100).toFixed(2)
-
-            // Auto-fill total annual consumption if missing or 0
-            if (!updates.consumption || parseFloat(updates.consumption) === 0) {
-                updates.consumption = totalConsumption.toFixed(0)
-            }
-        }
-
-        if (data.current_supplier && typeof data.current_supplier === 'string') {
-            // Try to find supplier by name
-            const foundSupplier = suppliers.find(s =>
-                s.name.toLowerCase().includes(data.current_supplier.toLowerCase()) ||
-                data.current_supplier.toLowerCase().includes(s.name.toLowerCase())
-            );
-            if (foundSupplier) {
-                updates.currentSupplier = foundSupplier.name
-            } else {
-                updates.currentSupplier = data.current_supplier
-            }
-        }
-
-        console.log('🔄 Updates to apply:', updates)
-        updateState(updates)
-
-        if (data.cif) {
-            checkExistingClientByCIF(data.cif)
-        }
+        // We need to update state with these values. 
+        // value: '' will overwrite existing values in the merge.
+        updateState(commonState);
+        setResults([]); // Clear results on switch
     }
 
     const checkExistingClientByCIF = async (cif: string) => {
-        // setCupsNotFound(false) - Removed
-        console.log('🔍 Checking existing client by CIF:', cif)
-
         const { data: customerData } = await supabase
             .from('customers')
             .select('*')
@@ -134,69 +108,89 @@ export function ComparatorForm() {
             .maybeSingle()
 
         if (customerData) {
-            console.log('✅ Customer found by CIF:', customerData)
             updateState({ selectedCustomer: customerData.id })
         } else {
-            console.log('ℹ️ New customer (CIF not found)')
             updateState({ selectedCustomer: '' })
         }
     }
 
-    const handleCompare = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleCompare = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault()
         setSearching(true)
 
         try {
+            const inputState = state
+
+            // STRICT VALIDATION
+            const errors: string[] = []
+
+            if (!inputState.consumption || parseFloat(inputState.consumption) <= 0) {
+                errors.push("Consumo Anual (kWh)")
+            }
+            // Power validation only for Electricity
+            if (inputState.supplyType === 'electricity' && (!inputState.power || parseFloat(inputState.power) <= 0)) {
+                errors.push("Potencia Contratada (kW)")
+            }
+            if (!inputState.tariffType) {
+                errors.push("Tipo de Tarifa")
+            }
+
+            if (errors.length > 0) {
+                toast({
+                    title: "Faltan datos obligatorios",
+                    description: `Por favor, rellena: ${errors.join(", ")}`,
+                    variant: "destructive"
+                })
+                setSearching(false)
+                return
+            }
+
             const inputData: ComparisonInput = {
-                cif: state.cif || 'MOCK', // Use extracted CIF if available
+                cif: inputState.cif || 'MOCK',
                 customer_type: 'empresa',
-                annual_consumption_kwh: parseFloat(state.consumption),
-                contracted_power_kw: parseFloat(state.power),
-                tariff_type: state.tariffType,
-                consumption_distribution: (state.consP1 || state.consP2) ? {
-                    P1: parseFloat(state.consP1) || 0,
-                    P2: parseFloat(state.consP2) || 0,
-                    P3: parseFloat(state.consP3) || 0,
-                    P4: parseFloat(state.consP4) || 0,
-                    P5: parseFloat(state.consP5) || 0,
-                    P6: parseFloat(state.consP6) || 0,
+                annual_consumption_kwh: parseFloat(inputState.consumption),
+                contracted_power_kw: inputState.supplyType === 'electricity' ? parseFloat(inputState.power) : 0,
+                tariff_type: inputState.tariffType,
+                consumption_distribution: (inputState.supplyType === 'electricity' && (inputState.consP1 || inputState.consP2)) ? {
+                    P1: parseFloat(inputState.consP1) || 0,
+                    P2: parseFloat(inputState.consP2) || 0,
+                    P3: parseFloat(inputState.consP3) || 0,
+                    P4: parseFloat(inputState.consP4) || 0,
+                    P5: parseFloat(inputState.consP5) || 0,
+                    P6: parseFloat(inputState.consP6) || 0,
                 } : undefined,
-                reactive_energy_kvarh: parseFloat(state.reactiveEnergy) || 0,
-                max_demand_kw: parseFloat(state.maxDemand) || 0,
-                contracted_power_p1_kw: parseFloat(state.powerP1) || undefined,
-                contracted_power_p2_kw: parseFloat(state.powerP2) || undefined,
-                contracted_power_p3_kw: parseFloat(state.powerP3) || undefined,
-                contracted_power_p4_kw: parseFloat(state.powerP4) || undefined,
-                contracted_power_p5_kw: parseFloat(state.powerP5) || undefined,
-                contracted_power_p6_kw: parseFloat(state.powerP6) || undefined,
+                reactive_energy_kvarh: parseFloat(inputState.reactiveEnergy) || 0,
+                max_demand_kw: parseFloat(inputState.maxDemand) || 0,
+                contracted_power_p1_kw: parseFloat(inputState.powerP1) || undefined,
+                contracted_power_p2_kw: parseFloat(inputState.powerP2) || undefined,
+                contracted_power_p3_kw: parseFloat(inputState.powerP3) || undefined,
+                contracted_power_p4_kw: parseFloat(inputState.powerP4) || undefined,
+                contracted_power_p5_kw: parseFloat(inputState.powerP5) || undefined,
+                contracted_power_p6_kw: parseFloat(inputState.powerP6) || undefined,
             }
 
             const { data: tariffs, error } = await supabase
                 .from('tariff_versions')
                 .select('*, tariff_components(*)')
                 .eq('is_active', true)
-                .eq('tariff_type', state.tariffType)
+                .eq('tariff_type', inputState.tariffType)
 
             if (error) throw error
 
-            const rankedResults = rankTariffs(
+            const results = rankTariffs(
                 tariffs as TariffVersion[],
                 inputData,
                 {
-                    mode: state.mode,
-                    currentAnnualCostEur: state.currentCost ? parseFloat(state.currentCost) * 12 : undefined // Crude estimation if monthly, or annual? Label says €/mes
+                    mode: inputState.mode,
+                    currentAnnualCostEur: inputState.currentCost ? parseFloat(inputState.currentCost) * 12 : undefined
                 }
             )
 
-            // Adjust annual cost comparison if user entered monthly cost
-            // The rankTariffs might expect annual cost to calculate savings, 
-            // but for now let's just pass what we have. 
-            // If the label is "Coste Factura Actual (€/mes)", then "Annual" is * 12.
+            setResults(results)
 
-            setResults(rankedResults)
         } catch (err) {
             console.error(err)
-            alert('Error en la comparativa')
+            toast({ title: 'Error', description: 'Error en la comparativa. Verifica los datos.', variant: 'destructive' })
         } finally {
             setSearching(false)
         }
@@ -210,12 +204,12 @@ export function ComparatorForm() {
     return (
         <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h1 style={{ margin: 0 }}>Comparador de Tarifas</h1>
+
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button onClick={() => navigate('/comparator/history')} style={{ fontSize: '0.9rem', color: '#0070f3', background: 'none', border: '1px solid #0070f3', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer' }}>
+                    <button className="btn btn-secondary tour-comparator-history-btn" onClick={() => navigate('/comparator/history')} style={{ fontSize: '0.9rem' }}>
                         Ver Historial
                     </button>
-                    <button onClick={handleClear} style={{ fontSize: '0.9rem', color: '#666', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                    <button onClick={handleClear} style={{ fontSize: '0.9rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
                         Limpiar formulario
                     </button>
                 </div>
@@ -223,15 +217,17 @@ export function ComparatorForm() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '2rem', alignItems: 'start' }}>
                 {/* Form Panel */}
-                <section style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}>
 
-                    <InvoiceUploader onDataExtracted={handleDataExtracted} />
+                    <div className="tour-comparator-uploader">
+                        <InvoiceUploader onDataExtracted={handleDataExtracted} />
+                    </div>
 
                     {/* Create Client Banner if data extracted but new client? 
                         Maybe simplified logic here as per user request.
                     */}
 
-                    <form onSubmit={handleCompare} style={{ display: 'grid', gap: '1rem' }}>
+                    <form className="tour-comparator-form" onSubmit={handleCompare} style={{ display: 'grid', gap: '1rem' }}>
 
                         {/* Client Name Input (Replaces Dropdown) */}
                         <div>
@@ -246,6 +242,48 @@ export function ComparatorForm() {
                         </div>
 
                         <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '0.5rem 0' }} />
+
+                        {/* UTILITY TOGGLE */}
+                        <div style={{ display: 'flex', background: '#f3f4f6', padding: '0.3rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                            <button
+                                type="button"
+                                onClick={() => handleSupplyChange('electricity')}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: state.supplyType === 'electricity' ? 'white' : 'transparent',
+                                    color: state.supplyType === 'electricity' ? '#0070f3' : '#6b7280',
+                                    boxShadow: state.supplyType === 'electricity' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Zap size={16} /> Electricidad
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleSupplyChange('gas')}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: state.supplyType === 'gas' ? 'white' : 'transparent',
+                                    color: state.supplyType === 'gas' ? '#f59e0b' : '#6b7280',
+                                    boxShadow: state.supplyType === 'gas' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Flame size={16} /> Gas
+                            </button>
+                        </div>
 
 
                         {/* INPUTS GRID (Compact) */}
@@ -296,70 +334,131 @@ export function ComparatorForm() {
                                 <label style={labelStyleCompact}>Consumo Anual (kWh)</label>
                                 <input type="number" value={state.consumption} onChange={e => updateState({ consumption: e.target.value })} required style={inputStyleCompact} />
                             </div>
-                            <div style={{ gridColumn: 'span 4' }}>
-                                <label style={labelStyleCompact}>Potencia (kW)</label>
-                                <input type="number" value={state.power} onChange={e => updateState({ power: e.target.value })} required style={inputStyleCompact} />
-                            </div>
-                            <div style={{ gridColumn: 'span 4' }}>
-                                <label style={labelStyleCompact}>Tarifa</label>
-                                <select value={state.tariffType} onChange={e => updateState({ tariffType: e.target.value })} style={inputStyleCompact}>
-                                    <option value="2.0TD">2.0TD (&lt;15kW)</option>
-                                    <option value="3.0TD">3.0TD (&gt;15kW)</option>
-                                    <option value="6.1TD">6.1TD</option>
-                                </select>
-                            </div>
 
-                            {/* Row 2: Periods Consumption */}
-                            <div style={{ gridColumn: 'span 12', marginTop: '0.5rem' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
-                                    CONSUMO POR PERIODOS (%) {state.tariffType === '2.0TD' ? '- 3 periodos' : '- 6 periodos'}
-                                </span>
-                                <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
-                                    <input placeholder="P1%" type="number" step="0.01" value={state.consP1} onChange={e => updateState({ consP1: e.target.value })} style={inputStyleMini} />
-                                    <input placeholder="P2%" type="number" step="0.01" value={state.consP2} onChange={e => updateState({ consP2: e.target.value })} style={inputStyleMini} />
-                                    <input placeholder="P3%" type="number" step="0.01" value={state.consP3} onChange={e => updateState({ consP3: e.target.value })} style={inputStyleMini} />
-                                    {state.tariffType !== '2.0TD' && (
-                                        <>
-                                            <input placeholder="P4%" type="number" step="0.01" value={state.consP4} onChange={e => updateState({ consP4: e.target.value })} style={inputStyleMini} />
-                                            <input placeholder="P5%" type="number" step="0.01" value={state.consP5} onChange={e => updateState({ consP5: e.target.value })} style={inputStyleMini} />
-                                            <input placeholder="P6%" type="number" step="0.01" value={state.consP6} onChange={e => updateState({ consP6: e.target.value })} style={inputStyleMini} />
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                            {state.supplyType === 'electricity' ? (
+                                <>
+                                    <div style={{ gridColumn: 'span 4' }} key="elec-power">
+                                        <label style={labelStyleCompact}>Potencia (kW)</label>
+                                        <input type="number" value={state.power} onChange={e => updateState({ power: e.target.value })} required style={inputStyleCompact} />
+                                    </div>
+                                    <div style={{ gridColumn: 'span 4' }} key="elec-tariff">
+                                        <label style={labelStyleCompact}>Tarifa</label>
+                                        <select value={state.tariffType} onChange={e => updateState({ tariffType: e.target.value })} style={inputStyleCompact}>
+                                            <option value="2.0TD">2.0TD (&lt;15kW)</option>
+                                            <option value="3.0TD">3.0TD (&gt;15kW)</option>
+                                            <option value="6.1TD">6.1TD</option>
+                                        </select>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div style={{ gridColumn: 'span 4' }} key="gas-manual-calc">
+                                        <label style={labelStyleCompact}>Consumo (m3) - Calc.</label>
+                                        <input
+                                            type="number"
+                                            placeholder="Opcional"
+                                            onChange={e => {
+                                                const m3 = parseFloat(e.target.value);
+                                                const factor = parseFloat(state.conversionFactor) || GAS_CONSTANTS.CONVERSION.KWH_PER_M3;
+                                                if (!isNaN(m3)) {
+                                                    updateState({ consumption: (m3 * factor).toFixed(0) })
+                                                }
+                                            }}
+                                            style={inputStyleCompact}
+                                        />
+                                    </div>
+                                    <div style={{ gridColumn: 'span 4' }} key="gas-tariff">
+                                        <label style={labelStyleCompact}>Tarifa (Auto)</label>
+                                        <select value={state.tariffType} onChange={e => updateState({ tariffType: e.target.value })} style={inputStyleCompact}>
+                                            <option value="RL.1">RL.1 (&lt;5k)</option>
+                                            <option value="RL.2">RL.2 (5k-15k)</option>
+                                            <option value="RL.3">RL.3 (15k-50k)</option>
+                                            <option value="RL.4">RL.4 (&gt;50k)</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
 
-                            {/* Row 3: Periods Power */}
-                            <div style={{ gridColumn: 'span 12', marginTop: '0.2rem' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
-                                    POTENCIA POR PERIODOS (kW) {state.tariffType === '2.0TD' ? '- 2 periodos' : '- 6 periodos'}
-                                </span>
-                                <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
-                                    <input placeholder="P1 kW" type="number" value={state.powerP1} onChange={e => updateState({ powerP1: e.target.value })} style={inputStyleMini} />
-                                    <input placeholder="P2 kW" type="number" value={state.powerP2} onChange={e => updateState({ powerP2: e.target.value })} style={inputStyleMini} />
-                                    {state.tariffType !== '2.0TD' && (
-                                        <>
-                                            <input placeholder="P3 kW" type="number" value={state.powerP3} onChange={e => updateState({ powerP3: e.target.value })} style={inputStyleMini} />
-                                            <input placeholder="P4 kW" type="number" value={state.powerP4} onChange={e => updateState({ powerP4: e.target.value })} style={inputStyleMini} />
-                                            <input placeholder="P5 kW" type="number" value={state.powerP5} onChange={e => updateState({ powerP5: e.target.value })} style={inputStyleMini} />
-                                            <input placeholder="P6 kW" type="number" value={state.powerP6} onChange={e => updateState({ powerP6: e.target.value })} style={inputStyleMini} />
-                                        </>
-                                    )}
+                            {/* Row 2: Periods Consumption (Electricity Only) */}
+                            {state.supplyType === 'electricity' && (
+                                <div style={{ gridColumn: 'span 12', marginTop: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
+                                        CONSUMO POR PERIODOS (%) {state.tariffType === '2.0TD' ? '- 3 periodos' : '- 6 periodos'}
+                                    </span>
+                                    <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
+                                        <input placeholder="P1%" type="number" step="0.01" value={state.consP1} onChange={e => updateState({ consP1: e.target.value })} style={inputStyleMini} />
+                                        <input placeholder="P2%" type="number" step="0.01" value={state.consP2} onChange={e => updateState({ consP2: e.target.value })} style={inputStyleMini} />
+                                        <input placeholder="P3%" type="number" step="0.01" value={state.consP3} onChange={e => updateState({ consP3: e.target.value })} style={inputStyleMini} />
+                                        {state.tariffType !== '2.0TD' && (
+                                            <>
+                                                <input placeholder="P4%" type="number" step="0.01" value={state.consP4} onChange={e => updateState({ consP4: e.target.value })} style={inputStyleMini} />
+                                                <input placeholder="P5%" type="number" step="0.01" value={state.consP5} onChange={e => updateState({ consP5: e.target.value })} style={inputStyleMini} />
+                                                <input placeholder="P6%" type="number" step="0.01" value={state.consP6} onChange={e => updateState({ consP6: e.target.value })} style={inputStyleMini} />
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Row 4: Penalties */}
-                            <div style={{ gridColumn: 'span 12', display: 'flex', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #eee' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={labelStyleCompact}>E. Reactiva (kVArh)</label>
-                                    <input type="number" value={state.reactiveEnergy} onChange={e => updateState({ reactiveEnergy: e.target.value })} style={inputStyleCompact} />
+                            {/* Row 3: Periods Power (Electricity Only) */}
+                            {state.supplyType === 'electricity' && (
+                                <div style={{ gridColumn: 'span 12', marginTop: '0.2rem' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
+                                        POTENCIA POR PERIODOS (kW) {state.tariffType === '2.0TD' ? '- 2 periodos' : '- 6 periodos'}
+                                    </span>
+                                    <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
+                                        <input placeholder="P1 kW" type="number" value={state.powerP1} onChange={e => updateState({ powerP1: e.target.value })} style={inputStyleMini} />
+                                        <input placeholder="P2 kW" type="number" value={state.powerP2} onChange={e => updateState({ powerP2: e.target.value })} style={inputStyleMini} />
+                                        {state.tariffType !== '2.0TD' && (
+                                            <>
+                                                <input placeholder="P3 kW" type="number" value={state.powerP3} onChange={e => updateState({ powerP3: e.target.value })} style={inputStyleMini} />
+                                                <input placeholder="P4 kW" type="number" value={state.powerP4} onChange={e => updateState({ powerP4: e.target.value })} style={inputStyleMini} />
+                                                <input placeholder="P5 kW" type="number" value={state.powerP5} onChange={e => updateState({ powerP5: e.target.value })} style={inputStyleMini} />
+                                                <input placeholder="P6 kW" type="number" value={state.powerP6} onChange={e => updateState({ powerP6: e.target.value })} style={inputStyleMini} />
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={labelStyleCompact}>Max. Demanda (kW)</label>
-                                    <input type="number" value={state.maxDemand} onChange={e => updateState({ maxDemand: e.target.value })} style={inputStyleCompact} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={labelStyleCompact}>Modo</label>
-                                    <select value={state.mode} onChange={(e) => updateState({ mode: e.target.value as ComparisonMode })} style={inputStyleCompact}>
+                            )}
+
+                            {/* Row 4: Penalties & Mode (or Conversion Factor for Gas) */}
+                            <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-light)' }}>
+                                {state.supplyType === 'electricity' ? (
+                                    <>
+                                        <div key="elec-reactive">
+                                            <label style={{ ...labelStyleCompact, minHeight: '1.5rem', display: 'flex', alignItems: 'end' }}>E. Reactiva (kVArh)</label>
+                                            <input type="number" value={state.reactiveEnergy} onChange={e => updateState({ reactiveEnergy: e.target.value })} style={inputStyleCompact} />
+                                        </div>
+                                        <div key="elec-maxdemand">
+                                            <label style={{ ...labelStyleCompact, minHeight: '1.5rem', display: 'flex', alignItems: 'end' }}>Max. Demanda (kW)</label>
+                                            <input type="number" value={state.maxDemand} onChange={e => updateState({ maxDemand: e.target.value })} style={inputStyleCompact} />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div key="gas-conversion">
+                                            <label style={{ ...labelStyleCompact, minHeight: '1.5rem', display: 'flex', alignItems: 'end' }}>Factor de Conversión</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={state.conversionFactor}
+                                                onChange={e => updateState({ conversionFactor: e.target.value })}
+                                                placeholder="Ej. 11.70"
+                                                style={inputStyleCompact}
+                                            />
+                                        </div>
+                                        {/* Empty slot to align with electricity layout or merge */}
+                                        <div></div>
+                                    </>
+                                )}
+
+                                <div>
+                                    <label style={{ ...labelStyleCompact, minHeight: '1.5rem', display: 'flex', alignItems: 'end' }}>Modo</label>
+                                    <select
+                                        value={state.mode}
+                                        onChange={(e) => updateState({ mode: e.target.value as ComparisonMode })}
+                                        style={inputStyleCompact}
+                                    >
                                         <option value="client_first">Ahorro</option>
                                         <option value="commercial_first">Margen</option>
                                     </select>
@@ -399,7 +498,7 @@ export function ComparatorForm() {
                     ) : (
                         <div style={{ display: 'grid', gap: '1rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Top {results.length} Ofertas Encontradas</h2>
+                                <div></div>
                                 <button
                                     onClick={() => setShowSaveDialog(true)}
                                     style={{ padding: '0.4rem 0.8rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}

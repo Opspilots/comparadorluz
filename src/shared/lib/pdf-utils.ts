@@ -1,7 +1,4 @@
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-
-// Set worker to absolute path or CDN to avoid build issues
-GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+import { pdfjs } from 'react-pdf';
 
 export interface ParsedPdfData {
     text: string;
@@ -11,7 +8,14 @@ export interface ParsedPdfData {
 export const parsePdfText = async (file: File): Promise<ParsedPdfData> => {
     try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await getDocument({ data: arrayBuffer }).promise;
+        // Convert to Uint8Array to ensure compatibility
+        const data = new Uint8Array(arrayBuffer);
+
+        console.log('PDF Utils: Starting document load', { size: data.length });
+        const loadingTask = pdfjs.getDocument({ data });
+        const pdf = await loadingTask.promise;
+
+        console.log('PDF Utils: Document loaded', { numPages: pdf.numPages });
         let fullText = '';
 
         for (let i = 1; i <= pdf.numPages; i++) {

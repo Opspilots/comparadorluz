@@ -155,10 +155,26 @@ export interface TariffVersion {
     valid_from: string;  // Date string
     valid_to?: string;   // Date string
     is_active: boolean;
+    is_indexed?: boolean;
+    is_automated?: boolean;
+    automation_source?: string;
+    last_synced_at?: string;
     created_at: string;
     updated_at: string;
     tariff_components?: TariffComponent[]; // For joined data
-    // suppliers relation removed as it doesn't exist in schema
+    tariff_rates?: TariffRate[]; // For joined data
+}
+
+export interface TariffRate {
+    id: string;
+    tariff_version_id: string;
+    item_type: string;
+    period?: string;
+    price: number | null;
+    unit: string;
+    price_formula?: string;
+    index_type?: string;
+    margin?: number;
 }
 
 // ============================================================================
@@ -276,6 +292,7 @@ export interface CalculationInput {
     contracted_power_p5_kw?: number;
     contracted_power_p6_kw?: number;
     current_cost_eur?: number;
+    market_prices?: Array<{ indicator_id: number; price: number }>;
 }
 
 export interface CalculationResult {
@@ -350,4 +367,22 @@ export interface CommissionRule {
     is_active: boolean;
     created_at: string;
     commissioners?: { full_name: string };
+}
+
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled';
+
+export interface Campaign {
+    id: string;
+    company_id: string;
+    created_by?: string;
+    name: string;
+    channel: 'email' | 'whatsapp';
+    subject?: string;
+    body?: string;
+    status: CampaignStatus;
+    scheduled_at?: string;
+    filters?: Record<string, any>; // jsonb
+    template_id?: string;
+    created_at: string;
+    updated_at: string;
 }

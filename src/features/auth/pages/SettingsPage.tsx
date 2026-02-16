@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import { User, LogOut, Mail, Calendar } from 'lucide-react'
+import type { User as AppUser } from '@/shared/types'
+import { User, MessageSquare, ShieldAlert } from 'lucide-react'
+import { UserProfileCard } from '../components/UserProfileCard'
+import { MessagingSettingsCard } from '../components/MessagingSettingsCard'
+import { SettingsAccordion } from '../components/SettingsAccordion'
 
 export function SettingsPage() {
     const navigate = useNavigate()
-    const [user, setUser] = useState<any>(null)
+    const [user, setUser] = useState<AppUser | any>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -34,102 +38,74 @@ export function SettingsPage() {
 
     if (loading) {
         return (
-            <div className="animate-fade-in">
-                <h1 style={{ fontSize: '2.25rem', marginBottom: '2.5rem' }}>Ajustes</h1>
-                <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-                    Cargando...
-                </div>
+            <div style={{ animation: 'fadeIn 0.4s ease-out', padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>
+                Cargando...
             </div>
         )
     }
 
     return (
-        <div className="animate-fade-in">
-            <div style={{ display: 'grid', gap: '2rem', maxWidth: '800px' }}>
-                {/* User Information Card */}
-                <div className="card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ padding: '0.75rem', background: '#f0f0f0', borderRadius: '12px' }}>
-                            <User size={24} />
-                        </div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Información de Usuario</h2>
+        <div style={{ animation: 'fadeIn 0.4s ease-out', maxWidth: '56rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingTop: '1.5rem', paddingBottom: '5rem' }}>
+            {/* User Profile Section */}
+            <div className="tour-settings-profile">
+                <SettingsAccordion
+                    title="Perfil de Usuario"
+                    description="Información personal y de la cuenta"
+                    icon={<User size={20} />}
+                    defaultOpen={true}
+                >
+                    <UserProfileCard user={user} />
+                </SettingsAccordion>
+            </div>
+
+            {/* Messaging Configuration Section */}
+            <div className="tour-settings-messaging">
+                <SettingsAccordion
+                    title="Configuración de Mensajería"
+                    description="Conexiones con proveedores de Email y WhatsApp"
+                    icon={<MessageSquare size={20} />}
+                >
+                    <MessagingSettingsCard />
+                </SettingsAccordion>
+            </div>
+
+            {/* Danger Zone Section */}
+            <div className="tour-settings-danger">
+                <SettingsAccordion
+                    title="Zona de Peligro"
+                    description="Acciones sensibles y cierre de sesión"
+                    icon={<ShieldAlert size={20} style={{ color: '#ef4444' }} />}
+                >
+                    <div style={{ padding: '1rem', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '0.75rem' }}>
+                        <p style={{ fontSize: '0.875rem', color: 'rgba(220, 38, 38, 0.8)', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
+                            Estas acciones afectan a tu sesión actual.
+                        </p>
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                padding: '0.75rem 1rem',
+                                background: '#ffffff',
+                                border: '1px solid #fecaca',
+                                color: '#dc2626',
+                                borderRadius: '0.5rem',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                fontSize: '0.875rem',
+                                transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+                            onMouseLeave={e => (e.currentTarget.style.background = '#ffffff')}
+                        >
+                            <ShieldAlert size={18} />
+                            Cerrar Sesión Activa
+                        </button>
                     </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: '40px', display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                <Mail size={20} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Correo Electrónico</div>
-                                <div style={{ fontWeight: 500 }}>{user?.email || 'No disponible'}</div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: '40px', display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                <User size={20} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>ID de Usuario</div>
-                                <div style={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.875rem' }}>{user?.id || 'No disponible'}</div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: '40px', display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                <Calendar size={20} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Fecha de Registro</div>
-                                <div style={{ fontWeight: 500 }}>
-                                    {user?.created_at ? new Date(user.created_at).toLocaleDateString('es-ES', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                    }) : 'No disponible'}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Logout Card */}
-                <div className="card" style={{ background: '#0a0a0a', color: 'white' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-                            <LogOut size={24} />
-                        </div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: 'white' }}>Sesión</h2>
-                    </div>
-
-                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '1.5rem' }}>
-                        Cierra tu sesión actual de forma segura. Tendrás que volver a iniciar sesión para acceder a la aplicación.
-                    </p>
-
-                    <button
-                        onClick={handleLogout}
-                        className="btn"
-                        style={{
-                            width: '100%',
-                            padding: '0.875rem',
-                            background: 'white',
-                            color: '#0a0a0a',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.75rem',
-                            fontSize: '1rem'
-                        }}
-                    >
-                        <LogOut size={20} />
-                        Cerrar Sesión
-                    </button>
-                </div>
+                </SettingsAccordion>
             </div>
         </div>
     )

@@ -47,11 +47,15 @@ serve(async (req) => {
         const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''))
 
         const geminiPrompt = `
-            Eres un experto en el mercado eléctrico español. Analiza esta hoja de tarifas o contrato de suministro eléctrico y extrae la información de precios en formato JSON.
+            Eres un experto en el mercado eléctrico español. Analiza esta hoja de tarifas o contrato de suministro eléctrico y extrae la información de todas las tarifas presentes en formato JSON.
+            Es muy probable que el documento contenga UNA TABLA con MÚLTIPLES TARIFAS (por ejemplo: diferentes potencias como 2.0TD, 3.0TD, 6.1TD, o diferentes modalidades).
+            DEBES EXTRAER TODAS LAS TARIFAS QUE ENCUENTRES EN EL DOCUMENTO.
 
-            BUSCAR DATOS DE LA TARIFA:
+            Responde con un ARRAY de objetos JSON, donde cada objeto representa una tarifa.
+
+            PARA CADA TARIFA BUSCA LOS SIGUIENTES DATOS:
             - supplier_name: Nombre de la comercializadora.
-            - tariff_name: Nombre comercial de la tarifa.
+            - tariff_name: Nombre comercial de la tarifa (incluye si es Precio Fijo, Indexado, etc).
             - tariff_type: Tipo de peaje (2.0TD, 3.0TD, 6.1TD, etc).
             - valid_from: Fecha de inicio de vigencia (YYYY-MM-DD). Si no hay fecha, usa la fecha de hoy.
             - valid_to: Fecha de fin de vigencia (YYYY-MM-DD) o null si es indefinida.
@@ -76,7 +80,7 @@ serve(async (req) => {
             TÉRMINO FIJO (Si existe) - €/mes:
             - fixed_fee: Cuota fija mensual si la tarifa la tiene (common fees, gestión, etc).
 
-            Responde SOLO con el JSON. Usa null para valores no encontrados.
+            Responde SOLO con el JSON (un Array []). Usa null para valores no encontrados.
         `;
 
         // 3. Call Gemini API
@@ -121,6 +125,12 @@ serve(async (req) => {
                 const cleanJson = textResponse.replace(/^```json/, '').replace(/```$/, '').trim();
                 extractedData = JSON.parse(cleanJson);
             }
+
+            // Ensure it's an array
+            if (!Array.isArray(extractedData)) {
+                extractedData = [extractedData];
+            }
+
         } catch (e) {
             throw new Error('Failed to parse AI response as JSON: ' + textResponse.substring(0, 100))
         }
@@ -131,7 +141,7 @@ serve(async (req) => {
                 .from('tariff_files')
                 .update({
                     extraction_status: 'completed',
-                    extracted_data: extractedData,
+                    extracted_data: extractedData, // Store the array
                     extraction_error: null
                 })
                 .eq('id', file_id)

@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer } from '@/shared/types'
 import { Link } from 'react-router-dom'
-import { LayoutGrid, List as ListIcon, Plus, Search, MapPin, Building2, User, Pencil, Trash2, Eye } from 'lucide-react'
+import { LayoutGrid, List as ListIcon, Plus, Search, MapPin, Building2, User, Pencil, Trash2, Eye, Loader2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
+import { removeEmojis } from '@/shared/lib/utils'
 
 export function CustomerList() {
     const [loading, setLoading] = useState(true)
     const [customers, setCustomers] = useState<Customer[]>([])
     const [searchTerm, setSearchTerm] = useState('')
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+    // Replaced generic object with specific type or null
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+    const { toast } = useToast()
 
     useEffect(() => {
         fetchCustomers()
@@ -31,14 +37,15 @@ export function CustomerList() {
         c.cif.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const getStatusColor = (status: string) => {
+    const badgeStyle = (status: string) => {
+        const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, border: '1px solid transparent', letterSpacing: '0.025em' }
         switch (status) {
-            case 'cliente': return '#10b981'
-            case 'perdido': return '#ef4444'
-            case 'propuesta': return '#0ea5e9'
-            case 'negociacion': return '#f59e0b'
-            case 'contactado': return '#8b5cf6'
-            default: return '#64748b'
+            case 'cliente': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
+            case 'propuesta': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
+            case 'negociacion': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
+            case 'perdido': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
+            case 'contactado': return { ...base, background: '#f3e8ff', color: '#7e22ce', borderColor: '#e9d5ff' }
+            default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
         }
     }
 
@@ -51,22 +58,24 @@ export function CustomerList() {
         'perdido': 'Perdido'
     }
 
-    const handleDelete = async (id: string, name: string) => {
-        if (window.confirm(`¿Estás seguro de eliminar al cliente "${name}"? Esta acción borrará también sus contactos y puntos de suministro asociados.`)) {
-            const { error } = await supabase.from('customers').delete().eq('id', id)
-            if (error) {
-                console.error('Error deleting customer:', error)
-                alert('No se pudo eliminar al cliente.')
-            } else {
-                fetchCustomers()
-            }
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        const { error } = await supabase.from('customers').delete().eq('id', deleteTarget.id)
+        if (error) {
+            console.error('Error deleting customer:', error)
+            toast({ title: 'Error', description: 'No se pudo eliminar al cliente.', variant: 'destructive' })
+        } else {
+            toast({ title: 'Cliente eliminado', description: `"${deleteTarget.name}" ha sido eliminado correctamente.` })
+            fetchCustomers()
         }
+        setDeleteTarget(null)
     }
 
     return (
-        <div className="animate-fade-in">
+        <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
+            <div></div>
             <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+                <div className="tour-crm-search" style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                         type="text"
@@ -117,8 +126,9 @@ export function CustomerList() {
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '4rem' }}>
-                    <div className="spinner">Cargando...</div>
+                <div style={{ textAlign: 'center', padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <Loader2 className="animate-spin" size={32} style={{ color: 'var(--primary)' }} />
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Cargando clientes...</p>
                 </div>
             ) : (
                 <>
@@ -148,20 +158,11 @@ export function CustomerList() {
                                                     <code style={{ background: 'var(--background)', padding: '0.2rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>{customer.cif}</code>
                                                 </td>
                                                 <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{customer.name}</div>
+                                                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{removeEmojis(customer.name)}</div>
                                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{customer.customer_type === 'particular' ? 'Particular' : 'Empresa'}</div>
                                                 </td>
                                                 <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <span style={{
-                                                        padding: '0.25rem 0.75rem',
-                                                        borderRadius: '9999px',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        background: `${getStatusColor(customer.status)}15`,
-                                                        color: getStatusColor(customer.status),
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.025em'
-                                                    }}>
+                                                    <span style={badgeStyle(customer.status)}>
                                                         {statusLabels[customer.status] || customer.status}
                                                     </span>
                                                 </td>
@@ -185,7 +186,7 @@ export function CustomerList() {
                                                             <Pencil size={14} />
                                                         </Link>
                                                         <button
-                                                            onClick={() => handleDelete(customer.id, customer.name)}
+                                                            onClick={() => setDeleteTarget({ id: customer.id, name: customer.name })}
                                                             className="btn btn-secondary"
                                                             style={{ padding: '0.4rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger-light)', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                             title="Eliminar"
@@ -216,20 +217,12 @@ export function CustomerList() {
                                                     {customer.customer_type === 'empresa' ? <Building2 size={20} /> : <User size={20} />}
                                                 </div>
                                                 <div>
-                                                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{customer.name}</h3>
+                                                    <div style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{removeEmojis(customer.name)}</div>
                                                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{customer.cif}</p>
                                                 </div>
                                             </div>
-                                            <span style={{
-                                                padding: '0.2rem 0.6rem',
-                                                borderRadius: '9999px',
-                                                fontSize: '0.7rem',
-                                                fontWeight: 600,
-                                                background: `${getStatusColor(customer.status)}15`,
-                                                color: getStatusColor(customer.status),
-                                                textTransform: 'uppercase'
-                                            }}>
-                                                {customer.status}
+                                            <span style={badgeStyle(customer.status)}>
+                                                {statusLabels[customer.status] || customer.status}
                                             </span>
                                         </div>
 
@@ -252,6 +245,16 @@ export function CustomerList() {
                     )}
                 </>
             )}
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                title="Eliminar cliente"
+                message={`¿Estás seguro de eliminar al cliente "${deleteTarget?.name}"? Esta acción borrará también sus contactos y puntos de suministro asociados.`}
+                confirmLabel="Eliminar"
+                variant="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteTarget(null)}
+            />
         </div>
     )
 }

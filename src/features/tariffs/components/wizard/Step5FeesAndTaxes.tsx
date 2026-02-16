@@ -1,6 +1,4 @@
 import { TariffRate, TariffWizardState } from '@/types/tariff';
-import { Button } from '@/shared/components/ui/button';
-import { Card } from '@/shared/components/ui/card';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface Step5Props {
@@ -31,17 +29,27 @@ export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
         onChange(updatedRates);
     };
 
-    return (
-        <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Cargos Extra e Impuestos</h2>
+    const labelStyle = { display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' };
+    const inputStyle = {
+        width: '100%',
+        padding: '0.375rem 0.5rem',
+        borderRadius: '0.375rem',
+        border: '1px solid #d1d5db',
+        fontSize: '0.875rem',
+        outline: 'none'
+    };
 
-            <div className="space-y-4">
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>Cargos Extra e Impuestos</h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {feesAndTaxes.map((rate) => (
-                    <Card key={rate.id} className="p-4 flex gap-4 items-end">
-                        <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray-700">Tipo</label>
+                    <div key={rate.id} className="card" style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', background: 'white', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={labelStyle}>Tipo</label>
                             <select
-                                className="w-full text-sm border-gray-300 rounded"
+                                style={inputStyle}
                                 value={rate.item_type}
                                 onChange={(e) => updateRate(rate.id, 'item_type', e.target.value)}
                             >
@@ -50,19 +58,19 @@ export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
                                 <option value="discount">Descuento</option>
                             </select>
                         </div>
-                        <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray-700">Valor</label>
+                        <div style={{ flex: 1 }}>
+                            <label style={labelStyle}>Valor</label>
                             <input
                                 type="number"
-                                className="w-full text-sm border-gray-300 rounded"
+                                style={inputStyle}
                                 value={rate.price || ''}
                                 onChange={(e) => updateRate(rate.id, 'price', parseFloat(e.target.value))}
                             />
                         </div>
-                        <div className="w-24">
-                            <label className="block text-xs font-medium text-gray-700">Unidad</label>
+                        <div style={{ width: '6rem' }}>
+                            <label style={labelStyle}>Unidad</label>
                             <select
-                                className="w-full text-sm border-gray-300 rounded"
+                                style={inputStyle}
                                 value={rate.unit}
                                 onChange={(e) => updateRate(rate.id, 'unit', e.target.value)}
                             >
@@ -71,24 +79,36 @@ export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
                                 <option value="%">%</option>
                             </select>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => removeRate(rate.id)} className="text-red-500">
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </Card>
+                        <button
+                            onClick={() => removeRate(rate.id)}
+                            style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                padding: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
                 ))}
 
                 {feesAndTaxes.length === 0 && (
-                    <p className="text-gray-500 text-sm italic">No hay cargos extra configurados.</p>
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic', margin: 0 }}>No hay cargos extra configurados.</p>
                 )}
             </div>
 
-            <div className="flex gap-2">
-                <Button variant="outline" onClick={() => addRate('fixed_fee')} className="gap-2">
-                    <Plus className="h-4 w-4" /> Añadir Cuota
-                </Button>
-                <Button variant="outline" onClick={() => addRate('tax')} className="gap-2">
-                    <Plus className="h-4 w-4" /> Añadir Impuesto
-                </Button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={() => addRate('fixed_fee')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Plus size={16} /> Añadir Cuota
+                </button>
+                <button onClick={() => addRate('tax')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Plus size={16} /> Añadir Impuesto
+                </button>
             </div>
         </div>
     );

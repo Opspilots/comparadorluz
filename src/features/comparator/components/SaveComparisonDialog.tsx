@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { X } from 'lucide-react'
 import type { ComparisonResult } from '@/shared/types'
+import { useToast } from '@/hooks/use-toast'
 
 interface SaveComparisonDialogProps {
     isOpen: boolean
@@ -25,6 +26,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
     const [notes, setNotes] = useState('')
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+    const { toast } = useToast()
 
     if (!isOpen) return null
 
@@ -62,7 +64,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
 
             if (insertError) throw insertError
 
-            alert('✅ Comparativa guardada exitosamente')
+            toast({ title: 'Comparativa guardada', description: 'La comparativa se ha guardado exitosamente.' })
             onClose()
             setName('')
             setNotes('')
@@ -107,7 +109,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
                     <X size={20} />
                 </button>
 
-                <h2 style={{ marginBottom: '1.5rem' }}>Guardar Comparativa</h2>
+                <div style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>Guardar Comparativa</div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>

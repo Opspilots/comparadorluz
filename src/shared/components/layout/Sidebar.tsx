@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, FileText, Scale, FileSignature, HelpCircle, Zap, Settings, Wallet } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, Scale, FileSignature, HelpCircle, Zap, Settings, Wallet, MessageSquare } from 'lucide-react'
+import { useTour } from '@/features/guide/useTour'
 
 
 const navItems = [
@@ -8,11 +9,13 @@ const navItems = [
     { id: 'tariffs', label: 'Tarifario', path: '/admin/tariffs', icon: <FileText size={20} /> },
     { id: 'comparator', label: 'Comparador', path: '/comparator', icon: <Scale size={20} /> },
     { id: 'contracts', label: 'Contratos', path: '/contracts', icon: <FileSignature size={20} /> },
+    { id: 'messaging', label: 'Mensajería', path: '/admin/messages', icon: <MessageSquare size={20} /> },
     { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: <Wallet size={20} /> },
 ]
 
 export function Sidebar() {
     const location = useLocation()
+    const { startTour } = useTour()
 
     return (
         <aside style={{
@@ -33,7 +36,7 @@ export function Sidebar() {
                 </h1>
             </div>
 
-            <nav style={{ flex: 1, padding: '1.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <nav className="sidebar-nav" style={{ flex: 1, padding: '1.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {navItems.map((item) => {
                     const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path))
 
@@ -84,9 +87,26 @@ export function Sidebar() {
                     </Link>
 
                 </div>
-                <a href="#" style={{ color: '#64748b', textDecoration: 'none', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem' }}>
+                <button
+                    onClick={startTour}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#64748b',
+                        fontSize: '0.875rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.color = 'white'}
+                    onMouseOut={(e) => e.currentTarget.style.color = '#64748b'}
+                >
                     <HelpCircle size={18} /> Ayuda y Guía
-                </a>
+                </button>
             </div>
         </aside>
     )

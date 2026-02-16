@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Commissioner } from '@/shared/types'
-import { Users, Plus, TrendingUp, DollarSign, FileCheck, Search } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Users, Plus, FileCheck, Search } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { CreateCommissionerDialog } from '../components/CreateCommissionerDialog'
+import { removeEmojis } from '@/shared/lib/utils'
 
 interface CommissionerStats {
     total_contracts: number
@@ -17,6 +18,7 @@ interface CommissionerWithStats extends Commissioner {
 }
 
 export function CommissionersPage() {
+    const navigate = useNavigate()
     const [commissioners, setCommissioners] = useState<CommissionerWithStats[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
@@ -58,13 +60,16 @@ export function CommissionersPage() {
             return
         }
 
-        const stats = commissionersData.map((comm: any) => {
-            const totalCommission = comm.commissions?.reduce((sum: number, c: any) => sum + (c.amount_eur || 0), 0) || 0
-            const pendingCommission = comm.commissions
-                ?.filter((c: any) => c.status === 'pending')
+        const stats = commissionersData.map((comm) => {
+            const commissions = (comm.commissions as unknown as any[]) || []
+            const contracts = (comm.contracts as unknown as any[]) || []
+
+            const totalCommission = commissions.reduce((sum: number, c: any) => sum + (c.amount_eur || 0), 0) || 0
+            const pendingCommission = commissions
+                .filter((c: any) => c.status === 'pending')
                 .reduce((sum: number, c: any) => sum + (c.amount_eur || 0), 0) || 0
 
-            const totalContracts = comm.contracts?.[0]?.count || 0
+            const totalContracts = contracts[0]?.count || 0
 
             return {
                 id: comm.id,
@@ -98,7 +103,7 @@ export function CommissionersPage() {
 
             {/* Actions Bar */}
             <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+                <div className="tour-commissioners-search" style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                         type="text"
@@ -111,7 +116,7 @@ export function CommissionersPage() {
 
                 <button
                     onClick={() => setIsCreateOpen(true)}
-                    className="btn btn-primary"
+                    className="btn btn-primary tour-commissioners-new-btn"
                     style={{ gap: '0.5rem', display: 'flex', alignItems: 'center', padding: '0.75rem 1.25rem' }}
                 >
                     <Plus size={18} />
@@ -127,110 +132,118 @@ export function CommissionersPage() {
                 }}
             />
 
-            {/* Commissioners Grid */}
+            {/* Commissioners Table */}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                     Cargando comisionados...
                 </div>
             ) : filteredCommissioners.length === 0 ? (
-                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                    <Users size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-                    <h3>No hay comisionados</h3>
+                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <Users size={48} style={{ margin: '0 auto 1rem', opacity: 0.5, color: 'var(--primary)' }} />
+                    <h3 style={{ color: 'var(--text-primary)' }}>No hay comisionados</h3>
                     <p>Comienza agregando a tu primer comercial al equipo.</p>
                 </div>
             ) : (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                    gap: '1.5rem'
-                }}>
-                    {filteredCommissioners.map((commissioner) => (
-                        <Link
-                            key={commissioner.id}
-                            to={`/commissioners/${commissioner.id}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            <div className="card" style={{
-                                padding: '1.5rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                borderLeft: '4px solid #0ea5e9',
-                                height: '100%'
-                            }}
-                                onMouseOver={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-4px)'
-                                    e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)'
-                                }}
-                                onMouseOut={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)'
-                                    e.currentTarget.style.boxShadow = ''
-                                }}
-                            >
-                                {/* Avatar and Name */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                                    <div style={{
-                                        width: '56px',
-                                        height: '56px',
-                                        borderRadius: '50%',
-                                        background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'white',
-                                        fontSize: '1.5rem',
-                                        fontWeight: 600
-                                    }}>
-                                        {commissioner.full_name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>
-                                            {commissioner.full_name}
-                                        </h3>
-                                        <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                                            {commissioner.email}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Stats */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: '#f8fafc', borderRadius: '6px' }}>
-                                        <FileCheck size={16} style={{ color: '#0ea5e9' }} />
-                                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Contratos:</span>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', marginLeft: 'auto' }}>
+                <div className="card tour-commissioners-list" style={{ overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                <th style={{ padding: '0.875rem 1.25rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Comisionado
+                                </th>
+                                <th style={{ padding: '0.875rem 1.25rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Email
+                                </th>
+                                <th style={{ padding: '0.875rem 1.25rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Contratos
+                                </th>
+                                <th style={{ padding: '0.875rem 1.25rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Comisión Total
+                                </th>
+                                <th style={{ padding: '0.875rem 1.25rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Pendiente
+                                </th>
+                                <th style={{ padding: '0.875rem 1.25rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Comisión %
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredCommissioners.map((commissioner, index) => (
+                                <tr
+                                    key={commissioner.id}
+                                    onClick={() => navigate(`/commissioners/${commissioner.id}`)}
+                                    style={{
+                                        borderBottom: index < filteredCommissioners.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.15s ease'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = '#f8fafc'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = ''
+                                    }}
+                                >
+                                    <td style={{ padding: '1rem 1.25rem' }}>
+                                        <span style={{ fontSize: '0.925rem', fontWeight: 600, color: '#0f172a' }}>
+                                            {removeEmojis(commissioner.full_name)}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                        {commissioner.email}
+                                    </td>
+                                    <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.375rem',
+                                            padding: '0.25rem 0.75rem',
+                                            background: '#eff6ff',
+                                            borderRadius: '999px',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 600,
+                                            color: '#1d4ed8'
+                                        }}>
+                                            <FileCheck size={14} />
                                             {commissioner.stats?.total_contracts || 0}
                                         </span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: '#f8fafc', borderRadius: '6px' }}>
-                                        <DollarSign size={16} style={{ color: '#10b981' }} />
-                                        <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Comisión Total:</span>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', marginLeft: 'auto' }}>
+                                    </td>
+                                    <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                                        <span style={{ fontSize: '0.925rem', fontWeight: 600, color: '#059669' }}>
                                             €{commissioner.stats?.total_commission_eur.toFixed(2) || '0.00'}
                                         </span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: '#fef3c7', borderRadius: '6px' }}>
-                                        <TrendingUp size={16} style={{ color: '#f59e0b' }} />
-                                        <span style={{ fontSize: '0.875rem', color: '#92400e' }}>Pendiente:</span>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#92400e', marginLeft: 'auto' }}>
+                                    </td>
+                                    <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            padding: '0.25rem 0.625rem',
+                                            background: (commissioner.stats?.pending_commission_eur || 0) > 0 ? '#fef3c7' : '#f1f5f9',
+                                            borderRadius: '6px',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 600,
+                                            color: (commissioner.stats?.pending_commission_eur || 0) > 0 ? '#92400e' : '#64748b'
+                                        }}>
                                             €{commissioner.stats?.pending_commission_eur.toFixed(2) || '0.00'}
                                         </span>
-                                    </div>
-                                </div>
-
-                                {/* Default Commission */}
-                                {commissioner.commission_default_pct && (
-                                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-                                        <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            Comisión por defecto
-                                        </span>
-                                        <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0ea5e9', marginTop: '0.25rem' }}>
-                                            {commissioner.commission_default_pct}%
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </Link>
-                    ))}
+                                    </td>
+                                    <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
+                                        {commissioner.commission_default_pct ? (
+                                            <span style={{
+                                                fontSize: '0.925rem',
+                                                fontWeight: 700,
+                                                color: '#0ea5e9'
+                                            }}>
+                                                {commissioner.commission_default_pct}%
+                                            </span>
+                                        ) : (
+                                            <span style={{ fontSize: '0.875rem', color: '#cbd5e1' }}>—</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
         </div>

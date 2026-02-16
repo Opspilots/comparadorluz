@@ -1,25 +1,37 @@
+
 import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
+
 import type { CustomerStatus, Commissioner } from '@/shared/types'
 
 export function CustomerForm() {
     const navigate = useNavigate()
-    const { id } = useParams()
+    const { id } = useParams<{ id: string }>()
     const location = useLocation()
+    const customerData = location.state?.customerData
     const isEditing = !!id
     const [loading, setLoading] = useState(false)
-    const [pageLoading, setPageLoading] = useState(isEditing)
+    const [pageLoading, setPageLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Get customer data from navigation state if coming from OCR
-    const customerData = (location.state as any)?.customerData
 
     // Form State
     const [cif, setCif] = useState('')
     const [name, setName] = useState('')
     const [customerType, setCustomerType] = useState<'empresa' | 'particular'>('empresa')
     const [status, setStatus] = useState<CustomerStatus>('prospecto')
+    // ... other states
+
+    // Multi-contact state (for new customer creation)
+    // Contact State (Split for better UI)
+    // For Particulars
+    const [partEmail, setPartEmail] = useState('')
+    const [partPhone, setPartPhone] = useState('')
+
+    // For Companies (Multi-value)
+    const [companyEmails, setCompanyEmails] = useState<{ id?: string, value: string, label: string }[]>([{ value: '', label: 'Administración' }])
+    const [companyPhones, setCompanyPhones] = useState<{ id?: string, value: string, label: string }[]>([{ value: '', label: 'General' }])
     const [province, setProvince] = useState('')
     const [city, setCity] = useState('')
     const [address, setAddress] = useState('')
@@ -27,18 +39,26 @@ export function CustomerForm() {
     const [commissioners, setCommissioners] = useState<Pick<Commissioner, 'id' | 'full_name'>[]>([])
 
     useEffect(() => {
-        fetchCommissioners()
-        if (isEditing) {
-            fetchCustomer()
-        } else if (customerData) {
-            // Auto-fill from OCR
-            if (customerData.name) setName(customerData.name);
-            if (customerData.cif) setCif(customerData.cif);
-            if (customerData.type) setCustomerType(customerData.type);
-            if (customerData.address) setAddress(customerData.address);
-            if (customerData.city) setCity(customerData.city);
-            if (customerData.province) setProvince(customerData.province);
-        }
+        const init = async () => {
+            setPageLoading(true);
+            await fetchCommissioners();
+            if (isEditing) {
+                await fetchCustomer();
+            } else {
+                // If creating new, we are done loading after commissioners
+                if (customerData) {
+                    // Auto-fill logic from OCR if present
+                    if (customerData.name) setName(customerData.name);
+                    if (customerData.cif) setCif(customerData.cif);
+                    if (customerData.type) setCustomerType(customerData.type);
+                    if (customerData.address) setAddress(customerData.address);
+                    if (customerData.city) setCity(customerData.city);
+                    if (customerData.province) setProvince(customerData.province);
+                }
+            }
+            setPageLoading(false);
+        };
+        init();
     }, [id, customerData])
 
     async function fetchCommissioners() {
@@ -60,7 +80,7 @@ export function CustomerForm() {
         try {
             const { data, error } = await supabase
                 .from('customers')
-                .select('*')
+                .select('*, contacts(*)')
                 .eq('id', id)
                 .single()
 
@@ -74,13 +94,38 @@ export function CustomerForm() {
                 setCity(data.city || '')
                 setAddress(data.address || '')
                 setAssignedTo(data.assigned_to || '')
+
+                // Populate Contacts
+                if (data.contacts && data.contacts.length > 0) {
+                    const contacts = data.contacts as any[]
+                    if (data.customer_type === 'particular') {
+                        const emailContact = contacts.find((c) => c.email);
+                        const phoneContact = contacts.find((c) => c.phone);
+                        if (emailContact) setPartEmail(emailContact.email);
+                        if (phoneContact) setPartPhone(phoneContact.phone);
+                    } else {
+                        // Company: Map to arrays
+                        const emails: { id?: string, value: string, label: string }[] = [];
+                        const phones: { id?: string, value: string, label: string }[] = [];
+
+                        contacts.forEach((c) => {
+                            if (c.email) emails.push({ id: c.id, value: c.email, label: c.position || c.first_name || 'Email' });
+                            if (c.phone) phones.push({ id: c.id, value: c.phone, label: c.position || c.first_name || 'Teléfono' });
+                        });
+
+                        // Only set if we found any, otherwise keep defaults (or empty?)
+                        // Actually if editing, we should show what's there.
+                        setCompanyEmails(emails.length > 0 ? emails : []);
+                        setCompanyPhones(phones.length > 0 ? phones : []);
+                    }
+                }
             }
         } catch (err) {
             const error = err as Error;
             console.error('Error fetching customer:', error)
             setError('No se pudo cargar la información del cliente')
         } finally {
-            setPageLoading(false)
+            // setPageLoading(false) - Handled in useEffect now
         }
     }
 
@@ -126,13 +171,13 @@ export function CustomerForm() {
                 assigned_to: assignedTo || null
             }
 
-            let resultError = null
+            let customerId = id;
             if (isEditing) {
                 const { error } = await supabase
                     .from('customers')
                     .update(payload)
                     .eq('id', id)
-                resultError = error
+                if (error) throw error;
             } else {
                 // Check if CIF already exists before inserting
                 const { data: existingCustomer } = await supabase
@@ -143,18 +188,97 @@ export function CustomerForm() {
                     .maybeSingle()
 
                 if (existingCustomer) {
-                    throw new Error(`Ya existe un cliente con el CIF ${cif}: "${existingCustomer.name}". ¿Quizás quieres editarlo?`)
+                    throw new Error(`Ya existe un cliente con el CIF ${cif}: "${existingCustomer.name}". ¿Quizás quieres editarlo ? `)
                 }
 
-                const { error } = await supabase
+                const { data: newCust, error } = await supabase
                     .from('customers')
                     .insert(payload)
-                resultError = error
+                    .select('id')
+                    .single()
+
+                if (error) throw error;
+                customerId = newCust.id;
             }
 
-            if (resultError) throw resultError
+            // HANDLE CONTACTS (Create or Update)
+            if (customerType === 'particular') {
+                // Particular: Upsert Primary (Search by customer_id + is_primary/position?)
+                // For simplicity: Insert if new, or update if exists (would require logic to find ID).
+                // If editing, we didn't store the ID for particular's contact. 
+                // Let's just insert for now if it's new, otherwise we need to fetch ID?
+                // IMPROVEMENT: If isEditing, we should update the existing contact.
 
-            navigate(isEditing ? `/crm/${id}` : '/crm')
+                // Fetch existing primary contact to update it
+                const { data: existingContacts } = await supabase.from('contacts').select('id').eq('customer_id', customerId).limit(1);
+
+                if (partEmail || partPhone) {
+                    const contactPayload = {
+                        company_id: companyId,
+                        customer_id: customerId,
+                        first_name: name.split(' ')[0] || 'Cliente',
+                        last_name: name.split(' ').slice(1).join(' ') || '',
+                        email: partEmail || null,
+                        phone: partPhone || null,
+                        is_primary: true,
+                        position: 'Titular'
+                    };
+
+                    if (existingContacts && existingContacts.length > 0) {
+                        await supabase.from('contacts').update(contactPayload).eq('id', existingContacts[0].id);
+                    } else {
+                        await supabase.from('contacts').insert(contactPayload);
+                    }
+                }
+            } else {
+                // Companies: Emails
+                for (const item of companyEmails) {
+                    if (item.value.trim()) {
+                        const payload = {
+                            company_id: companyId,
+                            customer_id: customerId,
+                            first_name: item.label || 'Email',
+                            last_name: '',
+                            email: item.value,
+                            position: item.label,
+                            is_primary: false
+                        };
+
+                        if (item.id) {
+                            await supabase.from('contacts').update(payload).eq('id', item.id);
+                        } else {
+                            await supabase.from('contacts').insert(payload);
+                        }
+                    } else if (item.id) {
+                        // Value cleared? Delete it? Or ignore?
+                        // Let's delete if value is empty and it had an ID
+                        // await supabase.from('contacts').delete().eq('id', item.id);
+                    }
+                }
+                // Companies: Phones
+                for (const item of companyPhones) {
+                    if (item.value.trim()) {
+                        const payload = {
+                            company_id: companyId,
+                            customer_id: customerId,
+                            first_name: item.label || 'Teléfono',
+                            last_name: '',
+                            phone: item.value,
+                            position: item.label,
+                            is_primary: false
+                        };
+
+                        if (item.id) {
+                            await supabase.from('contacts').update(payload).eq('id', item.id);
+                        } else {
+                            await supabase.from('contacts').insert(payload);
+                        }
+                    }
+                }
+            }
+            // End Contact Handling
+
+            navigate(isEditing ? `/crm/${id}` : `/crm/${customerId}`)
         } catch (err) {
             const error = err as Error;
             console.error(error)
@@ -168,8 +292,7 @@ export function CustomerForm() {
 
     return (
         <div className="card" style={{ maxWidth: '800px', margin: '2rem auto' }}>
-            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>{isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}</h1>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{isEditing ? 'Actualiza la información del cliente y gestiona su estado.' : 'Registra un nuevo prospecto o cliente en tu base de datos.'}</p>
+
 
             {error && (
                 <div style={{ padding: '1rem', background: '#fef2f2', color: '#991b1b', marginBottom: '1.5rem', borderRadius: '8px', border: '1px solid #fee2e2' }}>
@@ -261,25 +384,110 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Provincia</label>
-                        <input
-                            type="text"
-                            value={province}
-                            onChange={(e) => setProvince(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Ciudad</label>
-                        <input
-                            type="text"
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
-                        />
-                    </div>
+                {/* Contact Methods Section */}
+                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+
+
+                    {customerType === 'particular' ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email Personal</label>
+                                <input
+                                    type="email"
+                                    value={partEmail}
+                                    onChange={(e) => setPartEmail(e.target.value)}
+                                    placeholder="ejemplo@gmail.com"
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Teléfono Móvil</label>
+                                <input
+                                    type="tel"
+                                    value={partPhone}
+                                    onChange={(e) => setPartPhone(e.target.value)}
+                                    placeholder="600 000 000"
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* Company Emails */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>Correos Electrónicos</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {companyEmails.map((item, index) => (
+                                        <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 40px', gap: '0.5rem', alignItems: 'center' }}>
+                                            <input
+                                                type="email"
+                                                placeholder="ejemplo@empresa.com"
+                                                value={item.value}
+                                                onChange={(e) => {
+                                                    const newItems = [...companyEmails];
+                                                    newItems[index].value = e.target.value;
+                                                    setCompanyEmails(newItems);
+                                                }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)' }}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Etiqueta (Ej: Admin)"
+                                                value={item.label}
+                                                onChange={(e) => {
+                                                    const newItems = [...companyEmails];
+                                                    newItems[index].label = e.target.value;
+                                                    setCompanyEmails(newItems);
+                                                }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
+                                            />
+                                            {companyEmails.length > 1 && (
+                                                <button type="button" onClick={() => setCompanyEmails(companyEmails.filter((_, i) => i !== index))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={() => setCompanyEmails([...companyEmails, { value: '', label: '' }])} style={{ fontSize: '0.875rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>+ Añadir otro email</button>
+                                </div>
+                            </div>
+
+                            {/* Company Phones */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>Teléfonos</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {companyPhones.map((item, index) => (
+                                        <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 40px', gap: '0.5rem', alignItems: 'center' }}>
+                                            <input
+                                                type="tel"
+                                                placeholder="+34 91 000 000"
+                                                value={item.value}
+                                                onChange={(e) => {
+                                                    const newItems = [...companyPhones];
+                                                    newItems[index].value = e.target.value;
+                                                    setCompanyPhones(newItems);
+                                                }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)' }}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Etiqueta (Ej: Oficina)"
+                                                value={item.label}
+                                                onChange={(e) => {
+                                                    const newItems = [...companyPhones];
+                                                    newItems[index].label = e.target.value;
+                                                    setCompanyPhones(newItems);
+                                                }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
+                                            />
+                                            {companyPhones.length > 1 && (
+                                                <button type="button" onClick={() => setCompanyPhones(companyPhones.filter((_, i) => i !== index))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={() => setCompanyPhones([...companyPhones, { value: '', label: '' }])} style={{ fontSize: '0.875rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>+ Añadir otro teléfono</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div>

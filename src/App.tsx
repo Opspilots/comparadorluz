@@ -1,11 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 import { MainLayout } from '@/shared/components/layout/MainLayout'
 import TariffDashboard from '@/features/tariffs/pages/TariffDashboard'
 
 import { TariffEditorPage } from '@/features/tariffs/pages/TariffEditorPage'
 import TariffDetailsPage from '@/features/tariffs/pages/TariffDetailsPage'
+import TariffUploadPage from '@/features/tariffs/pages/TariffUploadPage'
+import BatchDetailsPage from '@/features/tariffs/pages/BatchDetailsPage'
+import MessagingLayout from '@/features/messaging/layouts/MessagingLayout'
+import MessagingPage from '@/features/messaging/pages/MessagingPage'
+import ConversationPage from '@/features/messaging/pages/ConversationPage'
 import { Login } from '@/features/auth/components/Login'
 import { SettingsPage } from '@/features/auth/pages/SettingsPage'
 import { CustomerList } from '@/features/crm/components/CustomerList'
@@ -16,6 +22,8 @@ import { ContactForm } from '@/features/crm/components/ContactForm'
 import { SupplyPointForm } from '@/features/crm/components/SupplyPointForm'
 
 import { CustomerForm } from '@/features/crm/components/CustomerForm'
+import { CampaignsPage } from '@/features/messaging/pages/CampaignsPage'
+import { CampaignForm } from '@/features/messaging/pages/CampaignForm'
 import { ContractList } from '@/features/contracts/components/ContractList'
 import { ContractForm } from '@/features/contracts/components/ContractForm'
 import { ContractPreview } from '@/features/contracts/components/ContractPreview'
@@ -24,7 +32,7 @@ import { CommissionersPage } from '@/features/commissioners/pages/CommissionersP
 import { CommissionerDetailPage } from '@/features/commissioners/pages/CommissionerDetailPage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
-    const [session, setSession] = useState<unknown>(null)
+    const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -54,7 +62,7 @@ const queryClient = new QueryClient()
 function App() {
     return (
         <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/*" element={
@@ -77,9 +85,21 @@ function App() {
 
                                     {/* Tariffs */}
                                     <Route path="/admin/tariffs" element={<TariffDashboard />} />
+                                    <Route path="/admin/tariffs/upload" element={<TariffUploadPage />} />
+                                    <Route path="/admin/tariffs/batches/:id" element={<BatchDetailsPage />} />
                                     <Route path="/admin/tariffs/:id" element={<TariffDetailsPage />} />
                                     <Route path="/admin/tariffs/new" element={<TariffEditorPage />} />
                                     <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
+
+                                    {/* Messaging */}
+                                    <Route path="/admin/messages" element={<MessagingLayout />}>
+                                        <Route index element={<MessagingPage />} />
+                                        <Route path="campaigns" element={<CampaignsPage />} />
+                                        <Route path="campaigns/new" element={<CampaignForm />} />
+                                        <Route path="campaigns/:id" element={<CampaignForm />} />
+                                        <Route path="campaigns/:id/edit" element={<CampaignForm />} />
+                                        <Route path=":customerId" element={<ConversationPage />} />
+                                    </Route>
                                     <Route path="/contracts" element={<ContractList />} />
                                     <Route path="/contracts/new" element={<ContractForm />} />
                                     <Route path="/contracts/:id" element={<ContractForm />} />

@@ -50,8 +50,11 @@ serve(async (req) => {
         const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''))
 
         const geminiPrompt = `
-            Eres un experto en el sector eléctrico español. Analiza esta factura y extrae los siguientes campos en formato JSON:
-            
+            Eres un experto en el sector energético español (Electricidad y Gas). Analiza esta factura y extrae los siguientes campos en formato JSON:
+
+            CLASIFICACIÓN INICIAL:
+            - supply_type: "electricity" o "gas" (Detecta el tipo de suministro. Pistas Gas: "m3", "PCS", "Canon IRC", "RL.1", "RL.2").
+
             DATOS DEL TITULAR/CLIENTE:
             - customer_name: Nombre completo del titular de la factura
             - cif: CIF (empresa) o NIF (particular) del titular
@@ -61,31 +64,27 @@ serve(async (req) => {
             
             DATOS TÉCNICOS:
             - cups: Código CUPS completo (formato: ESxxxxxxxxxxxxxxxxxx)
-            - tariff_type: Tipo de tarifa (2.0TD, 3.0TD, o 6.1TD)
+            - tariff_type: 
+                - Electricidad: 2.0TD, 3.0TD, o 6.1TD
+                - Gas: RL.1, RL.2, RL.3, o RL.4
             - current_supplier: Nombre de la comercializadora actual
-            - current_cost: Importe total de la factura estandarizado a MENSUAL (si es bimestral, divide por 2).
-            - annual_consumption: Consumo TOTAL ANUAL estimado en kWh (suma de todos los periodos).
-            - contracted_power: Potencia contratada PRINCIPAL (P1) en kW.
+            - current_cost: Importe total de la factura estandarizado a MENSUAL.
+            - annual_consumption: Consumo TOTAL ANUAL estimado en kWh.
+            - contracted_power: Potencia contratada (Sólo Electricidad) en kW. "null" para Gas.
             
-            CONSUMO POR PERIODOS (valores anuales en kWh):
-            - p1_consumption_pct: Consumo ANUAL P1
-            - p2_consumption_pct: Consumo ANUAL P2
-            - p3_consumption_pct: Consumo ANUAL P3  
-            - p4_consumption_pct: Consumo ANUAL P4 (solo 3.0TD/6.1TD)
-            - p5_consumption_pct: Consumo ANUAL P5 (solo 3.0TD/6.1TD)
-            - p6_consumption_pct: Consumo ANUAL P6 (solo 3.0TD/6.1TD)
-            
-            POTENCIA POR PERIODOS (valores en kW):
-            - power_p1: Potencia P1
-            - power_p2: Potencia P2
-            - power_p3: Potencia P3
-            - power_p4: Potencia P4
-            - power_p5: Potencia P5
-            - power_p6: Potencia P6
+            PRECIOS Y CONSUMOS (ELECTRICIDAD):
+            - p1_consumption_pct, p2_consumption_pct...: Consumo por periodos en kWh (Valor absoluto).
+            - power_p1, power_p2...: Potencia contratada por periodos en kW.
+            - energy_prices: Array de objetos { "period": "P1", "price": 0.123, "unit": "EUR/kWh" } (Si aparecen precios explícitos).
+            - power_prices: Array de objetos { "period": "P1", "price": 30.5, "unit": "EUR/kW/year" }.
+
+            PRECIOS Y CONSUMOS (GAS):
+            - fixed_term_prices: Array de objetos { "period": "P1", "price": 5.43, "unit": "EUR/month" } (El término fijo mensual).
+            - energy_prices: Array de objetos { "period": "P1", "price": 0.054, "unit": "EUR/kWh" } (El término variable).
             
             IMPORTANTE:
-            - Si la factura cubre un periodo mensual, multiplica el consumo por 12. Si es bimestral, por 6.
-            - Devuelve "null" si un campo no se encuentra.
+            - Normaliza números: Usa PUNTO (.) para decimales. NO miles separators.
+            - Si es Gas, "contracted_power" debe ser null o 0.
             - Responde SOLO con el JSON.
         `;
 

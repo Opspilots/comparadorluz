@@ -4,9 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import { TariffBatch, TariffVersion } from '@/shared/types';
 import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
-import { Badge } from '@/shared/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { TariffComponentsEditor } from '../components/TariffComponentsEditor';
 import { useState } from 'react';
@@ -78,7 +75,7 @@ export default function TariffReviewPage() {
     });
 
     if (isBatchLoading || isVersionsLoading) {
-        return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+        return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Loader2 size={32} className="animate-spin" /></div>;
     }
 
     if (!batch) return <div>Lote no encontrado</div>;
@@ -86,103 +83,140 @@ export default function TariffReviewPage() {
     const selectedVersion = versions?.find(v => v.id === selectedVersionId) || versions?.[0];
 
     return (
-        <div className="p-8 space-y-6 max-w-7xl mx-auto">
-            <div className="flex items-center gap-4 mb-8">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/admin/tariffs')}>
-                    <ArrowLeft className="w-5 h-5" />
-                </Button>
+        <div style={{ padding: '2rem', maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <button
+                    onClick={() => navigate('/admin/tariffs')}
+                    style={{
+                        padding: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.375rem'
+                    }}
+                >
+                    <ArrowLeft size={20} />
+                </button>
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-3">
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         Revisión de Tarifas
-                        <Badge variant="outline" className="text-sm">
+                        <span style={{
+                            padding: '0.125rem 0.625rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500,
+                            border: '1px solid #e2e8f0', textTransform: 'capitalize'
+                        }}>
                             {batch.status.replace('_', ' ')}
-                        </Badge>
+                        </span>
                     </h1>
-                    <p className="text-muted-foreground">ID: {batch.id}</p>
+                    <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>ID: {batch.id}</p>
                 </div>
-                <div className="ml-auto flex gap-3">
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.75rem' }}>
                     {batch.status !== 'published' && (
-                        <Button
+                        <button
                             onClick={() => publishMutation.mutate()}
                             disabled={publishMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 500,
+                                padding: '0.5rem 1rem', backgroundColor: '#16a34a', color: 'white',
+                                border: 'none', cursor: publishMutation.isPending ? 'not-allowed' : 'pointer',
+                                opacity: publishMutation.isPending ? 0.7 : 1
+                            }}
                         >
-                            {publishMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                            {publishMutation.isPending ? <Loader2 size={16} className="animate-spin" style={{ marginRight: '0.5rem' }} /> : <CheckCircle size={16} style={{ marginRight: '0.5rem' }} />}
                             Publicar Tarifas
-                        </Button>
+                        </button>
                     )}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem' }}>
                 {/* Sidebar: List of File/Versions */}
-                <div className="md:col-span-4 space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Tarifas Extraídas</CardTitle>
-                            <CardDescription>{versions?.length} tarifas encontradas</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            {versions?.map((version) => (
-                                <button
-                                    key={version.id}
-                                    onClick={() => setSelectedVersionId(version.id)}
-                                    className={`w-full text-left p-3 rounded-md border transition-colors flex items-start gap-3 ${selectedVersion?.id === version.id
-                                        ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-300'
-                                        : 'hover:bg-slate-50'
-                                        }`}
-                                >
-                                    <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
-                                    <div>
-                                        <p className="font-medium text-sm">{version.tariff_name || 'Sin Nombre'}</p>
-                                        <p className="text-xs text-muted-foreground">{version.supplier_name || 'Proveedor desconocido'}</p>
-                                        <Badge variant="secondary" className="mt-2 text-[10px] h-5">
-                                            {version.tariff_type}
-                                        </Badge>
+                <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+                        <div style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0, lineHeight: 1 }}>Tarifas Extraídas</h3>
+                            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.375rem 0 0 0' }}>{versions?.length} tarifas encontradas</p>
+                        </div>
+                        <div style={{ padding: '1.5rem', paddingTop: 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {versions?.map((version) => (
+                                    <button
+                                        key={version.id}
+                                        onClick={() => setSelectedVersionId(version.id)}
+                                        style={{
+                                            width: '100%', textAlign: 'left', padding: '0.75rem',
+                                            borderRadius: '0.375rem', border: `1px solid ${selectedVersion?.id === version.id ? '#93c5fd' : 'transparent'}`,
+                                            transition: 'all 0.15s',
+                                            display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+                                            backgroundColor: selectedVersion?.id === version.id ? '#eff6ff' : 'transparent',
+                                            cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (selectedVersion?.id !== version.id) e.currentTarget.style.backgroundColor = '#f8fafc';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (selectedVersion?.id !== version.id) e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
+                                    >
+                                        <FileText size={20} style={{ color: '#94a3b8', marginTop: '0.125rem' }} />
+                                        <div>
+                                            <p style={{ fontWeight: 500, fontSize: '0.875rem', margin: 0 }}>{version.tariff_name || 'Sin Nombre'}</p>
+                                            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>{version.supplier_name || 'Proveedor desconocido'}</p>
+                                            <span style={{
+                                                display: 'inline-block', marginTop: '0.5rem', padding: '0 0.5rem',
+                                                borderRadius: '9999px', fontSize: '10px', fontWeight: 500,
+                                                backgroundColor: '#f1f5f9', color: '#1f2937', height: '1.25rem',
+                                                lineHeight: '1.25rem'
+                                            }}>
+                                                {version.tariff_type}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                                {versions?.length === 0 && (
+                                    <div style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                        No se encontraron tarifas válidas en este lote.
                                     </div>
-                                </button>
-                            ))}
-                            {versions?.length === 0 && (
-                                <div className="text-center p-4 text-sm text-muted-foreground">
-                                    No se encontraron tarifas válidas en este lote.
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Main Content: Editor */}
-                <div className="md:col-span-8">
+                <div style={{ gridColumn: 'span 8' }}>
                     {selectedVersion ? (
-                        <Card>
-                            <CardHeader>
-                                <div className="flex justify-between">
+                        <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+                            <div style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <div>
-                                        <CardTitle>{selectedVersion.tariff_name}</CardTitle>
-                                        <CardDescription>{selectedVersion.supplier_name || 'Proveedor desconocido'} • {selectedVersion.tariff_type}</CardDescription>
+                                        <h3 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, lineHeight: 1 }}>{selectedVersion.tariff_name}</h3>
+                                        <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.375rem 0 0 0' }}>{selectedVersion.supplier_name || 'Proveedor desconocido'} • {selectedVersion.tariff_type}</p>
                                     </div>
-                                    <div className="text-right text-sm text-muted-foreground">
-                                        <p>Válido desde: {selectedVersion.valid_from}</p>
-                                        <p>Válido hasta: {selectedVersion.valid_to || 'Indefinido'}</p>
+                                    <div style={{ textAlign: 'right', fontSize: '0.875rem', color: '#64748b' }}>
+                                        <p style={{ margin: 0 }}>Válido desde: {selectedVersion.valid_from}</p>
+                                        <p style={{ margin: 0 }}>Válido hasta: {selectedVersion.valid_to || 'Indefinido'}</p>
                                     </div>
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <AlertTriangle className="w-5 h-5 text-yellow-500 mb-4 inline-block mr-2" />
-                                <span className="text-sm text-yellow-700 font-medium">
-                                    Verifica que los precios coincidan con el PDF original antes de publicar.
-                                </span>
+                            </div>
+                            <div style={{ padding: '1.5rem', paddingTop: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <AlertTriangle size={20} style={{ color: '#eab308', marginRight: '0.5rem' }} />
+                                    <span style={{ fontSize: '0.875rem', color: '#a16207', fontWeight: 500 }}>
+                                        Verifica que los precios coincidan con el PDF original antes de publicar.
+                                    </span>
+                                </div>
 
-                                <div className="mt-6">
+                                <div style={{ marginTop: '1.5rem' }}>
                                     <TariffComponentsEditor
                                         tariffVersionId={selectedVersion.id}
                                         components={selectedVersion.tariff_components || []}
                                     />
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
                     ) : (
-                        <div className="h-full flex items-center justify-center p-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <div style={{
+                            height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '3rem', color: '#64748b', border: '2px dashed #d1d5db', borderRadius: '0.5rem'
+                        }}>
                             Selecciona una tarifa para editar
                         </div>
                     )}

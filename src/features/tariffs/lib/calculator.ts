@@ -13,10 +13,13 @@
 import type {
 
     TariffComponent,
+    TariffVersion,
+    TariffRate,
     CalculationInput,
     CalculationResult,
     CalculationBreakdown,
 } from '@/shared/types';
+import { calculateGasAnnualCost } from './gas-calculator';
 
 // ============================================================================
 // Constants
@@ -111,12 +114,35 @@ function getComponent(
 /**
  * Get all energy price components grouped by period
  */
-function getEnergyPrices(components: TariffComponent[]): Map<string, number> {
+function getEnergyPrices(
+    tariff_version: TariffVersion,
+    market_prices?: Array<{ indicator_id: number; price: number }>
+): Map<string, number> {
     const prices = new Map<string, number>();
+    const components = tariff_version.tariff_components || [];
+    const rates = tariff_version.tariff_rates || [];
 
+    // If indexed, calculate price from market baseline + margin
+    if (tariff_version.is_indexed && market_prices) {
+        rates.filter((r: TariffRate) => r.item_type === 'energy').forEach((r: TariffRate) => {
+            if (r.period) {
+                // Simplified indicator mapping for P1-P3
+                const indicatorId = r.period === 'P1' ? 1013 : r.period === 'P2' ? 1014 : 1015;
+                const mPrice = market_prices.find(mp => mp.indicator_id === indicatorId)?.price || 0;
+
+                // mPrice is often in EUR/MWh from ESIOS, convert to EUR/kWh
+                const finalPrice = (mPrice / 1000) + (r.margin || 0);
+                prices.set(r.period, finalPrice);
+            }
+        });
+
+        if (prices.size > 0) return prices;
+    }
+
+    // Fallback/Standard: fixed prices from components
     components
-        .filter((c) => c.component_type === 'energy_price')
-        .forEach((c) => {
+        .filter((c: TariffComponent) => c.component_type === 'energy_price')
+        .forEach((c: TariffComponent) => {
             if (c.period && c.price_eur_kwh !== undefined) {
                 prices.set(c.period, c.price_eur_kwh);
             }
@@ -300,7 +326,7 @@ export function calculateSavings(
  * });
  * // => { annual_cost_eur: 1234.56, monthly_cost_eur: 102.88, breakdown: {...} }
  */
-export function calculateAnnualCost(input: CalculationInput): CalculationResult {
+export function calculateElectricityAnnualCost(input: CalculationInput): CalculationResult {
     const {
         tariff_version,
         annual_consumption_kwh,
@@ -316,7 +342,8 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
         contracted_power_p4_kw,
         contracted_power_p5_kw,
         contracted_power_p6_kw,
-        current_cost_eur
+        current_cost_eur,
+        market_prices
     } = input;
 
     if (!tariff_version.tariff_components || tariff_version.tariff_components.length === 0) {
@@ -330,7 +357,7 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
     );
 
     // 2. Extract price components
-    const energyPrices = getEnergyPrices(tariff_version.tariff_components);
+    const energyPrices = getEnergyPrices(tariff_version, market_prices);
     const powerPrices = getPowerPrices(tariff_version.tariff_components);
 
     if (energyPrices.size === 0) {
@@ -420,4 +447,20 @@ export function calculateAnnualCost(input: CalculationInput): CalculationResult 
         breakdown,
         ...savings
     };
+}
+
+/**
+ * Unified Calculation Function
+ * Delegates to specific calculator based on tariff type
+ */
+export function calculateAnnualCost(input: CalculationInput): CalculationResult {
+    const { tariff_version } = input;
+
+    // Check for Gas Tariffs
+    if (['RL.1', 'RL.2', 'RL.3', 'RL.4'].includes(tariff_version.tariff_type)) {
+        return calculateGasAnnualCost(input);
+    }
+
+    // Default to Electricity
+    return calculateElectricityAnnualCost(input);
 }

@@ -93,7 +93,7 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
         }}>
             <div className="card" style={{ width: '450px', maxWidth: '90%', padding: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
-                    <h3 className="text-lg font-semibold">Nuevo Comisionado</h3>
+                    <div style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Nuevo Comisionado</div>
                     <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
                         <X size={20} />
                     </button>
@@ -108,13 +108,13 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
                         }}>
                             <Check size={32} />
                         </div>
-                        <h4 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>¡Comisionado Creado!</h4>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>¡Comisionado Creado!</div>
                         <p style={{ color: '#64748b' }}>
                             Se ha añadido a <strong>{fullName}</strong> correctamente al equipo.
                         </p>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {error && (
                             <div style={{ padding: '0.75rem', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', color: '#991b1b', fontSize: '0.875rem' }}>
                                 {error}

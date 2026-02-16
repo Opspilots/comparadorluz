@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer, TariffVersion, Commissioner } from '@/shared/types'
+import { useToast } from '@/hooks/use-toast'
 
 export function ContractForm() {
     const navigate = useNavigate()
     const location = useLocation()
+    const { toast } = useToast()
     const [loading, setLoading] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const { id } = useParams()
 
     // Data Sources
     const [customers, setCustomers] = useState<Customer[]>([])
@@ -22,6 +25,7 @@ export function ContractForm() {
     const [annualValue, setAnnualValue] = useState('')
     const [signedAt, setSignedAt] = useState(new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState('')
+    const [status, setStatus] = useState('signed')
 
     useEffect(() => {
         const fetchData = async () => {
@@ -55,8 +59,25 @@ export function ContractForm() {
                 setTariffs(tariffData || [])
                 setCommissioners(commData || [])
 
-                // Handle Autofill from Comparator
-                if (location.state?.prefillData) {
+                // Handle Edit Mode or Prefill
+                if (id) {
+                    const { data: contract, error: contractError } = await supabase
+                        .from('contracts')
+                        .select('*')
+                        .eq('id', id)
+                        .single()
+
+                    if (contractError) throw contractError
+                    if (contract) {
+                        setCustomerId(contract.customer_id)
+                        setCommercialId(contract.commercial_id || '')
+                        setTariffVersionId(contract.tariff_version_id)
+                        setAnnualValue(contract.annual_value_eur?.toString() || '')
+                        setSignedAt(contract.signed_at || new Date().toISOString().split('T')[0])
+                        setNotes(contract.notes || '')
+                        setStatus(contract.status || 'signed')
+                    }
+                } else if (location.state?.prefillData) {
                     const { customerId, tariffVersionId, annualValue } = location.state.prefillData
                     if (customerId) setCustomerId(customerId)
                     if (tariffVersionId) setTariffVersionId(tariffVersionId)
@@ -90,40 +111,61 @@ export function ContractForm() {
 
             if (!profile) throw new Error('Perfil no encontrado')
 
-            // Generate Contract Number (Random for now)
-            const contractNumber = `CTR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+            if (id) {
+                // Update existing contract
+                const { error: updateError } = await supabase
+                    .from('contracts')
+                    .update({
+                        customer_id: customerId,
+                        commercial_id: commercialId || null,
+                        tariff_version_id: tariffVersionId,
+                        signed_at: signedAt,
+                        annual_value_eur: parseFloat(annualValue),
+                        notes: notes,
+                        status: status,
+                    })
+                    .eq('id', id)
 
-            const { error: insertError } = await supabase
-                .from('contracts')
-                .insert({
-                    company_id: profile.company_id,
-                    customer_id: customerId,
-                    commercial_id: commercialId || null, // Handle empty string as null
-                    tariff_version_id: tariffVersionId,
-                    contract_number: contractNumber,
-                    status: 'signed', // Default to signed for manual entry
-                    signed_at: signedAt,
-                    annual_value_eur: parseFloat(annualValue),
-                    notes: notes,
-                })
+                if (updateError) throw updateError
+                toast({ title: 'Contrato actualizado', description: 'El contrato se ha actualizado correctamente.' })
+            } else {
+                // Create new contract
+                // Generate Contract Number (Random for now)
+                const contractNumber = `CTR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
 
-            if (insertError) throw insertError
+                const { error: insertError } = await supabase
+                    .from('contracts')
+                    .insert({
+                        company_id: profile.company_id,
+                        customer_id: customerId,
+                        commercial_id: commercialId || null,
+                        tariff_version_id: tariffVersionId,
+                        contract_number: contractNumber,
+                        status: status, // Use selected status
+                        signed_at: signedAt,
+                        annual_value_eur: parseFloat(annualValue),
+                        notes: notes,
+                    })
+
+                if (insertError) throw insertError
+                toast({ title: 'Contrato registrado', description: 'El contrato se ha creado correctamente.' })
+            }
 
             navigate('/contracts')
-        } catch (err: any) {
-            console.error('Error saving contract:', err)
-            setError(err.message || 'Error al guardar el contrato')
+        } catch (err) {
+            const error = err as Error;
+            console.error('Error saving contract:', error)
+            setError(error.message || 'Error al guardar el contrato')
         } finally {
             setLoading(false)
         }
     }
 
-    if (pageLoading) return <div className="p-8 text-center text-gray-500">Cargando formulario...</div>
+    if (pageLoading) return <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Cargando formulario...</div>
 
     return (
-        <div className="card" style={{ maxWidth: '800px', margin: '2rem auto' }}>
-            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Registrar Contrato</h1>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Añade manualmente una venta cerrada al sistema.</p>
+        <div className="card" style={{ maxWidth: '800px', margin: '2rem auto', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+
 
             {error && (
                 <div style={{ padding: '1rem', background: '#fef2f2', color: '#991b1b', marginBottom: '1.5rem', borderRadius: '8px', border: '1px solid #fee2e2' }}>
@@ -201,6 +243,20 @@ export function ContractForm() {
                             style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
                         />
                     </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estado</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                        >
+                            <option value="pending">Pendiente</option>
+                            <option value="signed">Firmado</option>
+                            <option value="active">Activo</option>
+                            <option value="cancelled">Cancelado</option>
+                            <option value="completed">Completado</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
@@ -220,7 +276,7 @@ export function ContractForm() {
                         className="btn btn-primary"
                         style={{ flex: 1, padding: '0.875rem', fontSize: '1rem' }}
                     >
-                        {loading ? 'Guardando...' : 'Registrar Contrato'}
+                        {loading ? 'Guardando...' : (id ? 'Actualizar Contrato' : 'Registrar Contrato')}
                     </button>
                     <button
                         type="button"

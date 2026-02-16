@@ -232,8 +232,8 @@ await auditLog({
 
 1. **Phase 1**: Core tables + auth
 2. **Phase 2**: Tariff engine + batch pipeline
-3. **Phase 3**: CRM + comparator
-4. **Phase 4**: Commissions + fiscal
+3. **Phase 3**: Messaging & Campaigns (CRM Adaptation)
+4. **Phase 4**: Basic Comparator
 5. **Phase 5**: Seed data + RLS policies
 
 ## Deployment Architecture

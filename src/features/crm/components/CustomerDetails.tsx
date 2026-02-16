@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { supabase } from '@/shared/lib/supabase'
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { supabase } from '@/shared/lib/supabase';
+import { Mail, Phone, MessageSquare } from 'lucide-react';
 import type { Customer, Contact, SupplyPoint, Contract } from '@/shared/types'
+import { useState, useEffect } from 'react'
 
 export function CustomerDetails() {
     const { id } = useParams<{ id: string }>()
+    const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [customer, setCustomer] = useState<Customer | null>(null)
     const [contacts, setContacts] = useState<Contact[]>([])
@@ -18,26 +20,23 @@ export function CustomerDetails() {
     const fetchCustomerData = async (customerId: string) => {
         setLoading(true)
 
-        // 1. Fetch Customer
         const { data: cust, error: custErr } = await supabase
             .from('customers')
             .select('*')
             .eq('id', customerId)
             .single()
 
-        // 2. Fetch Contacts
         const { data: cont, error: contErr } = await supabase
             .from('contacts')
             .select('*')
             .eq('customer_id', customerId)
+            .order('created_at', { ascending: true })
 
-        // 3. Fetch Supply Points
         const { data: sps, error: spErr } = await supabase
             .from('supply_points')
             .select('*')
             .eq('customer_id', customerId)
 
-        // 4. Fetch Contracts
         const { data: contr, error: contrErr } = await supabase
             .from('contracts')
             .select(`
@@ -58,9 +57,8 @@ export function CustomerDetails() {
         setLoading(false)
     }
 
-    // Badge Style Helper
     const badgeStyle = (status: string) => {
-        const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, border: '1px solid transparent', display: 'inline-block' }
+        const base: React.CSSProperties = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', border: '1px solid transparent', display: 'inline-block' }
         switch (status) {
             case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
             case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
@@ -84,22 +82,6 @@ export function CustomerDetails() {
         'perdido': 'Perdido'
     }
 
-    const handleStatusChange = async (newStatus: string) => {
-        if (!id || !customer) return
-        try {
-            const { error } = await supabase
-                .from('customers')
-                .update({ status: newStatus })
-                .eq('id', id)
-
-            if (error) throw error
-            setCustomer({ ...customer, status: newStatus as any })
-        } catch (err) {
-            console.error('Error updating status:', err)
-            alert('No se pudo actualizar el estado')
-        }
-    }
-
     if (loading) return <div style={{ padding: '2rem' }}>Cargando ficha del cliente...</div>
     if (!customer) return <div style={{ padding: '2rem' }}>Cliente no encontrado.</div>
 
@@ -108,27 +90,20 @@ export function CustomerDetails() {
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                 <div>
                     <Link to="/crm" style={{ color: '#666', textDecoration: 'none', marginBottom: '1rem', display: 'block' }}>← Volver al listado</Link>
-                    <h1 style={{ margin: 0 }}>{customer.name}</h1>
+                    <div style={{ margin: 0 }}>{customer.name}</div>
                     <p style={{ color: '#666', margin: '0.5rem 0' }}>CIF: {customer.cif} | {customer.province || 'Sin provincia'}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <Link to={`/crm/${id}/edit`} className="btn btn-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>Editar Datos</Link>
-                    <select
-                        value={customer.status}
-                        onChange={(e) => handleStatusChange(e.target.value)}
-                        style={{
-                            ...badgeStyle(customer.status),
-                            appearance: 'none',
-                            cursor: 'pointer',
-                            outline: 'none'
-                        }}
+                    <Link
+                        to={`/admin/messages/${id}`}
+                        className="btn btn-primary"
+                        style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
                     >
-                        {Object.entries(statusLabels).map(([val, label]) => (
-                            <option key={val} value={val} style={{ background: 'white', color: 'black' }}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
+                        Enviar Mensaje
+                    </Link>
+                    <span style={badgeStyle(customer.status)}>
+                        {statusLabels[customer.status] || customer.status}
+                    </span>
                 </div>
             </header>
 
@@ -139,8 +114,7 @@ export function CustomerDetails() {
                     {/* Section: Contracts */}
                     <section className="card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Contratos</h2>
-                            <Link to="/contracts/new" state={{ prefillData: { customerId: customer.id } }} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>+ Nuevo Contrato</Link>
+
                         </div>
                         {contracts.length === 0 ? (
                             <p style={{ color: 'var(--text-muted)' }}>No hay contratos asociados a este cliente.</p>
@@ -172,8 +146,7 @@ export function CustomerDetails() {
                     {/* Section: Supply Points */}
                     <section className="card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Puntos de Suministro (CUPS)</h2>
-                            <Link to={`/crm/${customer.id}/supply-points/new`} className="btn btn-secondary" style={{ textDecoration: 'none', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}>+ Añadir CUPS</Link>
+
                         </div>
                         {supplyPoints.length === 0 ? (
                             <p style={{ color: 'var(--text-muted)' }}>No hay puntos de suministro registrados.</p>
@@ -197,25 +170,72 @@ export function CustomerDetails() {
 
                 {/* Sidebar */}
                 <aside style={{ display: 'grid', gap: '2rem', alignContent: 'start' }}>
-                    <section className="card">
+                    {/* Contacts Section */}
+                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Contactos</h3>
-                            <Link to={`/crm/${customer.id}/contacts/new`} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', textDecoration: 'none' }}>+ Nuevo</Link>
+
                         </div>
-                        {contacts.length === 0 ? (
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Sin contactos.</p>
-                        ) : (
-                            <div style={{ display: 'grid', gap: '1rem' }}>
-                                {contacts.map(c => (
-                                    <div key={c.id} style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem' }}>
-                                        <p style={{ fontWeight: 600, margin: 0, fontSize: '0.95rem' }}>{c.first_name} {c.last_name}</p>
-                                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>{c.email}</p>
-                                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem' }}>{c.phone}</p>
+
+                        {/* Emails Section */}
+                        <div style={{ marginBottom: '1.5rem' }}>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {contacts.filter(c => c.email).map(contact => (
+                                    <div key={contact.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: '#f9fafb', borderRadius: '0.375rem', border: '1px solid #f3f4f6', transition: 'border-color 0.15s' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                                            <div style={{ background: '#dbeafe', padding: '0.5rem', borderRadius: '9999px' }}>
+                                                <Mail size={16} style={{ color: '#2563eb' }} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <p style={{ fontWeight: 500, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.email}</p>
+                                                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {customer.customer_type === 'empresa' && (contact.position || contact.first_name || 'Email')}
+                                                    {contact.is_primary && <span style={{ marginLeft: '0.5rem', padding: '0.125rem 0.375rem', background: '#dbeafe', color: '#1d4ed8', fontSize: '10px', borderRadius: '0.25rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Principal</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => navigate(`/admin/messages/${customer.id}?contactId=${contact.id}`)}
+                                                title="Enviar mensaje"
+                                                style={{ padding: '0.375rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#4b5563', borderRadius: '0.25rem' }}
+                                            >
+                                                <MessageSquare size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </section>
+                        </div>
+
+                        {/* Phones Section */}
+                        <div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {contacts.filter(c => c.phone).map(contact => (
+                                    <div key={contact.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: '#f9fafb', borderRadius: '0.375rem', border: '1px solid #f3f4f6', transition: 'border-color 0.15s' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                                            <div style={{ background: '#dcfce7', padding: '0.5rem', borderRadius: '9999px' }}>
+                                                <Phone size={16} style={{ color: '#16a34a' }} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <p style={{ fontWeight: 500, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.phone}</p>
+                                                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {customer.customer_type === 'empresa' && (contact.position || contact.first_name || 'Teléfono')}
+                                                    {contact.is_primary && <span style={{ marginLeft: '0.5rem', padding: '0.125rem 0.375rem', background: '#dbeafe', color: '#1d4ed8', fontSize: '10px', borderRadius: '0.25rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Principal</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <a href={`tel:${contact.phone}`} title="Llamar" style={{ padding: '0.5rem', color: '#4b5563', borderRadius: '0.375rem', textDecoration: 'none', transition: 'color 0.15s' }}>
+                                                <Phone size={16} />
+                                            </a>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </aside>
             </div>
         </div>

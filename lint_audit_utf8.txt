@@ -1,0 +1,242 @@
+﻿
+> crmluz@0.0.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\auth\components\Login.tsx
+  70:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\auth\components\MessagingSettingsCard.tsx
+  58:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\auth\components\UserProfileCard.tsx
+  4:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\auth\pages\SettingsPage.tsx
+  11:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\components\CommissionRulesTab.tsx
+   25:8   warning  React Hook useEffect has a missing dependency: 'fetchRules'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  149:50  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\components\CommissionerContractsTab.tsx
+  19:8  warning  React Hook useEffect has a missing dependency: 'fetchContracts'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\components\CommissionerPayoutsTab.tsx
+  34:8  warning  React Hook useEffect has a missing dependency: 'fetchPayouts'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\components\CommissionerPerformanceTab.tsx
+  23:8  warning  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\components\CreateCommissionerDialog.tsx
+  78:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\components\CreateRuleDialog.tsx
+  15:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\pages\CommissionerDetailPage.tsx
+  24:8   warning  React Hook useEffect has a missing dependency: 'fetchCommissioner'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  42:49  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\commissioners\pages\CommissionersPage.tsx
+  62:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  65:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\comparator\components\ComparatorForm.tsx
+  33:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  64:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\comparator\components\InvoiceUploader.tsx
+   6:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\comparator\components\SaveComparisonDialog.tsx
+  71:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\comparator\hooks\useComparatorState.ts
+  111:8  warning  React Hook useEffect has a missing dependency: 'autoSaveTimeout'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\comparator\lib\rankTariffs.ts
+  75:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\comparator\pages\ComparisonHistory.tsx
+  47:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\contracts\components\ContractDocument.tsx
+  170:64   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  209:102  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\contracts\components\ContractForm.tsx
+   94:8   warning  React Hook useEffect has a missing dependency: 'id'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  155:23  error    Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\contracts\components\ContractPreview.tsx
+  12:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\crm\components\ContactDialog.tsx
+  113:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\crm\components\ContactForm.tsx
+  58:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\crm\components\CustomerForm.tsx
+   62:8   warning  React Hook useEffect has missing dependencies: 'fetchCustomer' and 'isEditing'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  101:69  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  102:69  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  110:51  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\crm\components\SupplyPointForm.tsx
+  59:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\dashboard\components\DashboardChart.tsx
+   9:38  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  14:8   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\dashboard\components\RecentActivity.tsx
+  33:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\dashboard\pages\DashboardPage.tsx
+  15:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\guide\useTour.ts
+   3:10  error  'useEffect' is defined but never used     @typescript-eslint/no-unused-vars
+  10:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\messaging\components\ChatWindow.tsx
+  132:17  error  'attachments' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\messaging\layouts\MessagingLayout.tsx
+  357:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\messaging\lib\messaging-service.ts
+  64:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  94:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\messaging\pages\CampaignForm.tsx
+  422:8   warning  React Hook useEffect has missing dependencies: 'fetchCampaign' and 'isEditing'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  428:8   warning  React Hook useEffect has a missing dependency: 'estimateRecipients'. Either include it or remove the dependency array               react-hooks/exhaustive-deps
+  851:98  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  859:80  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\messaging\pages\ConversationPage.tsx
+  64:8   warning  React Hook useEffect has missing dependencies: 'filteredContacts' and 'selectedContactId'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  96:26  error    Unexpected any. Specify a different type                                                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\TariffComponentsEditor.tsx
+  43:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\TariffUploadDialog.tsx
+  195:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  200:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  219:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step1Metadata.tsx
+  14:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step2ParserPreview.tsx
+   71:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   82:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  100:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step3AEnergyPrices.tsx
+  41:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step3BPowerPrices.tsx
+  46:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step4ScheduleRules.tsx
+  51:77  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step5FeesAndTaxes.tsx
+  27:69  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\Step6Summary.tsx
+   35:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\components\wizard\TariffWizard.tsx
+  33:48  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+  84:8   warning  React Hook useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  88:78  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+  97:36  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\lib\batch-actions.ts
+  14:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\lib\calculator.ts
+  115:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\pages\BatchDetailsPage.tsx
+  77:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\pages\TariffDetailsPage.tsx
+   13:42  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+   38:8   warning  React Hook useEffect has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   55:57  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+   56:56  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+  151:57  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+  164:56  error    Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\features\tariffs\pages\TariffUploadPage.tsx
+   62:8   warning  React Hook useCallback has a missing dependency: 'toast'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  103:31  error    Unexpected any. Specify a different type                                                                    @typescript-eslint/no-explicit-any
+  126:25  error    Unexpected any. Specify a different type                                                                    @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\shared\components\notifications\NotificationBell.tsx
+  14:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\shared\components\ui\badge.tsx
+  37:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\shared\components\ui\button.tsx
+  57:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\shared\lib\notifications.ts
+   9:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\shared\lib\pdf-utils.ts
+  24:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\src\shared\types\index.ts
+  384:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\supabase\functions\extract-invoice-data\index.ts
+  175:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\supabase\functions\parse-tariff-document\index.ts
+   22:15  error  'supabase' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  142:19  error  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\supabase\functions\process-cnmc-csv\index.ts
+  81:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\supabase\functions\process-tariff-sheet\index.ts
+   16:15  error  'authHeader' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   24:49  error  'batch_id' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  147:19  error  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\supabase\functions\send-message\index.ts
+  51:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\pelay\OneDrive\Escritorio\comparadorluz\supabase\functions\sync-electricity-prices\index.ts
+  49:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  70:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 112 problems (95 errors, 17 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

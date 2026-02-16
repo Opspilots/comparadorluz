@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { X } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 interface CreateRuleDialogProps {
     isOpen: boolean
@@ -22,6 +23,7 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
     const [tariffType, setTariffType] = useState('')
     const [percentage, setPercentage] = useState('')
     const [validFrom, setValidFrom] = useState(new Date().toISOString().split('T')[0])
+    const { toast } = useToast()
 
     useEffect(() => {
         if (isOpen) {
@@ -86,8 +88,7 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
             })
 
         if (error) {
-            console.error(error)
-            alert('Error al crear la regla: ' + error.message)
+            toast({ title: 'Error', description: 'Error al crear la regla: ' + error.message, variant: 'destructive' })
         } else {
             onSuccess()
             onClose()
@@ -111,13 +112,13 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
         }}>
             <div className="card" style={{ width: '500px', maxWidth: '90%', padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                    <h3 className="text-lg font-semibold">Nueva Regla de Comisión</h3>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Nueva Regla de Comisión</h3>
                     <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
                         <X size={20} />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {/* Commissioner */}
                     {!presetCommissionerId && (
                         <div>
@@ -172,7 +173,6 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
                             <option value="2.0TD">2.0TD</option>
                             <option value="3.0TD">3.0TD</option>
                             <option value="6.1TD">6.1TD</option>
-                            <option value="6.2TD">6.2TD</option>
                         </select>
                     </div>
 

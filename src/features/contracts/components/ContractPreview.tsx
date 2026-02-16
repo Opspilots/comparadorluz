@@ -70,9 +70,9 @@ export function ContractPreview() {
                     <button onClick={() => navigate('/contracts')} className="btn btn-secondary" style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ArrowLeft size={20} />
                     </button>
-                    <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
                         Vista Previa: {contract.contract_number}
-                    </h1>
+                    </div>
                 </div>
                 <div style={{ color: '#64748b', fontSize: '0.875rem' }}>
                     Cliente: <strong>{contract.customers?.name}</strong>

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 
 export interface ComparatorState {
+    // Supply Type
+    supplyType: 'electricity' | 'gas'
+
     // Selection
     selectedCustomer: string
     selectedSP: string
@@ -16,6 +19,7 @@ export interface ComparatorState {
     // Advanced inputs
     reactiveEnergy: string
     maxDemand: string
+    conversionFactor: string // For Gas
     currentCost: string
 
     // Invoice metadata
@@ -43,6 +47,7 @@ const STORAGE_KEY = 'comparator_form_state'
 const AUTO_SAVE_DELAY = 500 // ms
 
 const defaultState: ComparatorState = {
+    supplyType: 'electricity',
     selectedCustomer: '',
     selectedSP: '',
     customerName: '',
@@ -53,6 +58,7 @@ const defaultState: ComparatorState = {
     mode: 'client_first',
     reactiveEnergy: '',
     maxDemand: '',
+    conversionFactor: '',
     currentCost: '',
     cups: '',
     currentSupplier: '',

@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/shared/lib/supabase';
+import { useEffect } from 'react';
 import { TariffStructure } from '@/types/tariff';
 
 interface Step1Props {
@@ -13,35 +12,45 @@ interface Step1Props {
     };
     mode?: 'create' | 'edit';
     onChange: (key: keyof Step1Props['data'], value: any) => void;
+    suppliers?: any[]; // Now passed from parent
+    structures?: TariffStructure[]; // Now passed from parent
 }
 
-export default function Step1Metadata({ data, mode = 'create', onChange }: Step1Props) {
-    const [structures, setStructures] = useState<TariffStructure[]>([]);
-    const [suppliers, setSuppliers] = useState<any[]>([]);
+export default function Step1Metadata({ data, mode = 'create', onChange, suppliers = [], structures = [] }: Step1Props) {
+    // Removed internal state for structures/suppliers as they come from props now
 
     useEffect(() => {
-        const fetchData = async () => {
-            const { data: structs } = await supabase.from('tariff_structures').select('*');
-            const { data: supps } = await supabase.from('suppliers').select('id, name').eq('is_active', true);
-
-            if (structs) setStructures(structs);
-            if (supps) setSuppliers(supps);
-        };
-        fetchData();
+        console.log("Step1Metadata mounted");
+        // Logic to fetch is moved to parent to allow auto-mapping
     }, []);
 
     const isEdit = mode === 'edit';
 
-    return (
-        <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Configuración Básica</h2>
+    const labelStyle = { display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' };
+    const inputStyle = {
+        width: '100%',
+        padding: '0.5rem 0.75rem',
+        borderRadius: '0.375rem',
+        border: '1px solid #d1d5db',
+        fontSize: '0.875rem',
+        outline: 'none',
+        transition: 'border-color 0.15s ease-in-out',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+    };
+    const disabledStyle = { background: '#f3f4f6', cursor: 'not-allowed', color: '#6b7280' };
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>Configuración Básica</h2>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Comercializadora</label>
+                    <label style={labelStyle}>Comercializadora</label>
                     <select
-                        className={`w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${isEdit ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                        value={data.supplier_id}
+                        style={{ ...inputStyle, ...(isEdit ? disabledStyle : {}) }}
+                        value={data.supplier_id || ''}
                         onChange={(e) => onChange('supplier_id', e.target.value)}
                         disabled={isEdit}
                     >
@@ -53,21 +62,21 @@ export default function Step1Metadata({ data, mode = 'create', onChange }: Step1
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la Tarifa</label>
+                    <label style={labelStyle}>Nombre de la Tarifa</label>
                     <input
                         type="text"
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        value={data.name}
+                        style={inputStyle}
+                        value={data.name || ''}
                         onChange={(e) => onChange('name', e.target.value)}
                         placeholder="Ej: Plan Estable 24h"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Estructura Tarifaria</label>
+                    <label style={labelStyle}>Estructura Tarifaria</label>
                     <select
-                        className={`w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${isEdit ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                        value={data.tariff_structure_id}
+                        style={{ ...inputStyle, ...(isEdit ? disabledStyle : {}) }}
+                        value={data.tariff_structure_id || ''}
                         onChange={(e) => onChange('tariff_structure_id', e.target.value)}
                         disabled={isEdit}
                     >
@@ -76,53 +85,53 @@ export default function Step1Metadata({ data, mode = 'create', onChange }: Step1
                             <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
                         ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">Define los periodos de energía y potencia.</p>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Define los periodos de energía y potencia.</p>
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Precio</label>
-                    <div className="flex gap-4 mt-2">
-                        <label className={`inline-flex items-center ${isEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <label style={labelStyle}>Tipo de Precio</label>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: isEdit ? 'not-allowed' : 'pointer', opacity: isEdit ? 0.6 : 1 }}>
                             <input
                                 type="radio"
-                                className="form-radio text-blue-600"
                                 name="is_indexed"
                                 checked={!data.is_indexed}
                                 onChange={() => !isEdit && onChange('is_indexed', false)}
                                 disabled={isEdit}
+                                style={{ color: '#2563eb', width: '1rem', height: '1rem' }}
                             />
-                            <span className="ml-2">Fijo</span>
+                            <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>Fijo</span>
                         </label>
-                        <label className={`inline-flex items-center ${isEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: isEdit ? 'not-allowed' : 'pointer', opacity: isEdit ? 0.6 : 1 }}>
                             <input
                                 type="radio"
-                                className="form-radio text-blue-600"
                                 name="is_indexed"
-                                checked={data.is_indexed}
+                                checked={!!data.is_indexed}
                                 onChange={() => !isEdit && onChange('is_indexed', true)}
                                 disabled={isEdit}
+                                style={{ color: '#2563eb', width: '1rem', height: '1rem' }}
                             />
-                            <span className="ml-2">Indexado (OMIE)</span>
+                            <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>Indexado (OMIE)</span>
                         </label>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Válida Desde</label>
+                    <label style={labelStyle}>Válida Desde</label>
                     <input
                         type="date"
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        value={data.valid_from}
+                        style={inputStyle}
+                        value={data.valid_from || ''}
                         onChange={(e) => onChange('valid_from', e.target.value)}
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Código Oferta (Opcional)</label>
+                    <label style={labelStyle}>Código Oferta (Opcional)</label>
                     <input
                         type="text"
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        value={data.code}
+                        style={inputStyle}
+                        value={data.code || ''}
                         onChange={(e) => onChange('code', e.target.value)}
                         placeholder="Ref. Interna"
                     />
@@ -131,3 +140,4 @@ export default function Step1Metadata({ data, mode = 'create', onChange }: Step1
         </div>
     );
 }
+

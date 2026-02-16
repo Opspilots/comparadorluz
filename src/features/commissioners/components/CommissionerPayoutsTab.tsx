@@ -68,9 +68,9 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
     }
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Liquidaciones Mensuales</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="flex justify-between items-center mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Liquidaciones Mensuales</div>
                 {/* Future: Add 'Generate Payout' button available usually for admins */}
             </div>
 

@@ -111,7 +111,7 @@ export function CommissionerContractsTab({ commissionerId }: CommissionerContrac
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem' }}>
                                     <Link
-                                        to={`/contracts/${contract.id}`}
+                                        to={`/contracts/${contract.id}/view`}
                                         className="btn btn-secondary"
                                         style={{ padding: '0.3rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}
                                     >

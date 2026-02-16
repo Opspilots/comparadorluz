@@ -1,4 +1,5 @@
-export type TariffStructureCode = '2.0TD' | '3.0TD' | '6.1TD';
+export type TariffStructureCode = '2.0TD' | '3.0TD' | '6.1TD' | '6.0' | '3.0A' | '6.1A' | 'RL.1' | 'RL.2' | 'RL.3' | 'RL.4';
+export type SupplyType = 'electricity' | 'gas';
 
 export interface TariffStructure {
     id: string;
@@ -27,7 +28,7 @@ export interface TariffVersion {
     updated_at: string;
 }
 
-export type TariffRateType = 'energy' | 'power' | 'fixed_fee' | 'discount' | 'tax';
+export type TariffRateType = 'energy' | 'power' | 'fixed_fee' | 'discount' | 'tax' | 'reactive' | 'excess_power';
 
 export interface TariffRate {
     id: string;

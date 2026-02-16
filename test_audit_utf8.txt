@@ -1,0 +1,26 @@
+﻿
+> crmluz@0.0.0 test
+> vitest --run
+
+node.exe : [31m[7m[31m 
+MISSING DEPENDENCY [31m[27m 
+Cannot find dependency 'jsdom'
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo            
+  : NotSpecifi    ed: 
+([31m[7m[31    m 
+...endency 'jsdo    
+m':String) [], Rem    
+oteException
+    + FullyQualifiedEr    
+rorId : NativeComm    andError
+ 
+
+[39m

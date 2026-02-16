@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
-import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye } from 'lucide-react'
+import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye, Loader2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
+import { removeEmojis } from '@/shared/lib/utils'
 
 export function ContractList() {
     const [loading, setLoading] = useState(true)
     const [contracts, setContracts] = useState<Contract[]>([])
     const [filter, setFilter] = useState('all')
     const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+    const { toast } = useToast()
 
     useEffect(() => {
         fetchContracts()
@@ -66,27 +71,28 @@ export function ContractList() {
         }
     }
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('¿Estás seguro de eliminar este contrato?')) {
-            const { error } = await supabase.from('contracts').delete().eq('id', id)
-            if (error) {
-                console.error(error)
-                alert('Error al eliminar')
-            } else {
-                fetchContracts()
-            }
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        const { error } = await supabase.from('contracts').delete().eq('id', deleteTarget)
+        if (error) {
+            console.error(error)
+            toast({ title: 'Error', description: 'No se pudo eliminar el contrato.', variant: 'destructive' })
+        } else {
+            toast({ title: 'Contrato eliminado', description: 'El contrato se ha eliminado correctamente.' })
+            fetchContracts()
         }
+        setDeleteTarget(null)
     }
 
 
     return (
         <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>Contratos</h1>
+                <div></div>
 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     {/* Filters */}
-                    <div style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
+                    <div className="tour-contracts-filters" style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
                         {['all', 'pending', 'signed', 'active', 'cancelled'].map(f => (
                             <button
                                 key={f}
@@ -145,7 +151,7 @@ export function ContractList() {
                         </button>
                     </div>
 
-                    <Link to="/contracts/new" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem' }}>
+                    <Link to="/contracts/new" className="btn btn-primary tour-contracts-new-btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem' }}>
                         <Plus size={18} /> Nuevo Contrato
                     </Link>
                 </div>
@@ -171,7 +177,14 @@ export function ContractList() {
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center' }}>Cargando contratos...</td></tr>
+                                    <tr>
+                                        <td colSpan={7} style={{ padding: '4rem', textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                                                <Loader2 className="animate-spin" size={32} style={{ color: 'var(--primary)' }} />
+                                                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Cargando contratos...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ) : filteredContracts.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -185,12 +198,12 @@ export function ContractList() {
                                                 {contract.contract_number || '---'}
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
-                                                <div style={{ fontWeight: 500 }}>{contract.customers?.name || 'Cliente desconocido'}</div>
+                                                <div style={{ fontWeight: 500 }}>{removeEmojis(contract.customers?.name || 'Cliente desconocido')}</div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{contract.customers?.cif}</div>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
-                                                <div style={{ fontWeight: 500 }}>{contract.tariff_versions?.suppliers?.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{contract.tariff_versions?.tariff_name}</div>
+                                                <div style={{ fontWeight: 500 }}>{removeEmojis(contract.tariff_versions?.suppliers?.name || '')}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{removeEmojis(contract.tariff_versions?.tariff_name || '')}</div>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
                                                 <span style={badgeStyle(contract.status)}>
@@ -222,7 +235,7 @@ export function ContractList() {
                                                         <Pencil size={14} />
                                                     </Link>
                                                     <button
-                                                        onClick={() => handleDelete(contract.id)}
+                                                        onClick={() => setDeleteTarget(contract.id)}
                                                         className="btn btn-secondary"
                                                         style={{ padding: '0.4rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger-light)', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                         title="Eliminar"
@@ -252,7 +265,7 @@ export function ContractList() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                             <span style={badgeStyle(contract.status)}>{statusLabels[contract.status] || contract.status}</span>
-                                            <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem' }}>{contract.customers?.name}</h3>
+                                            <div style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{removeEmojis(contract.customers?.name || '')}</div>
                                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{contract.customers?.cif}</p>
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -278,11 +291,11 @@ export function ContractList() {
                                     <div style={{ padding: '1rem', background: 'var(--background)', borderRadius: '6px', fontSize: '0.9rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                             <span style={{ color: 'var(--text-muted)' }}>Tarifa:</span>
-                                            <span style={{ fontWeight: 500 }}>{contract.tariff_versions?.tariff_name}</span>
+                                            <span style={{ fontWeight: 500 }}>{removeEmojis(contract.tariff_versions?.tariff_name || '')}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                             <span style={{ color: 'var(--text-muted)' }}>Comercializadora:</span>
-                                            <span style={{ fontWeight: 500 }}>{contract.tariff_versions?.suppliers?.name}</span>
+                                            <span style={{ fontWeight: 500 }}>{removeEmojis(contract.tariff_versions?.suppliers?.name || '')}</span>
                                         </div>
                                     </div>
 
@@ -301,6 +314,16 @@ export function ContractList() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={deleteTarget !== null}
+                title="Eliminar contrato"
+                message="¿Estás seguro de eliminar este contrato? Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                variant="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteTarget(null)}
+            />
         </div>
     )
 }

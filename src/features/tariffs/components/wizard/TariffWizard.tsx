@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/shared/lib/supabase';
-import { Button } from '@/shared/components/ui/button';
-import { Card } from '@/shared/components/ui/card';
 import Step1Metadata from './Step1Metadata';
 import { Step2ParserPreview } from './Step2ParserPreview';
 import { Step3AEnergyPrices } from './Step3AEnergyPrices';
@@ -13,6 +11,7 @@ import { Step6Summary } from './Step6Summary';
 import { TariffWizardState, TariffStructure } from '@/types/tariff';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { Step3BGasFixedFee } from './Step3BGasFixedFee';
 
 const INITIAL_STATE: TariffWizardState = {
     metadata: {
@@ -29,19 +28,23 @@ const INITIAL_STATE: TariffWizardState = {
     validationErrors: {},
 };
 
-export function TariffWizard() {
+export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'electricity' | 'gas' }) {
     const [state, setState] = useState<TariffWizardState>(INITIAL_STATE);
     const [structures, setStructures] = useState<TariffStructure[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
     const { toast } = useToast();
 
     const { id } = useParams();
 
-    // Fetch structures on mount
+    // Fetch structures and suppliers on mount
     useEffect(() => {
-        supabase.from('tariff_structures').select('*')
-            .then(({ data }) => {
-                if (data) setStructures(data);
-            });
+        Promise.all([
+            supabase.from('tariff_structures').select('*'),
+            supabase.from('suppliers').select('id, name').eq('is_active', true)
+        ]).then(([structs, supps]) => {
+            if (structs.data) setStructures(structs.data);
+            if (supps.data) setSuppliers(supps.data);
+        });
     }, []);
 
     // Load existing tariff if ID is present
@@ -82,6 +85,14 @@ export function TariffWizard() {
     }, [id]);
 
     const currentStructure = structures.find(s => s.id === state.metadata.tariff_structure_id);
+    const isGas = currentStructure?.code?.startsWith('RL') || false;
+
+    // Filter structures based on initialSupplyType (if provided, usually for new tariffs)
+    const filteredStructures = structures.filter(s => {
+        if (!initialSupplyType) return true;
+        const isGasStructure = s.code?.startsWith('RL');
+        return initialSupplyType === 'gas' ? isGasStructure : !isGasStructure;
+    });
 
     const updateMetadata = (key: keyof TariffWizardState['metadata'], value: any) => {
         setState(prev => ({
@@ -90,13 +101,15 @@ export function TariffWizard() {
         }));
     };
 
+    // Removed autoFillFromParsed as CNMC import is gone
+
     const updateRates = (newRates: any[]) => {
         setState(prev => ({ ...prev, rates: newRates }));
     };
 
     const nextStep = () => {
-        // Basic validation before proceeding
-        if (state.currentStep === 1) {
+        // Validation before proceeding
+        if (state.currentStep === 2) {
             if (!state.metadata.supplier_id || !state.metadata.name || !state.metadata.tariff_structure_id) {
                 toast({
                     variant: 'destructive',
@@ -106,64 +119,97 @@ export function TariffWizard() {
                 return;
             }
         }
-        setState(prev => ({ ...prev, currentStep: prev.currentStep + 1 }));
+
+
+        let nextStep = state.currentStep + 1;
+        // Skip Schedule Rules (Step 5) for Gas
+        if (isGas && nextStep === 5) {
+            nextStep = 6;
+        }
+        setState(prev => ({ ...prev, currentStep: nextStep }));
     };
 
     const prevStep = () => {
-        setState(prev => ({ ...prev, currentStep: Math.max(1, prev.currentStep - 1) }));
+        let prevStep = state.currentStep - 1;
+        // Skip Schedule Rules (Step 5) for Gas
+        if (isGas && prevStep === 5) {
+            prevStep = 4;
+        }
+        setState(prev => ({ ...prev, currentStep: Math.max(1, prevStep) }));
     };
 
     return (
-        <div className="max-w-5xl mx-auto py-8 px-4">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Asistente de Tarifa</h1>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                    <span>Paso {state.currentStep} de 6</span>
-                    <span className="text-gray-300">|</span>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#111827', margin: 0 }}>Asistente de Tarifa</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    <span>Paso {state.currentStep} de 7</span>
+                    <span style={{ color: '#d1d5db' }}>|</span>
                     <span>{
-                        state.currentStep === 1 ? 'Configuración' :
-                            state.currentStep === 2 ? 'Importación' :
-                                state.currentStep === 3 ? 'Energía' :
-                                    state.currentStep === 4 ? 'Potencia' : // Step 3B is logically step 4 in UI flow if we split it? 
-                                        // Wait, user plan said:
-                                        // Step 3A: Energy
-                                        // Step 3B: Power
-                                        // Step 4: Schedules
-                                        // So my currentStep might need adjustment if I treat 3A and 3B as separate screens.
-                                        // I will map currentStep 1..6 to the components.
-                                        // 1: Metadata
-                                        // 2: Preview
-                                        // 3: Energy
-                                        // 4: Power  <-- This is where I shift index
-                                        // 5: Schedules
-                                        // 6: Fees
-                                        // 7: Summary <-- Total 7 steps?
-                                        // User plan said: "Paso 3A", "Paso 3B". 
-                                        // I'll make it 7 steps internally for simplicity or Keep 3 as a tabbed step?
-                                        // "Paso 3A" and "Paso 3B" implies a split. I'll increase total steps to 7.
+                        state.currentStep === 1 ? 'Subir Factura' :
+                            state.currentStep === 2 ? 'Configuración' :
+                                state.currentStep === 3 ? (isGas ? 'Término Variable' : 'Energía') :
+                                    state.currentStep === 4 ? (isGas ? 'Término Fijo' : 'Potencia') :
                                         state.currentStep === 5 ? 'Horarios' :
                                             state.currentStep === 6 ? 'Extras' : 'Resumen'
                     }</span>
                 </div>
                 {/* Progress Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-4">
-                    <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${(state.currentStep / 7) * 100}%` }}></div>
+                <div style={{ width: '100%', background: '#e5e7eb', borderRadius: '9999px', height: '0.625rem', marginTop: '1rem' }}>
+                    <div style={{
+                        background: '#2563eb',
+                        height: '0.625rem',
+                        borderRadius: '9999px',
+                        transition: 'all 0.3s',
+                        width: `${(state.currentStep / 7) * 100}%`
+                    }}></div>
                 </div>
             </div>
 
-            <Card className="p-6 min-h-[400px]">
+            <div className="card" style={{ padding: '2rem', minHeight: '400px', background: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
                 {state.currentStep === 1 && (
+                    <Step2ParserPreview
+                        data={state}
+                        onDataExtracted={(extractedMetadata, extractedRates) => {
+                            // Update Metadata
+                            if (extractedMetadata.name) updateMetadata('name', extractedMetadata.name);
+                            if (extractedMetadata.tariff_structure_id) {
+                                const structId = extractedMetadata.tariff_structure_id;
+                                const foundStruct = structures.find(s => s.code === structId || s.name.includes(structId));
+                                if (foundStruct) updateMetadata('tariff_structure_id', foundStruct.id);
+                            }
+                            if (extractedMetadata.supplier_id) {
+                                const supplierName = extractedMetadata.supplier_id;
+                                const foundSupplier = suppliers.find(s => s.name.toLowerCase().includes(supplierName.toLowerCase()));
+                                if (foundSupplier) updateMetadata('supplier_id', foundSupplier.id);
+                            }
+
+                            // Update Rates if found
+                            if (extractedRates && extractedRates.length > 0) {
+                                updateRates(extractedRates);
+                            }
+
+                            const msgDeps = [];
+                            if (extractedMetadata.supplier_id) msgDeps.push('Comercializadora');
+                            if (extractedMetadata.tariff_structure_id) msgDeps.push('Peaje');
+                            if (extractedRates && extractedRates.length > 0) msgDeps.push('Precios');
+
+                            toast({
+                                title: "Datos Extraídos",
+                                description: msgDeps.length > 0
+                                    ? `Se han detectado: ${msgDeps.join(', ')}`
+                                    : "No se detectaron datos automáticos. Por favor rellena los campos."
+                            });
+                        }}
+                    />
+                )}
+                {state.currentStep === 2 && (
                     <Step1Metadata
                         data={state.metadata}
                         mode={id ? 'edit' : 'create'}
                         onChange={updateMetadata}
-                    />
-                )}
-                {state.currentStep === 2 && (
-                    <Step2ParserPreview
-                        data={state}
-                        onDataExtracted={(extracted) => updateMetadata('name', extracted.name || state.metadata.name)}
+                        suppliers={suppliers}
+                        structures={filteredStructures}
                     />
                 )}
                 {state.currentStep === 3 && (
@@ -173,12 +219,21 @@ export function TariffWizard() {
                         onChange={updateRates}
                     />
                 )}
+
                 {state.currentStep === 4 && (
-                    <Step3BPowerPrices
-                        data={state}
-                        structure={currentStructure}
-                        onChange={updateRates}
-                    />
+                    isGas ? (
+                        <Step3BGasFixedFee
+                            data={state}
+                            structure={currentStructure}
+                            onChange={updateRates}
+                        />
+                    ) : (
+                        <Step3BPowerPrices
+                            data={state}
+                            structure={currentStructure}
+                            onChange={updateRates}
+                        />
+                    )
                 )}
                 {state.currentStep === 5 && (
                     <Step4ScheduleRules
@@ -199,17 +254,30 @@ export function TariffWizard() {
                         onSave={() => { }} // Handled internally in Step6 for now
                     />
                 )}
-            </Card>
+            </div>
 
-            <div className="mt-6 flex justify-between">
-                <Button variant="outline" onClick={prevStep} disabled={state.currentStep === 1}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Anterior
-                </Button>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                <button
+                    onClick={prevStep}
+                    disabled={state.currentStep === 1}
+                    className="btn btn-secondary"
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        opacity: state.currentStep === 1 ? 0.5 : 1,
+                        cursor: state.currentStep === 1 ? 'not-allowed' : 'pointer'
+                    }}
+                >
+                    <ChevronLeft size={16} /> Anterior
+                </button>
 
                 {state.currentStep < 7 && (
-                    <Button onClick={nextStep}>
-                        Siguiente <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <button
+                        onClick={nextStep}
+                        className="btn btn-primary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        Siguiente <ChevronRight size={16} />
+                    </button>
                 )}
             </div>
         </div>

@@ -58,7 +58,7 @@ export function MetricCard({ title, value, previousValue, icon, format = 'number
                     {title}
                 </div>
                 {icon && (
-                    <div style={{ color: 'var(--primary)', opacity: 0.7 }}>
+                    <div style={{ color: 'var(--primary)', opacity: 0.7, lineHeight: 0 }}>
                         {icon}
                     </div>
                 )}
