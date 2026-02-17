@@ -1,6 +1,4 @@
 import type {
-    TariffComponent,
-    TariffVersion,
     CalculationInput,
     CalculationResult,
     CalculationBreakdown,

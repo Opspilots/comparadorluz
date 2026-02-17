@@ -5,7 +5,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { TariffVersion } from '@/shared/types';
 import { ElectricityTariffTable } from '../components/ElectricityTariffTable';
 import { GasTariffTable } from '../components/GasTariffTable';
-import { Loader2, ZapOff, Plus, Search, Filter, X, Zap, Flame } from 'lucide-react';
+import { Loader2, ZapOff, Plus, Search, X, Zap, Flame } from 'lucide-react';
 
 export default function TariffDashboard() {
     const [activeTab, setActiveTab] = useState<'electricity' | 'gas'>('electricity');

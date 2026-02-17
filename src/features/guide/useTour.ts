@@ -1,6 +1,5 @@
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
-import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
 export function useTour() {

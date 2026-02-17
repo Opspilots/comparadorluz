@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateGasAnnualCost } from './gas-calculator';
 import { calculateAnnualCost } from './calculator';
-import { CalculationInput, TariffVersion, TariffComponent } from '@/shared/types';
+import { CalculationInput, TariffVersion } from '@/shared/types';
 import { GAS_CONSTANTS } from '@/shared/constants';
 
 describe('Gas Calculator', () => {
@@ -9,11 +9,8 @@ describe('Gas Calculator', () => {
         id: 'test-gas-tariff',
         tariff_name: 'Test Gas Tariff',
         tariff_type: 'RL.1',
-        supplier_id: 'supplier-1',
-        tariff_structure_id: 'structure-1',
-        product_code: 'RL.1',
         valid_from: '2023-01-01',
-        valid_to: null,
+        valid_to: undefined,
         is_active: true,
         is_indexed: false,
         created_at: '',
