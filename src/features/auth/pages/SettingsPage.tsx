@@ -9,7 +9,7 @@ import { SettingsAccordion } from '../components/SettingsAccordion'
 
 export function SettingsPage() {
     const navigate = useNavigate()
-    const [user, setUser] = useState<AppUser | any>(null)
+    const [user, setUser] = useState<AppUser | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -19,7 +19,7 @@ export function SettingsPage() {
     const fetchUser = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser()
-            setUser(user)
+            setUser(user as unknown as AppUser)
         } catch (error) {
             console.error('Error fetching user:', error)
         } finally {
@@ -54,7 +54,7 @@ export function SettingsPage() {
                     icon={<User size={20} />}
                     defaultOpen={true}
                 >
-                    <UserProfileCard user={user} />
+                    <UserProfileCard user={user as AppUser} />
                 </SettingsAccordion>
             </div>
 

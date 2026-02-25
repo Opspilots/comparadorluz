@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
@@ -27,9 +27,10 @@ export default defineConfig({
     },
     build: {
         target: 'esnext',
+        chunkSizeWarningLimit: 2000,
     },
     test: {
         globals: true,
         environment: 'jsdom',
     },
-})
+} as UserConfig)

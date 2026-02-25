@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/shared/components/ui/input';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/shared/lib/supabase';
+import { useCustomerSearch } from '../lib/useCustomerSearch';
 import { Loader2, User, Search, X } from 'lucide-react';
 
 interface NewMessageDialogProps {
@@ -126,41 +125,7 @@ export function NewMessageDialog({ open, onOpenChange }: NewMessageDialogProps) 
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const { data: customers, isLoading } = useQuery({
-        queryKey: ['customers-search-dialog', searchTerm],
-        queryFn: async () => {
-            if (!searchTerm || searchTerm.length < 2) return [];
-
-            // Get current user's company
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return [];
-
-            const { data: userData } = await supabase
-                .from('users')
-                .select('company_id')
-                .eq('id', user.id)
-                .single();
-
-            const companyId = userData?.company_id;
-
-            let query = supabase
-                .from('customers')
-                .select('id, name, cif')
-                .or(`name.ilike.*${searchTerm}*,cif.ilike.*${searchTerm}*`);
-
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-
-            const { data, error } = await query
-                .order('name')
-                .limit(10);
-
-            if (error) throw error;
-            return data;
-        },
-        enabled: searchTerm.length >= 2,
-    });
+    const { data: customers, isLoading } = useCustomerSearch(searchTerm);
 
     const handleSelectCustomer = (customerId: string) => {
         setSearchTerm('');
@@ -178,7 +143,7 @@ export function NewMessageDialog({ open, onOpenChange }: NewMessageDialogProps) 
             <div style={S.dialog}>
                 {/* Header */}
                 <div style={S.header}>
-
+                    <h3 style={S.title}>Nuevo Mensaje</h3>
                     <button
                         style={S.closeBtn}
                         onClick={() => onOpenChange(false)}

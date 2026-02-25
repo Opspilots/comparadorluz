@@ -32,7 +32,7 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
             if (error) throw error;
             toast({ title: 'Tarifa eliminada', description: 'La tarifa ha sido eliminada correctamente.' });
             navigate('/admin/tariffs');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar la tarifa.' });
         } finally {
@@ -44,6 +44,13 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
     const handleSave = async (activate: boolean) => {
         setSaving(true);
         try {
+            // Helper to prevent e.g '2026-02-29' crashing Supabase inserts
+            const sanitizeDate = (d: any) => {
+                if (!d) return null;
+                const dateObj = new Date(d);
+                return isNaN(dateObj.getTime()) ? null : d;
+            };
+
             // 1. Prepare Payload
             const { data: user } = await supabase.auth.getUser();
             const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user!.id).single();
@@ -62,7 +69,9 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
                 tariff_code: data.metadata.code,
                 tariff_type: selectedStructure?.code || '2.0TD',
                 is_indexed: data.metadata.is_indexed,
-                valid_from: data.metadata.valid_from,
+                valid_from: sanitizeDate(data.metadata.valid_from),
+                valid_to: sanitizeDate((data.metadata as any).valid_to),
+                contract_duration: data.metadata.contract_duration,
                 is_active: activate,
                 completion_status: isComplete ? 'complete' : 'draft'
             };
@@ -70,17 +79,56 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
             let versionId = id;
 
             if (mode === 'create' || id) {
-                // Use upsert to handle retries and updates uniformly
-                const { data: version, error: vError } = await supabase
-                    .from('tariff_versions')
-                    .upsert(payload, {
-                        onConflict: 'company_id, supplier_id, tariff_name, valid_from'
-                    })
-                    .select()
-                    .single();
+                if (id) {
+                    const { data: version, error: vError } = await supabase
+                        .from('tariff_versions')
+                        .update(payload)
+                        .eq('id', id)
+                        .select()
+                        .single();
+                    if (vError) throw vError;
+                    versionId = version.id;
+                } else {
+                    let versionCheckQuery = supabase
+                        .from('tariff_versions')
+                        .select('id')
+                        .eq('company_id', payload.company_id)
+                        .eq('supplier_id', payload.supplier_id)
+                        .eq('tariff_structure_id', payload.tariff_structure_id)
+                        .ilike('tariff_name', payload.tariff_name)
+                        .eq('valid_from', payload.valid_from);
 
-                if (vError) throw vError;
-                versionId = version.id;
+                    if (payload.contract_duration === null || payload.contract_duration === undefined) {
+                        versionCheckQuery = versionCheckQuery.is('contract_duration', null);
+                    } else {
+                        versionCheckQuery = versionCheckQuery.eq('contract_duration', payload.contract_duration);
+                    }
+
+                    const { data: existingVersion, error: existingError } = await versionCheckQuery.maybeSingle();
+
+                    if (existingError && existingError.code !== 'PGRST116') {
+                        throw existingError;
+                    }
+
+                    if (existingVersion) {
+                        const { data: updatedVersion, error: updateError } = await supabase
+                            .from('tariff_versions')
+                            .update(payload)
+                            .eq('id', existingVersion.id)
+                            .select()
+                            .single();
+                        if (updateError) throw updateError;
+                        versionId = updatedVersion.id;
+                    } else {
+                        const { data: insertedVersion, error: insertError } = await supabase
+                            .from('tariff_versions')
+                            .insert(payload)
+                            .select()
+                            .single();
+                        if (insertError) throw insertError;
+                        versionId = insertedVersion.id;
+                    }
+                }
             }
 
             if (!versionId) throw new Error("No version ID");
@@ -97,7 +145,10 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
                 price: r.price,
                 price_formula: r.price_formula,
                 unit: r.unit,
-                confidence_score: r.confidence_score
+                confidence_score: r.confidence_score,
+                contract_duration: r.contract_duration ?? null,
+                valid_from: sanitizeDate(r.valid_from),
+                valid_to: sanitizeDate(r.valid_to),
             }));
 
             if (ratesPayload.length > 0) {
@@ -136,12 +187,13 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
 
             navigate('/admin/tariffs');
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
             toast({
                 variant: 'destructive',
                 title: "Error al guardar",
-                description: err.message,
+                description: errorMsg,
             });
         } finally {
             setSaving(false);

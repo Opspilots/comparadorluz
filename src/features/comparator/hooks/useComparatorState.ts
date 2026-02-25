@@ -79,7 +79,6 @@ const defaultState: ComparatorState = {
 export function useComparatorState() {
     const [state, setState] = useState<ComparatorState>(defaultState)
     const [isRestored, setIsRestored] = useState(false)
-    const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
 
     // Load state from localStorage on mount
     useEffect(() => {
@@ -97,10 +96,6 @@ export function useComparatorState() {
 
     // Auto-save to localStorage when state changes (debounced)
     useEffect(() => {
-        if (autoSaveTimeout) {
-            clearTimeout(autoSaveTimeout)
-        }
-
         const timeout = setTimeout(() => {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
@@ -109,10 +104,8 @@ export function useComparatorState() {
             }
         }, AUTO_SAVE_DELAY)
 
-        setAutoSaveTimeout(timeout)
-
         return () => {
-            if (timeout) clearTimeout(timeout)
+            clearTimeout(timeout)
         }
     }, [state])
 

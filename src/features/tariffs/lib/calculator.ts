@@ -11,8 +11,6 @@
  */
 
 import type {
-
-    TariffComponent,
     TariffVersion,
     TariffRate,
     CalculationInput,
@@ -20,6 +18,7 @@ import type {
     CalculationBreakdown,
 } from '@/shared/types';
 import { calculateGasAnnualCost } from './gas-calculator';
+import { findActiveRate } from './tariffUtils';
 
 // ============================================================================
 // Constants
@@ -98,34 +97,22 @@ function getConsumptionDistribution(
     return DEFAULT_CONSUMPTION_DISTRIBUTION;
 }
 
-/**
- * Extract component by type and period
- */
-function getComponent(
-    components: TariffComponent[],
-    type: string,
-    period?: string
-): TariffComponent | undefined {
-    return components.find(
-        (c) => c.component_type === type && (!period || c.period === period)
-    );
-}
-
-/**
- * Get all energy price components grouped by period
- */
 function getEnergyPrices(
     tariff_version: TariffVersion,
     market_prices?: Array<{ indicator_id: number; price: number }>
 ): Map<string, number> {
     const prices = new Map<string, number>();
-    const components = tariff_version.tariff_components || [];
     const rates = tariff_version.tariff_rates || [];
+    const today = new Date().toISOString().split('T')[0];
 
     // If indexed, calculate price from market baseline + margin
     if (tariff_version.is_indexed && market_prices) {
         rates.filter((r: TariffRate) => r.item_type === 'energy').forEach((r: TariffRate) => {
             if (r.period) {
+                // Check if this specific rate version is active for today
+                const activeRate = findActiveRate(rates as any, 'energy', r.period, today, tariff_version.contract_duration);
+                if (activeRate?.id !== r.id) return;
+
                 // Simplified indicator mapping for P1-P3
                 const indicatorId = r.period === 'P1' ? 1013 : r.period === 'P2' ? 1014 : 1015;
                 const mPrice = market_prices.find(mp => mp.indicator_id === indicatorId)?.price || 0;
@@ -139,14 +126,16 @@ function getEnergyPrices(
         if (prices.size > 0) return prices;
     }
 
-    // Fallback/Standard: fixed prices from components
-    components
-        .filter((c: TariffComponent) => c.component_type === 'energy_price')
-        .forEach((c: TariffComponent) => {
-            if (c.period && c.price_eur_kwh !== undefined) {
-                prices.set(c.period, c.price_eur_kwh);
-            }
-        });
+    // Fallback/Standard: find best active prices for each period
+    const energyRateEntries = rates.filter(r => r.item_type === 'energy');
+    const periods = Array.from(new Set(energyRateEntries.map(r => r.period).filter(Boolean))) as string[];
+
+    periods.forEach(period => {
+        const activeRate = findActiveRate(rates as any, 'energy', period, today, tariff_version.contract_duration);
+        if (activeRate && activeRate.price !== null) {
+            prices.set(period, activeRate.price);
+        }
+    });
 
     return prices;
 }
@@ -154,16 +143,19 @@ function getEnergyPrices(
 /**
  * Get all power price components grouped by period
  */
-function getPowerPrices(components: TariffComponent[]): Map<string, number> {
+function getPowerPrices(rates: TariffRate[], contractDuration: number | null): Map<string, number> {
     const prices = new Map<string, number>();
+    const today = new Date().toISOString().split('T')[0];
 
-    components
-        .filter((c) => c.component_type === 'power_price')
-        .forEach((c) => {
-            if (c.period && c.price_eur_kw_year !== undefined) {
-                prices.set(c.period, c.price_eur_kw_year);
-            }
-        });
+    const powerRateEntries = rates.filter(r => r.item_type === 'power');
+    const periods = Array.from(new Set(powerRateEntries.map(r => r.period).filter(Boolean))) as string[];
+
+    periods.forEach(period => {
+        const activeRate = findActiveRate(rates as any, 'power', period, today, contractDuration);
+        if (activeRate && activeRate.price !== null) {
+            prices.set(period, activeRate.price);
+        }
+    });
 
     return prices;
 }
@@ -240,18 +232,20 @@ export function calculatePowerComponent(
 /**
  * Calculate fixed fees (monthly subscription fees)
  * 
- * @param components - Tariff components
+ * @param rates - Tariff rates
+ * @param contractDuration - Contract duration in months
  * @returns Annual fixed fee cost
  */
-export function calculateFixedFee(components: TariffComponent[]): number {
-    const fixedFeeComponent = getComponent(components, 'fixed_fee');
+export function calculateFixedFee(rates: TariffRate[], contractDuration: number | null): number {
+    const today = new Date().toISOString().split('T')[0];
+    const activeRate = findActiveRate(rates as any, 'fixed_fee', undefined, today, contractDuration);
 
-    if (!fixedFeeComponent || !fixedFeeComponent.fixed_price_eur_month) {
+    if (!activeRate || !activeRate.price) {
         return 0;
     }
 
     // Convert monthly to annual
-    return round(fixedFeeComponent.fixed_price_eur_month * 12);
+    return round(activeRate.price * 12);
 }
 
 /**
@@ -346,8 +340,8 @@ export function calculateElectricityAnnualCost(input: CalculationInput): Calcula
         market_prices
     } = input;
 
-    if (!tariff_version.tariff_components || tariff_version.tariff_components.length === 0) {
-        throw new Error('Tariff version has no components');
+    if (!tariff_version.tariff_rates || tariff_version.tariff_rates.length === 0) {
+        throw new Error('Tariff version has no rates');
     }
 
     // 1. Get Consumption Distribution (P1-P6)
@@ -358,7 +352,7 @@ export function calculateElectricityAnnualCost(input: CalculationInput): Calcula
 
     // 2. Extract price components
     const energyPrices = getEnergyPrices(tariff_version, market_prices);
-    const powerPrices = getPowerPrices(tariff_version.tariff_components);
+    const powerPrices = getPowerPrices(tariff_version.tariff_rates || [], tariff_version.contract_duration ?? null);
 
     if (energyPrices.size === 0) {
         throw new Error('No energy prices found in tariff');
@@ -411,7 +405,7 @@ export function calculateElectricityAnnualCost(input: CalculationInput): Calcula
     excessPowerPenalty = round(excessPowerPenalty);
 
     // 6. FIXED FEES & EXTRAS
-    const fixedFee = calculateFixedFee(tariff_version.tariff_components);
+    const fixedFee = calculateFixedFee(tariff_version.tariff_rates || [], tariff_version.contract_duration ?? null);
     const meterRental = round(meter_rental_eur_month * 12); // Add meter rental
 
     // 7. SUBTOTAL & TAXES

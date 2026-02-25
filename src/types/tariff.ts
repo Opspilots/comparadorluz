@@ -10,6 +10,14 @@ export interface TariffStructure {
     default_schedule_template_id?: string;
 }
 
+export interface Supplier {
+    id: string;
+    name: string;
+    is_active: boolean;
+    logo_url?: string;
+    created_at?: string;
+}
+
 export type TariffCompletionStatus = 'draft' | 'partial' | 'complete';
 
 export interface TariffVersion {
@@ -21,6 +29,7 @@ export interface TariffVersion {
     is_indexed: boolean;
     valid_from: string;
     valid_to?: string;
+    contract_duration?: number | null; // 12, 24, 36 months
     completion_status: TariffCompletionStatus;
     is_active: boolean;
     source_file_id?: string;
@@ -41,6 +50,9 @@ export interface TariffRate {
     confidence_score?: number;
     source_page?: number;
     source_bbox?: { x: number, y: number, w: number, h: number };
+    contract_duration?: number | null; // Duration in months (12, 24...)
+    valid_from?: string; // Price validity start
+    valid_to?: string;   // Price validity end
 }
 
 export interface TariffSchedule {
@@ -63,6 +75,7 @@ export interface TariffWizardState {
         code: string;
         is_indexed: boolean;
         valid_from: string;
+        contract_duration: number | null;
     };
     rates: TariffRate[];
     schedules: TariffSchedule[];
@@ -70,3 +83,31 @@ export interface TariffWizardState {
     currentStep: number;
     validationErrors: Record<string, string>;
 }
+// ... existing types
+export interface PriceSet {
+    valid_from?: string;
+    valid_to?: string;
+    contract_duration?: number | null;
+    energy_prices: Array<{ period?: string; price: number }>;
+    power_prices: Array<{ period?: string; price: number; unit?: string }>;
+    fixed_term_prices: Array<{ period?: string; price: number; unit?: string }>;
+}
+
+export interface DetectedTariff {
+    id: string; // Temporary ID for UI
+    fileName: string;
+    supplier_name?: string;
+    tariff_name?: string;
+    tariff_structure?: string;
+    supply_type?: 'electricity' | 'gas';
+    contract_duration?: number | null; // Keep at top level as fallback
+    is_indexed?: boolean;
+    valid_from?: string; // OCR root level
+    valid_to?: string | null; // OCR root level
+    price_sets: PriceSet[];
+    // Legacy flat arrays (kept for backwards compat with old prompt responses)
+    energy_prices: Array<{ period?: string, price: number }>;
+    power_prices: Array<{ period?: string, price: number, unit?: string }>;
+    fixed_term_prices: Array<{ period?: string, price: number, unit?: string }>;
+}
+

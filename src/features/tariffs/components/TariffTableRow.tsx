@@ -1,52 +1,40 @@
 import { format } from 'date-fns';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { Calendar, ExternalLink, History } from 'lucide-react';
 import { TariffVersion } from '@/shared/types';
 import { useNavigate } from 'react-router-dom';
+import { findActiveRate, hasRateHistory } from '../lib/tariffUtils';
 
 interface TariffTableRowProps {
     tariff: TariffVersion;
 }
 
-export function TariffTableRow({ tariff }: TariffTableRowProps) {
+export const TariffTableRow = ({ tariff }: TariffTableRowProps) => {
     const navigate = useNavigate();
-
-    // Group components and rates
-    const components = tariff.tariff_components || [];
     const rates = tariff.tariff_rates || [];
-
-    const isGas = tariff.tariff_type.startsWith('RL');
+    const components = tariff.tariff_components || [];
 
     // Get energy prices P1, P2, P3
     const getEnergyPrice = (period: string) => {
-        // Try tariff_rates first (preferred)
-        const rate = rates.find(r => r.item_type === 'energy' && r.period === period);
-        if (rate && rate.price !== null) return rate.price.toFixed(4); // Increased precision for Gas/Elec details
+        const activeRate = findActiveRate(rates as any, 'energy', period, undefined, tariff.contract_duration);
+        if (activeRate && activeRate.price !== null) return activeRate.price.toFixed(4);
 
-        // Fallback to tariff_components
+        // Fallback to tariff_components (deprecated)
         const comp = components.find(c => c.component_type === 'energy_price' && c.period === period);
         return comp?.price_eur_kwh ? comp.price_eur_kwh.toFixed(4) : '-';
     };
+
+    const hasHistory = hasRateHistory(rates as any, 'energy', 'P1', tariff.contract_duration) ||
+        hasRateHistory(rates as any, 'energy', 'P2', tariff.contract_duration) ||
+        hasRateHistory(rates as any, 'energy', 'P3', tariff.contract_duration) ||
+        hasRateHistory(rates as any, 'fixed_fee', undefined, tariff.contract_duration);
 
     const statusStyle = tariff.is_active
         ? { background: '#ecfdf5', color: '#059669', border: '1px solid #d1fae5' }
         : { background: '#fef2f2', color: '#dc2626', border: '1px solid #fee2e2' };
 
-    const typeStyle = {
-        background: '#f1f5f9',
-        color: '#475569',
-        fontSize: '0.7rem',
-        fontWeight: 600,
-        padding: '0.2rem 0.5rem',
-        borderRadius: '4px',
-        textTransform: 'uppercase' as const,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.3rem',
-        width: 'fit-content'
-    };
-
     return (
         <tr
+            key={tariff.id}
             onClick={() => navigate(`/admin/tariffs/${tariff.id}`)}
             style={{
                 cursor: 'pointer',
@@ -58,88 +46,67 @@ export function TariffTableRow({ tariff }: TariffTableRowProps) {
         >
             <td style={{ padding: '1rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>{tariff.tariff_name}</div>
+                    <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {tariff.tariff_name}
+                        {hasHistory && (
+                            <span title="Tiene historial de precios" style={{ color: '#6366f1', background: '#eef2ff', padding: '0.1rem 0.3rem', borderRadius: '4px', display: 'flex' }}>
+                                <History size={12} />
+                            </span>
+                        )}
+                    </div>
                     <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{tariff.supplier_name}</div>
                 </div>
             </td>
-
             <td style={{ padding: '1rem' }}>
-                <span style={typeStyle}>
+                <span style={{
+                    background: '#f1f5f9', color: '#475569', fontSize: '0.7rem', fontWeight: 600,
+                    padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase'
+                }}>
                     {tariff.tariff_type}
                 </span>
             </td>
-
             <td style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>{isGas ? 'Var:' : 'P1:'}</span>
-                        <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{getEnergyPrice('P1')}</span>
+                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>P1</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>{getEnergyPrice('P1')}</span>
                     </div>
-                    {!isGas && (
+                    {(tariff.tariff_type?.includes('2.0') || tariff.tariff_type?.includes('3.0')) && (
                         <>
-                            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>P2:</span>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{getEnergyPrice('P2')}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>P2</span>
+                                <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>{getEnergyPrice('P2')}</span>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>P3:</span>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{getEnergyPrice('P3')}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>P3</span>
+                                <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>{getEnergyPrice('P3')}</span>
                             </div>
                         </>
                     )}
                 </div>
             </td>
-
             <td style={{ padding: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#64748b' }}>
                     <Calendar size={14} />
-                    {format(new Date(tariff.valid_from), 'dd/MM/yyyy')}
+                    {tariff.valid_from ? format(new Date(tariff.valid_from), 'dd/MM/yyyy') : 'Siempre'}
                 </div>
             </td>
-
             <td style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '0.25rem 0.6rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        ...statusStyle
-                    }}>
-                        {tariff.is_active ? 'Activa' : 'Inactiva'}
-                    </div>
-                    {tariff.is_automated && (
-                        <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.3rem',
-                            padding: '0.1rem 0.4rem',
-                            fontSize: '0.65rem',
-                            color: '#2563eb',
-                            fontWeight: 700,
-                            background: '#eff6ff',
-                            borderRadius: '4px',
-                            textTransform: 'uppercase'
-                        }}>
-                            Auto: {tariff.automation_source}
-                        </div>
-                    )}
+                <div style={{
+                    display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.6rem',
+                    borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600,
+                    ...statusStyle
+                }}>
+                    {tariff.is_active ? 'Activa' : 'Inactiva'}
                 </div>
             </td>
-
             <td style={{ padding: '1rem', textAlign: 'right' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button
-                        className="btn btn-secondary"
-                        style={{ padding: '0.4rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
-                        title="Ver Detalle"
-                    >
-                        <ExternalLink size={14} />
-                    </button>
-                </div>
+                <button
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                    <ExternalLink size={14} className="text-gray-400" />
+                </button>
             </td>
         </tr>
     );
-}
+};

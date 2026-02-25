@@ -22,7 +22,7 @@ import {
     calculateSavings,
 
 } from './calculator';
-import type { TariffVersion, TariffComponent } from '@/shared/types';
+import type { TariffVersion, TariffRate } from '@/shared/types';
 
 // ============================================================================
 // Test Fixtures
@@ -286,26 +286,27 @@ describe('calculatePowerComponent', () => {
 
 describe('calculateFixedFee', () => {
     it('should calculate annual fixed fee from monthly', () => {
-        const components: TariffComponent[] = [
+        const components = [
             {
                 id: 'comp-1',
                 company_id: 'company-1',
                 tariff_version_id: 'tariff-1',
                 component_type: 'fixed_fee',
                 fixed_price_eur_month: 5,
+                contract_duration: 12,
                 created_at: '2026-02-03T12:00:00Z',
             },
-        ];
+        ] as unknown as TariffRate[];
 
-        const result = calculateFixedFee(components);
+        const result = calculateFixedFee(components, 12);
 
         // 5 * 12 = 60
         expect(result).toBe(60);
     });
 
     it('should return 0 if no fixed fee component', () => {
-        const components: TariffComponent[] = [];
-        const result = calculateFixedFee(components);
+        const components: TariffRate[] = [];
+        const result = calculateFixedFee(components, 12);
 
         expect(result).toBe(0);
     });

@@ -1,0 +1,6 @@
+﻿src/features/tariffs/lib/calculator.test.ts(300,42): error TS2345: Argument of type 'TariffComponent[]' is not assignable to parameter of type 'TariffRate[]'.
+  Type 'TariffComponent' is missing the following properties from type 'TariffRate': item_type, price, unit
+src/features/tariffs/lib/calculator.test.ts(308,42): error TS2345: Argument of type 'TariffComponent[]' is not assignable to parameter of type 'TariffRate[]'.
+  Type 'TariffComponent' is missing the following properties from type 'TariffRate': item_type, price, unit
+src/features/tariffs/pages/TariffUploadPage.tsx(62,9): error TS2448: Block-scoped variable 'addFiles' used before its declaration.
+src/features/tariffs/pages/TariffUploadPage.tsx(62,9): error TS2454: Variable 'addFiles' is used before being assigned.

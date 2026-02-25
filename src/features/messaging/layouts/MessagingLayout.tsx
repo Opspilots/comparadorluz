@@ -3,8 +3,8 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Mail, Phone, Megaphone, Search, Loader2, Plus } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/shared/lib/supabase';
-import { getConversations } from '../lib/messaging-service';
+import { getConversations, getUserCompanyId } from '../lib/messaging-service';
+import { useCustomerSearch } from '../lib/useCustomerSearch';
 import { NewMessageDialog } from '../components/NewMessageDialog';
 
 const S = {
@@ -185,46 +185,15 @@ export default function MessagingLayout() {
     // Fetch conversations filtered by channel
     const { data: conversations, isLoading: isLoadingConversations } = useQuery({
         queryKey: ['conversations', activeChannel],
-        queryFn: () => getConversations(activeChannel),
+        queryFn: async () => {
+            const companyId = await getUserCompanyId();
+            return getConversations(companyId, activeChannel);
+        },
         refetchInterval: 5000
     });
 
     // Search customers for new chat
-    const { data: searchResults, isLoading: isLoadingSearch } = useQuery({
-        queryKey: ['customers-search', searchQuery],
-        queryFn: async () => {
-            if (!searchQuery || searchQuery.length < 2) return [];
-
-            // Get current user's company
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return [];
-
-            const { data: userData } = await supabase
-                .from('users')
-                .select('company_id')
-                .eq('id', user.id)
-                .single();
-
-            const companyId = userData?.company_id;
-
-            let query = supabase
-                .from('customers')
-                .select('id, name')
-                .or(`name.ilike.*${searchQuery}*,cif.ilike.*${searchQuery}*`);
-
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-
-            const { data, error } = await query
-                .order('name')
-                .limit(5);
-
-            if (error) throw error;
-            return data;
-        },
-        enabled: searchQuery.length >= 2
-    });
+    const { data: searchResults, isLoading: isLoadingSearch } = useCustomerSearch(searchQuery, 5);
 
     const handleSelectCustomer = (customerId: string) => {
         setSearchQuery('');
@@ -354,7 +323,7 @@ export default function MessagingLayout() {
                             </p>
                         </div>
                     ) : (
-                        conversations?.map((conv: any) => {
+                        conversations?.map((conv) => {
                             const isActive = location.pathname.includes(conv.customer.id);
                             return (
                                 <div

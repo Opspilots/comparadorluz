@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 
@@ -38,6 +38,70 @@ export function CustomerForm() {
     const [assignedTo, setAssignedTo] = useState('')
     const [commissioners, setCommissioners] = useState<Pick<Commissioner, 'id' | 'full_name'>[]>([])
 
+    const fetchCommissioners = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('commissioners')
+                .select('id, full_name')
+                .eq('is_active', true)
+                .order('full_name')
+
+            if (error) throw error
+            setCommissioners(data || [])
+        } catch (err) {
+            console.error('Error fetching commissioners:', err)
+        }
+    }, [])
+
+    const fetchCustomer = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('customers')
+                .select('*, contacts(*)')
+                .eq('id', id)
+                .single()
+
+            if (error) throw error
+            if (data) {
+                setCif(data.cif)
+                setName(data.name)
+                setCustomerType(data.customer_type)
+                setStatus(data.status)
+                setProvince(data.province || '')
+                setCity(data.city || '')
+                setAddress(data.address || '')
+                setAssignedTo(data.assigned_to || '')
+
+                // Populate Contacts
+                if (data.contacts && data.contacts.length > 0) {
+                    const contacts = data.contacts as { id: string; email: string; phone: string; position: string; first_name: string }[]
+                    if (data.customer_type === 'particular') {
+                        const emailContact = contacts.find((c) => c.email);
+                        const phoneContact = contacts.find((c) => c.phone);
+                        if (emailContact) setPartEmail(emailContact.email);
+                        if (phoneContact) setPartPhone(phoneContact.phone);
+                    } else {
+                        // Company: Map to arrays
+                        const emails: { id?: string, value: string, label: string }[] = [];
+                        const phones: { id?: string, value: string, label: string }[] = [];
+
+                        contacts.forEach((c) => {
+                            if (c.email) emails.push({ id: c.id, value: c.email, label: c.position || c.first_name || 'Email' });
+                            if (c.phone) phones.push({ id: c.id, value: c.phone, label: c.position || c.first_name || 'Teléfono' });
+                        });
+
+                        setCompanyEmails(emails.length > 0 ? emails : []);
+                        setCompanyPhones(phones.length > 0 ? phones : []);
+                    }
+                }
+            }
+        } catch (err) {
+            const error = err as Error;
+            console.error('Error fetching customer:', error)
+            setError('No se pudo cargar la información del cliente')
+        }
+    }, [id])
+
     useEffect(() => {
         const init = async () => {
             setPageLoading(true);
@@ -59,75 +123,7 @@ export function CustomerForm() {
             setPageLoading(false);
         };
         init();
-    }, [id, customerData])
-
-    async function fetchCommissioners() {
-        try {
-            const { data, error } = await supabase
-                .from('commissioners')
-                .select('id, full_name')
-                .eq('is_active', true)
-                .order('full_name')
-
-            if (error) throw error
-            setCommissioners(data || [])
-        } catch (err) {
-            console.error('Error fetching commissioners:', err)
-        }
-    }
-
-    async function fetchCustomer() {
-        try {
-            const { data, error } = await supabase
-                .from('customers')
-                .select('*, contacts(*)')
-                .eq('id', id)
-                .single()
-
-            if (error) throw error
-            if (data) {
-                setCif(data.cif)
-                setName(data.name)
-                setCustomerType(data.customer_type)
-                setStatus(data.status)
-                setProvince(data.province || '')
-                setCity(data.city || '')
-                setAddress(data.address || '')
-                setAssignedTo(data.assigned_to || '')
-
-                // Populate Contacts
-                if (data.contacts && data.contacts.length > 0) {
-                    const contacts = data.contacts as any[]
-                    if (data.customer_type === 'particular') {
-                        const emailContact = contacts.find((c) => c.email);
-                        const phoneContact = contacts.find((c) => c.phone);
-                        if (emailContact) setPartEmail(emailContact.email);
-                        if (phoneContact) setPartPhone(phoneContact.phone);
-                    } else {
-                        // Company: Map to arrays
-                        const emails: { id?: string, value: string, label: string }[] = [];
-                        const phones: { id?: string, value: string, label: string }[] = [];
-
-                        contacts.forEach((c) => {
-                            if (c.email) emails.push({ id: c.id, value: c.email, label: c.position || c.first_name || 'Email' });
-                            if (c.phone) phones.push({ id: c.id, value: c.phone, label: c.position || c.first_name || 'Teléfono' });
-                        });
-
-                        // Only set if we found any, otherwise keep defaults (or empty?)
-                        // Actually if editing, we should show what's there.
-                        setCompanyEmails(emails.length > 0 ? emails : []);
-                        setCompanyPhones(phones.length > 0 ? phones : []);
-                    }
-                }
-            }
-        } catch (err) {
-            const error = err as Error;
-            console.error('Error fetching customer:', error)
-            setError('No se pudo cargar la información del cliente')
-        } finally {
-            // setPageLoading(false) - Handled in useEffect now
-        }
-    }
+    }, [isEditing, customerData, fetchCommissioners, fetchCustomer])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

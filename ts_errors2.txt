@@ -1,0 +1,1 @@
+﻿src/features/tariffs/lib/calculator.test.ts(25,30): error TS6196: 'TariffComponent' is declared but never used.

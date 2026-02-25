@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Commissioner } from '@/shared/types'
 import { Users, Plus, FileCheck, Search } from 'lucide-react'
@@ -24,11 +24,7 @@ export function CommissionersPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
 
-    useEffect(() => {
-        fetchCommissioners()
-    }, [])
-
-    const fetchCommissioners = async () => {
+    const fetchCommissioners = useCallback(async () => {
         setLoading(true)
 
         // Fetch commissioners with stats
@@ -51,7 +47,6 @@ export function CommissionersPage() {
                 commissions:commission_events(amount_eur, status)
             `)
             .eq('is_active', true)
-            .is('user_id', null) // Only show external commissioners (not system users)
             .order('full_name')
 
         if (error) {
@@ -60,14 +55,14 @@ export function CommissionersPage() {
             return
         }
 
-        const stats = commissionersData.map((comm) => {
-            const commissions = (comm.commissions as unknown as any[]) || []
-            const contracts = (comm.contracts as unknown as any[]) || []
+        const stats = (commissionersData || []).map((comm) => {
+            const commissions = (comm.commissions as unknown as { amount_eur: number, status: string }[]) || []
+            const contracts = (comm.contracts as unknown as { count: number }[]) || []
 
-            const totalCommission = commissions.reduce((sum: number, c: any) => sum + (c.amount_eur || 0), 0) || 0
+            const totalCommission = commissions.reduce((sum: number, c) => sum + (c.amount_eur || 0), 0) || 0
             const pendingCommission = commissions
-                .filter((c: any) => c.status === 'pending')
-                .reduce((sum: number, c: any) => sum + (c.amount_eur || 0), 0) || 0
+                .filter((c) => c.status === 'pending')
+                .reduce((sum: number, c) => sum + (c.amount_eur || 0), 0) || 0
 
             const totalContracts = contracts[0]?.count || 0
 
@@ -80,18 +75,22 @@ export function CommissionersPage() {
                 commission_default_pct: comm.commission_default_pct,
                 is_active: true,
                 created_at: comm.created_at,
-                updated_at: comm.created_at,
+                updated_at: comm.updated_at,
 
                 stats: {
                     total_contracts: totalContracts,
                     total_commission_eur: totalCommission,
                     pending_commission_eur: pendingCommission
                 }
-            } as CommissionerWithStats
+            } as CommissionerWithStats;
         })
         setCommissioners(stats)
         setLoading(false)
-    }
+    }, [])
+
+    useEffect(() => {
+        fetchCommissioners()
+    }, [fetchCommissioners])
 
     const filteredCommissioners = commissioners.filter(c =>
         c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||

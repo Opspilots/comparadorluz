@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
 const ESIOS_TOKEN = Deno.env.get('ESIOS_API_TOKEN')
@@ -12,7 +12,7 @@ const INDICATORS = [
     { id: 1021, name: 'Mercado Diario (Pool)' }
 ]
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } })
     }
@@ -46,7 +46,7 @@ serve(async (req) => {
             console.log(`Received ${values.length} values for ${indicator.name}`)
 
             // Upsert prices
-            const priceEntries = values.map((val: any) => ({
+            const priceEntries = values.map((val: { value: number; datetime: string; datetime_end: string }) => ({
                 indicator_id: indicator.id,
                 indicator_name: indicator.name,
                 price: val.value,
@@ -67,9 +67,10 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
             status: 200,
         })
-    } catch (err: any) {
-        console.error('Sync error:', err)
-        return new Response(JSON.stringify({ error: err.message }), {
+    } catch (e: unknown) {
+        const error = e as Error;
+        console.error('Sync error:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
             headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
             status: 500,
         })

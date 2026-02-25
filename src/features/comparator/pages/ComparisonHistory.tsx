@@ -44,7 +44,7 @@ export function ComparisonHistory() {
             .order('created_at', { ascending: false })
 
         if (data) {
-            setComparisons(data as any)
+            setComparisons(data as SavedComparison[])
         }
         setLoading(false)
     }

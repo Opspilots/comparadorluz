@@ -1,7 +1,8 @@
 import { supabase } from '@/shared/lib/supabase'
 
 export interface MessagingSettings {
-    resend_api_key?: string;
+    google_refresh_token?: string;
+    google_access_token?: string;
     email_from?: string;
     whatsapp_token?: string;
     whatsapp_phone_number_id?: string;

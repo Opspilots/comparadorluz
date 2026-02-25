@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
-import { Contract, Customer, TariffVersion, SupplyPoint } from '@/shared/types'
+import { Customer, SupplyPoint, TariffVersion } from '@/shared/types'
+import { Supplier } from '@/types/tariff'
 
 // Register fonts if needed, or use standard fonts
 Font.register({
@@ -50,32 +51,12 @@ const styles = StyleSheet.create({
         marginBottom: 4
     },
     label: {
-        width: 120,
+        width: 140,
         fontWeight: 'bold',
         color: '#555'
     },
     value: {
         flex: 1
-    },
-    pricingTable: {
-        marginTop: 10,
-        borderTop: '1px solid #eee',
-        borderLeft: '1px solid #eee'
-    },
-    tableRow: {
-        flexDirection: 'row',
-        borderBottom: '1px solid #eee'
-    },
-    tableHeader: {
-        backgroundColor: '#f3f4f6',
-        fontWeight: 'bold'
-    },
-    tableCell: {
-        padding: 6,
-        borderRight: '1px solid #eee',
-        flex: 1,
-        textAlign: 'center',
-        fontSize: 9
     },
     footer: {
         position: 'absolute',
@@ -93,17 +74,40 @@ const styles = StyleSheet.create({
         borderTop: '1px solid #000',
         width: 200,
         paddingTop: 5
+    },
+    notesBox: {
+        marginTop: 5,
+        padding: 8,
+        backgroundColor: '#fffbeb',
+        borderRadius: 4,
+        borderLeft: '3px solid #f59e0b',
     }
 })
 
+const statusLabels: Record<string, string> = {
+    'pending': 'Pendiente',
+    'signed': 'Firmado',
+    'active': 'Activo',
+    'cancelled': 'Cancelado',
+    'completed': 'Completado'
+}
+
 interface ContractDocumentProps {
-    contract: Partial<Contract>
+    contract: {
+        contract_number?: string;
+        signed_at?: string;
+        annual_value_eur?: number;
+        status?: string;
+        notes?: string;
+    }
     customer?: Customer
-    tariff?: TariffVersion
+    tariff?: TariffVersion & { suppliers?: Supplier }
     supplyPoint?: SupplyPoint
 }
 
 export function ContractDocument({ contract, customer, tariff, supplyPoint }: ContractDocumentProps) {
+    const monthlyValue = contract.annual_value_eur ? (contract.annual_value_eur / 12) : 0
+
     return (
         <Document>
             <Page size="A4" style={styles.page}>
@@ -111,10 +115,13 @@ export function ContractDocument({ contract, customer, tariff, supplyPoint }: Co
                 <View style={styles.header}>
                     <View>
                         <Text style={styles.title}>CONTRATO DE SUMINISTRO</Text>
-                        <Text style={styles.subtitle}>Ref: {contract.contract_number}</Text>
+                        <Text style={styles.subtitle}>Ref: {contract.contract_number || '---'}</Text>
                     </View>
                     <View>
                         <Text style={{ fontSize: 16, fontWeight: 'bold' }}>ENERGY DEAL</Text>
+                        <Text style={{ fontSize: 8, color: '#666', textAlign: 'right' }}>
+                            Estado: {statusLabels[contract.status || ''] || contract.status || '---'}
+                        </Text>
                     </View>
                 </View>
 
@@ -167,35 +174,36 @@ export function ContractDocument({ contract, customer, tariff, supplyPoint }: Co
                     <Text style={styles.sectionTitle}>3. CONDICIONES ECONÓMICAS</Text>
                     <View style={styles.row}>
                         <Text style={styles.label}>Comercializadora:</Text>
-                        <Text style={styles.value}>{(tariff as any)?.suppliers?.name || '---'}</Text>
+                        <Text style={styles.value}>{tariff?.suppliers?.name || '---'}</Text>
                     </View>
                     <View style={styles.row}>
                         <Text style={styles.label}>Nombre de Tarifa:</Text>
                         <Text style={styles.value}>{tariff?.tariff_name || '---'}</Text>
                     </View>
-
-                    {/* Simple Pricing Table Placeholder - In real app, iterate components */}
-                    <View style={styles.pricingTable}>
-                        <View style={[styles.tableRow, styles.tableHeader]}>
-                            <Text style={styles.tableCell}>Concepto</Text>
-                            <Text style={styles.tableCell}>Periodo</Text>
-                            <Text style={styles.tableCell}>Precio</Text>
-                        </View>
-                        <View style={styles.tableRow}>
-                            <Text style={styles.tableCell}>Energía (€/kWh)</Text>
-                            <Text style={styles.tableCell}>P1</Text>
-                            <Text style={styles.tableCell}>0.1423 €/kWh</Text>
-                        </View>
-                        <View style={styles.tableRow}>
-                            <Text style={styles.tableCell}>Potencia (€/kW/año)</Text>
-                            <Text style={styles.tableCell}>P1</Text>
-                            <Text style={styles.tableCell}>38.45 €/kW</Text>
-                        </View>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Valor Mensual:</Text>
+                        <Text style={{ ...styles.value, fontWeight: 'bold', fontSize: 12 }}>
+                            {monthlyValue.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </Text>
+                    </View>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Fecha de Firma:</Text>
+                        <Text style={styles.value}>{contract.signed_at || '---'}</Text>
                     </View>
                     <Text style={{ fontSize: 8, marginTop: 5, fontStyle: 'italic' }}>
                         * Precios sin impuestos incluidos. Se aplicarán los impuestos vigentes según ley.
                     </Text>
                 </View>
+
+                {/* Notes / Annotations */}
+                {contract.notes && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>4. ANOTACIONES</Text>
+                        <View style={styles.notesBox}>
+                            <Text style={{ fontSize: 9, lineHeight: 1.5 }}>{contract.notes}</Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Signatures */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 50 }}>
@@ -206,7 +214,7 @@ export function ContractDocument({ contract, customer, tariff, supplyPoint }: Co
                     </View>
                     <View style={styles.signatureBox}>
                         <Text style={{ textAlign: 'center', fontWeight: 'bold' }}>LA COMERCIALIZADORA</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 8, marginTop: 2 }}>{(tariff as any)?.suppliers?.name}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 8, marginTop: 2 }}>{tariff?.suppliers?.name}</Text>
                     </View>
                 </View>
 

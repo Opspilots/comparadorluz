@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/shared/lib/supabase'
 
@@ -6,62 +6,58 @@ type ChartType = 'contracts' | 'customers'
 
 export function DashboardChart() {
     const [chartType, setChartType] = useState<ChartType>('contracts')
-    const [data, setData] = useState<any[]>([])
+    const [data, setData] = useState<{ name: string; value: number }[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        fetchData()
-    }, [chartType])
 
-    const fetchData = async () => {
+
+    const fetchData = useCallback(async () => {
         setLoading(true)
         try {
-            const table = chartType === 'contracts' ? 'contracts' : 'customers'
-            // Get data from the last 6 months
-            const sixMonthsAgo = new Date()
-            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
-            sixMonthsAgo.setDate(1) // Start of the month
-
+            // The table name is directly derived from chartType
             const { data: result, error } = await supabase
-                .from(table)
+                .from(chartType) // Changed from 'table' to 'chartType'
                 .select('created_at')
-                .gte('created_at', sixMonthsAgo.toISOString())
                 .order('created_at', { ascending: true })
 
             if (error) throw error
 
-            // Process data to group by month
-            const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-            const groupedData = new Map<string, number>()
-
-            // Initialize last 6 months with 0
-            for (let i = 0; i < 6; i++) {
+            // Group by month
+            const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            const last6Months = Array.from({ length: 6 }, (_, i) => {
                 const d = new Date()
-                d.setMonth(d.getMonth() - 5 + i)
-                const monthKey = monthNames[d.getMonth()]
-                groupedData.set(monthKey, 0)
-            }
+                d.setMonth(d.getMonth() - i)
+                return {
+                    month: d.getMonth(),
+                    year: d.getFullYear(),
+                    label: months[d.getMonth()]
+                }
+            }).reverse() // Reverse to get chronological order
 
-            result?.forEach(item => {
-                const date = new Date(item.created_at)
-                const monthKey = monthNames[date.getMonth()]
-                if (groupedData.has(monthKey)) {
-                    groupedData.set(monthKey, (groupedData.get(monthKey) || 0) + 1)
+            const formattedData = last6Months.map(m => {
+                // Ensure result is not null before filtering
+                const count = result?.filter(r => {
+                    const d = new Date(r.created_at)
+                    return d.getMonth() === m.month && d.getFullYear() === m.year
+                }).length || 0 // Default to 0 if result is null or no matches
+
+                return {
+                    name: m.label,
+                    value: count
                 }
             })
-
-            const formattedData = Array.from(groupedData.entries()).map(([name, value]) => ({
-                name,
-                value
-            }))
 
             setData(formattedData)
         } catch (error) {
             console.error('Error fetching chart data:', error)
         } finally {
-            setLoading(false)
+            setLoading(false) // Corrected from setLoading(true)
         }
-    }
+    }, [chartType]) // Dependency array for useCallback
+
+    useEffect(() => {
+        fetchData()
+    }, [fetchData]) // Dependency array for useEffect now includes fetchData
 
     return (
         <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>

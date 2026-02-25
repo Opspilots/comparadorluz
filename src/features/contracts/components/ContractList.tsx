@@ -26,6 +26,7 @@ export function ContractList() {
             .select(`
                 *,
                 customers (name, cif),
+                supply_points (cups),
                 tariff_versions (
                     tariff_name,
                     suppliers (name)
@@ -169,16 +170,18 @@ export function ContractList() {
                                     <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ref. Contrato</th>
                                     <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cliente</th>
                                     <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Comercializadora / Tarifa</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>CUPS</th>
                                     <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estado</th>
-                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Valor Anual</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Valor Mensual</th>
                                     <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Firmado</th>
+                                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Anotaciones</th>
                                     <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} style={{ padding: '4rem', textAlign: 'center' }}>
+                                        <td colSpan={10} style={{ padding: '4rem', textAlign: 'center' }}>
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
                                                 <Loader2 className="animate-spin" size={32} style={{ color: 'var(--primary)' }} />
                                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Cargando contratos...</p>
@@ -187,7 +190,7 @@ export function ContractList() {
                                     </tr>
                                 ) : filteredContracts.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                        <td colSpan={10} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                                             No hay contratos registrados.
                                         </td>
                                     </tr>
@@ -205,16 +208,22 @@ export function ContractList() {
                                                 <div style={{ fontWeight: 500 }}>{removeEmojis(contract.tariff_versions?.suppliers?.name || '')}</div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{removeEmojis(contract.tariff_versions?.tariff_name || '')}</div>
                                             </td>
+                                            <td style={{ padding: '1rem 1.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                                                {((contract as unknown as { supply_points?: { cups?: string } }).supply_points?.cups) || '—'}
+                                            </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
                                                 <span style={badgeStyle(contract.status)}>
                                                     {statusLabels[contract.status] || contract.status}
                                                 </span>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 600 }}>
-                                                {contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                                {contract.annual_value_eur ? (contract.annual_value_eur / 12).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : '—'}
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                                                 {contract.signed_at || '-'}
+                                            </td>
+                                            <td style={{ padding: '1rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contract.notes || ''}>
+                                                {contract.notes || '—'}
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                                                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -301,13 +310,18 @@ export function ContractList() {
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-light)' }}>
                                         <div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>VALOR ANUAL</div>
-                                            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>VALOR MENSUAL</div>
+                                            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{contract.annual_value_eur ? (contract.annual_value_eur / 12).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : '—'}</div>
                                         </div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                             {contract.signed_at ? `Firmado: ${contract.signed_at}` : 'Sin fecha'}
                                         </div>
                                     </div>
+                                    {contract.notes && (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contract.notes}>
+                                            📝 {contract.notes}
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}

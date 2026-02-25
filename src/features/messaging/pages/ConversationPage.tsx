@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import { ChatWindow } from '../components/ChatWindow';
-import { getMessages, sendMessage, Message } from '../lib/messaging-service';
+import { getMessages, sendMessage, getUserCompanyId, Message } from '../lib/messaging-service';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,6 +14,13 @@ export default function ConversationPage() {
     const queryClient = useQueryClient();
     const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
 
+    // Get current user's company_id
+    const { data: companyId } = useQuery({
+        queryKey: ['user-company-id'],
+        queryFn: getUserCompanyId,
+        staleTime: Infinity
+    });
+
     // Fetch customer and their contacts
     const { data: customerData, isLoading: isLoadingCustomer } = useQuery({
         queryKey: ['customer-with-contacts', customerId],
@@ -22,7 +29,7 @@ export default function ConversationPage() {
 
             const { data: customer, error: custErr } = await supabase
                 .from('customers')
-                .select('*')
+                .select('id, name')
                 .eq('id', customerId)
                 .single();
             if (custErr) throw custErr;
@@ -38,18 +45,18 @@ export default function ConversationPage() {
         enabled: !!customerId
     });
 
-    // Messages Query - Filtered by active channel
+    // Messages Query - Filtered by active channel AND company
     const { data: messages, isLoading: isLoadingMessages } = useQuery({
-        queryKey: ['messages', customerId, activeChannel],
-        queryFn: () => getMessages(customerId!, activeChannel),
-        enabled: !!customerId,
+        queryKey: ['messages', customerId, activeChannel, companyId],
+        queryFn: () => getMessages(customerId!, companyId!, activeChannel),
+        enabled: !!customerId && !!companyId,
         refetchInterval: 5000
     });
 
     // Filter contacts to only show those with the relevant channel info
-    const filteredContacts = (customerData?.contacts || []).filter(c =>
+    const filteredContacts = useMemo(() => (customerData?.contacts || []).filter(c =>
         activeChannel === 'email' ? !!c.email : !!c.phone
-    );
+    ), [customerData, activeChannel]);
 
     // Auto-select first valid contact for the active channel
     useEffect(() => {
@@ -61,7 +68,45 @@ export default function ConversationPage() {
         } else {
             setSelectedContactId(null);
         }
-    }, [customerData, activeChannel]);
+    }, [filteredContacts, selectedContactId]);
+
+    // Supabase Realtime Subscription for incoming messages
+    useEffect(() => {
+        if (!customerId || !companyId) return;
+
+        const channelPath = `public:messages:customer_id=eq.${customerId}`;
+        const channel = supabase.channel(channelPath)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `customer_id=eq.${customerId}`
+                },
+                (payload) => {
+                    // Check if the new message matches the currently active view
+                    const newMessage = payload.new as Message;
+                    if (newMessage.channel === activeChannel) {
+                        // Invalidate the query to fetch the newest messages
+                        queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+
+                        // Optional: Show a toast if it's an inbound message
+                        if (newMessage.direction === 'inbound') {
+                            toast({
+                                title: `Nuevo mensaje de ${activeChannel === 'email' ? 'Correo' : 'WhatsApp'}`,
+                                description: `Recibido de: ${newMessage.recipient_contact}`,
+                            });
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [customerId, companyId, activeChannel, queryClient, toast]);
 
     const mutation = useMutation({
         mutationFn: async ({ content, subject, attachments }: { content: string, subject?: string, attachments?: Message['attachments'] }) => {
@@ -74,13 +119,10 @@ export default function ConversationPage() {
                 throw new Error(`El contacto seleccionado no tiene ${activeChannel === 'email' ? 'email' : 'teléfono'}`);
             }
 
-            const { data: { user } } = await supabase.auth.getUser();
-            const { data: userData } = await supabase.from('users').select('company_id').eq('id', user?.id).single();
-
-            if (!userData?.company_id) throw new Error('Company ID not found');
+            if (!companyId) throw new Error('Company ID not found');
 
             return sendMessage({
-                company_id: userData.company_id,
+                company_id: companyId,
                 customer_id: customerId!,
                 channel: activeChannel,
                 recipient_contact: recipient,

@@ -12,10 +12,11 @@ interface CreateRuleDialogProps {
 }
 
 export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissionerId }: CreateRuleDialogProps) {
-    const [users, setUsers] = useState<any[]>([])
-    const [suppliers, setSuppliers] = useState<any[]>([])
+    const [commissioners, setCommissioners] = useState<{ id: string; full_name: string }[]>([])
+    const [suppliers, setSuppliers] = useState<{ name: string }[]>([])
     const [loading, setLoading] = useState(false)
     const [companyId, setCompanyId] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(null)
 
     // Form State
     const [commissionerId, setCommissionerId] = useState('')
@@ -26,80 +27,112 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
     const { toast } = useToast()
 
     useEffect(() => {
+        const fetchFormData = async () => {
+            setLoading(true)
+            setError(null) // Clear previous errors
+
+            try {
+                // 1. Get current user's company_id
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    const { data: userProfile, error: userProfileError } = await supabase
+                        .from('users')
+                        .select('company_id')
+                        .eq('id', user.id)
+                        .single()
+
+                    if (userProfileError) {
+                        throw userProfileError
+                    }
+
+                    if (userProfile) setCompanyId(userProfile.company_id)
+                }
+
+                // 2. Fetch Commissioners
+                const { data: commissionersData, error: commissionersError } = await supabase
+                    .from('commissioners')
+                    .select('id, full_name')
+                    .eq('is_active', true)
+                    .order('full_name')
+
+                if (commissionersError) {
+                    throw commissionersError
+                }
+                if (commissionersData) setCommissioners(commissionersData as { id: string; full_name: string }[])
+
+                // 3. Fetch Suppliers
+                const { data: suppliersData, error: suppliersError } = await supabase
+                    .from('suppliers')
+                    .select('name')
+                    .eq('is_active', true)
+                    .order('name')
+
+                if (suppliersError) {
+                    throw suppliersError
+                }
+                if (suppliersData) setSuppliers(suppliersData)
+
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'Error al cargar datos del formulario')
+                toast({ title: 'Error', description: err instanceof Error ? err.message : 'Error al cargar datos del formulario', variant: 'destructive' })
+            } finally {
+                setLoading(false)
+            }
+        }
+
         if (isOpen) {
             fetchFormData()
             if (presetCommissionerId) {
                 setCommissionerId(presetCommissionerId)
             }
+            // Reset error when dialog opens
+            setError(null)
         }
-    }, [isOpen, presetCommissionerId])
-
-    const fetchFormData = async () => {
-        setLoading(true)
-
-        // 1. Get current user's company_id
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            const { data: userProfile } = await supabase
-                .from('users')
-                .select('company_id')
-                .eq('id', user.id)
-                .single()
-
-            if (userProfile) setCompanyId(userProfile.company_id)
-        }
-
-        // 2. Fetch Commissioners
-        const { data: commissionersData } = await supabase
-            .from('commissioners')
-            .select('id, full_name')
-            .eq('is_active', true)
-            .order('full_name')
-
-        if (commissionersData) setUsers(commissionersData)
-
-        // 3. Fetch Suppliers
-        const { data: suppliersData } = await supabase
-            .from('suppliers')
-            .select('name')
-            .eq('is_active', true)
-            .order('name')
-
-        if (suppliersData) setSuppliers(suppliersData)
-
-        setLoading(false)
-    }
+    }, [isOpen, presetCommissionerId, toast])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!companyId || !commissionerId || !percentage) return
+        if (!companyId || !commissionerId || !percentage) {
+            setError('Todos los campos obligatorios deben ser rellenados.')
+            return
+        }
 
         setLoading(true)
-        const { error } = await supabase
-            .from('commission_rules')
-            .insert({
-                company_id: companyId,
-                commissioner_id: commissionerId,
-                supplier_name: supplierName || null,
-                tariff_type: tariffType || null,
-                commission_pct: parseFloat(percentage),
-                valid_from: validFrom,
-                is_active: true
-            })
+        setError(null) // Clear previous errors
 
-        if (error) {
-            toast({ title: 'Error', description: 'Error al crear la regla: ' + error.message, variant: 'destructive' })
-        } else {
+        try {
+            const { error: insertError } = await supabase
+                .from('commission_rules')
+                .insert({
+                    company_id: companyId,
+                    commissioner_id: commissionerId,
+                    supplier_name: supplierName || null,
+                    tariff_type: tariffType || null,
+                    commission_pct: parseFloat(percentage),
+                    valid_from: validFrom,
+                    is_active: true
+                })
+
+            if (insertError) {
+                throw insertError
+            }
+
             onSuccess()
             onClose()
-            // Reset form
             // Reset form
             setCommissionerId('')
             setSupplierName('')
             setTariffType('')
             setPercentage('')
+            setValidFrom(new Date().toISOString().split('T')[0]) // Reset validFrom as well
+            toast({ title: 'Éxito', description: 'Regla de comisión creada correctamente.', variant: 'default' })
+
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Error al crear la regla')
+            toast({ title: 'Error', description: 'Error al crear la regla: ' + (err instanceof Error ? err.message : 'Error desconocido'), variant: 'destructive' })
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     if (!isOpen) return null
@@ -119,6 +152,7 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {error && <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>}
                     {/* Commissioner */}
                     {!presetCommissionerId && (
                         <div>
@@ -130,9 +164,10 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
                                 value={commissionerId}
                                 onChange={e => setCommissionerId(e.target.value)}
                                 style={{ width: '100%', padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                                disabled={loading}
                             >
                                 <option value="">Seleccionar comisionado...</option>
-                                {users.map(u => (
+                                {commissioners.map(u => (
                                     <option key={u.id} value={u.id}>{u.full_name}</option>
                                 ))}
                             </select>

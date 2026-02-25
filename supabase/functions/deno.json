@@ -1,0 +1,13 @@
+{
+    "importMap": "import_map.json",
+    "compilerOptions": {
+        "module": "esnext",
+        "target": "esnext",
+        "lib": [
+            "esnext",
+            "dom",
+            "dom.iterable",
+            "deno.ns"
+        ]
+    }
+}

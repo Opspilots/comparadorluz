@@ -1,11 +1,13 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { getUserCompanyId } from '../lib/messaging-service';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Plus, Search, MoreHorizontal, Mail, Phone, Megaphone, Trash2, Edit, Eye, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Campaign } from '@/shared/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -180,28 +182,25 @@ const STYLES = {
 
 export function CampaignsPage() {
     const navigate = useNavigate();
-    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        fetchCampaigns();
-    }, []);
+    const { data: campaigns = [], isLoading: loading } = useQuery<Campaign[]>({
+        queryKey: ['campaigns'],
+        queryFn: async () => {
+            const companyId = await getUserCompanyId();
+            const { data, error } = await supabase
+                .from('campaigns')
+                .select('*')
+                .eq('company_id', companyId)
+                .order('created_at', { ascending: false });
 
-    const fetchCampaigns = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('campaigns')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (!error && data) {
-            setCampaigns(data as Campaign[]);
-        }
-        setLoading(false);
-    };
+            if (error) throw error;
+            return (data ?? []) as Campaign[];
+        },
+    });
 
     const handleDelete = async () => {
         if (!deleteTarget) return;
@@ -211,7 +210,7 @@ export function CampaignsPage() {
             toast({ title: 'Error', description: 'Error al eliminar la campaña', variant: 'destructive' });
         } else {
             toast({ title: 'Campaña eliminada', description: 'La campaña se ha eliminado correctamente.' });
-            setCampaigns(prev => prev.filter(c => c.id !== deleteTarget));
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
         }
         setDeleteTarget(null);
     };

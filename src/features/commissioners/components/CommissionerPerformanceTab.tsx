@@ -17,56 +17,56 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
     })
 
     useEffect(() => {
+        const fetchStats = async () => {
+            setLoading(true)
+
+            // 1. Fetch Commissions (Commission Events)
+            const { data: commissions, error: commError } = await supabase
+                .from('commission_events')
+                .select('amount_eur, status')
+                .eq('commissioner_id', commissionerId)
+
+            if (commError) {
+                console.error('Error fetching commissions:', commError)
+            }
+
+            // 2. Fetch Contracts count
+            const { count, error: contractError } = await supabase
+                .from('contracts')
+                .select('*', { count: 'exact', head: true })
+                .eq('commercial_id', commissionerId)
+
+            if (contractError) {
+                console.error('Error fetching contracts:', contractError)
+            }
+
+            if (commissions) {
+                const total = commissions.reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+                const pending = commissions
+                    .filter(c => c.status === 'pending')
+                    .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+                const paid = commissions
+                    .filter(c => c.status === 'paid')
+                    .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+
+                const contractsCount = count || 0
+                const avg = contractsCount > 0 ? total / contractsCount : 0
+
+                setStats({
+                    totalContracts: contractsCount,
+                    totalCommission: total,
+                    pendingCommission: pending,
+                    paidCommission: paid,
+                    avgCommission: avg
+                })
+            }
+            setLoading(false)
+        }
+
         if (commissionerId) {
             fetchStats()
         }
     }, [commissionerId])
-
-    const fetchStats = async () => {
-        setLoading(true)
-
-        // 1. Fetch Commissions (Commission Events)
-        const { data: commissions, error: commError } = await supabase
-            .from('commission_events')
-            .select('amount_eur, status')
-            .eq('commissioner_id', commissionerId)
-
-        if (commError) {
-            console.error('Error fetching commissions:', commError)
-        }
-
-        // 2. Fetch Contracts count
-        const { count, error: contractError } = await supabase
-            .from('contracts')
-            .select('*', { count: 'exact', head: true })
-            .eq('commercial_id', commissionerId)
-
-        if (contractError) {
-            console.error('Error fetching contracts:', contractError)
-        }
-
-        if (commissions) {
-            const total = commissions.reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-            const pending = commissions
-                .filter(c => c.status === 'pending')
-                .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-            const paid = commissions
-                .filter(c => c.status === 'paid')
-                .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-
-            const contractsCount = count || 0
-            const avg = contractsCount > 0 ? total / contractsCount : 0
-
-            setStats({
-                totalContracts: contractsCount,
-                totalCommission: total,
-                pendingCommission: pending,
-                paidCommission: paid,
-                avgCommission: avg
-            })
-        }
-        setLoading(false)
-    }
 
     if (loading) {
         return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Calculando métricas...</div>

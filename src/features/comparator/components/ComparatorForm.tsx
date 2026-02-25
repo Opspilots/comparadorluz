@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
-import { rankTariffs } from '../lib/rankTariffs'
+import { rankTariffs, groupResultsByTariff } from '../lib/rankTariffs'
 import { useNavigate } from 'react-router-dom'
-import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput } from '@/shared/types'
+import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput, GroupedComparisonResult } from '@/shared/types'
 import { useComparatorState } from '../hooks/useComparatorState'
 import { InvoiceUploader } from './InvoiceUploader'
 import { SaveComparisonDialog } from './SaveComparisonDialog'
@@ -20,38 +20,40 @@ export function ComparatorForm() {
     const { state, updateState, clearState } = useComparatorState()
 
     const [results, setResults] = useState<ComparisonResult[]>([])
+    const [groupedResults, setGroupedResults] = useState<GroupedComparisonResult[]>([])
+    const [selectedDurations, setSelectedDurations] = useState<Record<string, number>>({})
     const [showSaveDialog, setShowSaveDialog] = useState(false)
     const [suppliers, setSuppliers] = useState<{ id: string, name: string }[]>([])
     const { toast } = useToast()
 
+    const fetchSuppliers = useCallback(async () => {
+        const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
+        setSuppliers(data || [])
+    }, [])
+
     useEffect(() => {
         fetchSuppliers()
-    }, [])
+    }, [fetchSuppliers])
 
     // Auto-select Gas Tariff based on consumption
     useEffect(() => {
         if (state.supplyType === 'gas' && state.consumption) {
-            const consumption = parseFloat(state.consumption)
-            if (!isNaN(consumption)) {
+            const consumptionValue = parseFloat(state.consumption)
+            if (!isNaN(consumptionValue)) {
                 let suggested = 'RL.4'
-                if (consumption <= GAS_CONSTANTS.THRESHOLDS.RL1) suggested = 'RL.1'
-                else if (consumption <= GAS_CONSTANTS.THRESHOLDS.RL2) suggested = 'RL.2'
-                else if (consumption <= GAS_CONSTANTS.THRESHOLDS.RL3) suggested = 'RL.3'
+                if (consumptionValue <= GAS_CONSTANTS.THRESHOLDS.RL1) suggested = 'RL.1'
+                else if (consumptionValue <= GAS_CONSTANTS.THRESHOLDS.RL2) suggested = 'RL.2'
+                else if (consumptionValue <= GAS_CONSTANTS.THRESHOLDS.RL3) suggested = 'RL.3'
 
                 if (state.tariffType !== suggested) {
                     updateState({ tariffType: suggested })
                 }
             }
         }
-    }, [state.consumption, state.supplyType])
+    }, [state.consumption, state.supplyType, state.tariffType, updateState])
 
-    const fetchSuppliers = async () => {
-        const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
-        setSuppliers(data || [])
-    }
-
-    const handleDataExtracted = (data: Record<string, string | number | null | undefined>) => {
-        const updates = mapOcrData(data, suppliers);
+    const handleDataExtracted = (data: unknown) => {
+        const updates = mapOcrData(data as Record<string, unknown>, suppliers);
         // Force update state with new data, this might need to clear previous values if we want a fresh start
         // But mapOcrData only returns found keys.
         // If we want to ensure tariff type updates even if state has one, updateState merges it.
@@ -60,8 +62,8 @@ export function ComparatorForm() {
         // Now that we normalized it in mapOcrData, it should work.
         updateState(updates);
 
-        if (data.cif && typeof data.cif === 'string') {
-            checkExistingClientByCIF(data.cif);
+        if (updates.cif) {
+            checkExistingClientByCIF(updates.cif);
         }
     }
 
@@ -98,6 +100,8 @@ export function ComparatorForm() {
         // value: '' will overwrite existing values in the merge.
         updateState(commonState);
         setResults([]); // Clear results on switch
+        setGroupedResults([]);
+        setSelectedDurations({});
     }
 
     const checkExistingClientByCIF = async (cif: string) => {
@@ -169,11 +173,15 @@ export function ComparatorForm() {
                 contracted_power_p6_kw: parseFloat(inputState.powerP6) || undefined,
             }
 
+            const today = new Date().toISOString().split('T')[0]
+
             const { data: tariffs, error } = await supabase
                 .from('tariff_versions')
-                .select('*, tariff_components(*)')
+                .select('*, tariff_rates(*)')
                 .eq('is_active', true)
                 .eq('tariff_type', inputState.tariffType)
+                .lte('valid_from', today)
+                .or(`valid_to.is.null,valid_to.gte.${today}`)
 
             if (error) throw error
 
@@ -188,8 +196,17 @@ export function ComparatorForm() {
 
             setResults(results)
 
-        } catch (err) {
-            console.error(err)
+            // Group results by tariff for UI rendering
+            const grouped = groupResultsByTariff(results)
+            setGroupedResults(grouped)
+            // Initialize selected durations to index 0 (shortest) for each group
+            const initDurations: Record<string, number> = {}
+            grouped.forEach(g => { initDurations[g.tariff_version_id] = 0 })
+            setSelectedDurations(initDurations)
+
+        } catch (e: unknown) {
+            const error = e as Error;
+            console.error(error)
             toast({ title: 'Error', description: 'Error en la comparativa. Verifica los datos.', variant: 'destructive' })
         } finally {
             setSearching(false)
@@ -199,6 +216,8 @@ export function ComparatorForm() {
     const handleClear = () => {
         clearState()
         setResults([])
+        setGroupedResults([])
+        setSelectedDurations({})
     }
 
     return (
@@ -220,7 +239,10 @@ export function ComparatorForm() {
                 <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}>
 
                     <div className="tour-comparator-uploader">
-                        <InvoiceUploader onDataExtracted={handleDataExtracted} />
+                        <InvoiceUploader
+                            onDataExtracted={handleDataExtracted}
+                            supplyType={state.supplyType}
+                        />
                     </div>
 
                     {/* Create Client Banner if data extracted but new client? 
@@ -491,7 +513,7 @@ export function ComparatorForm() {
 
                 {/* Results Panel */}
                 <section>
-                    {results.length === 0 ? (
+                    {groupedResults.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '4rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #ddd' }}>
                             <p style={{ color: '#666' }}>Introduce los datos para ver las mejores ofertas.</p>
                         </div>
@@ -507,10 +529,14 @@ export function ComparatorForm() {
                                 </button>
                             </div>
 
-                            {results.map((res, idx) => {
+                            {groupedResults.map((group, idx) => {
+                                const selIdx = selectedDurations[group.tariff_version_id] ?? 0;
+                                const activeOption = group.duration_options[selIdx] || group.duration_options[0];
+                                const res = activeOption.result;
+                                const hasDurations = group.duration_options.length > 1;
 
                                 return (
-                                    <div key={idx} style={{
+                                    <div key={group.tariff_version_id} style={{
                                         background: 'white',
                                         padding: '1.5rem',
                                         borderRadius: '12px',
@@ -520,8 +546,49 @@ export function ComparatorForm() {
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div>
-                                                <span style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase' }}>{res.tariff_version?.supplier_name || 'Unknown Supplier'}</span>
-                                                <h3 style={{ margin: '0.2rem 0' }}>{res.tariff_version?.tariff_name}</h3>
+                                                <span style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase' }}>{group.supplier_name || 'Unknown Supplier'}</span>
+                                                <h3 style={{ margin: '0.2rem 0' }}>{group.tariff_name}</h3>
+                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                    {group.tariff_version?.valid_from && (
+                                                        <span style={{ fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                                                            Válida desde {new Date(group.tariff_version.valid_from).toLocaleDateString('es-ES')}
+                                                            {group.tariff_version.valid_to && ` hasta ${new Date(group.tariff_version.valid_to).toLocaleDateString('es-ES')}`}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Duration Pills */}
+                                                {hasDurations && (
+                                                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                                        {group.duration_options.map((opt, optIdx) => (
+                                                            <button
+                                                                key={optIdx}
+                                                                type="button"
+                                                                onClick={() => setSelectedDurations(prev => ({ ...prev, [group.tariff_version_id]: optIdx }))}
+                                                                style={{
+                                                                    padding: '0.25rem 0.6rem',
+                                                                    borderRadius: '999px',
+                                                                    border: selIdx === optIdx ? '2px solid #7c3aed' : '1px solid #d1d5db',
+                                                                    background: selIdx === optIdx ? '#f5f3ff' : '#fff',
+                                                                    color: selIdx === optIdx ? '#7c3aed' : '#6b7280',
+                                                                    fontWeight: selIdx === optIdx ? '600' : '400',
+                                                                    fontSize: '0.78rem',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.15s',
+                                                                }}
+                                                            >
+                                                                {opt.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Single duration badge when no alternatives */}
+                                                {!hasDurations && activeOption.duration && (
+                                                    <span style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.75rem', color: '#7c3aed', background: '#f5f3ff', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                                                        {activeOption.label}
+                                                    </span>
+                                                )}
 
                                                 {/* Savings Indicator */}
                                                 {state.currentCost && (

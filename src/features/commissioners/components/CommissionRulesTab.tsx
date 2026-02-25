@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { CommissionRule } from '@/shared/types'
 import { CreateRuleDialog } from './CreateRuleDialog'
@@ -20,11 +20,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
     const { toast } = useToast()
 
-    useEffect(() => {
-        fetchRules()
-    }, [commissionerId])
-
-    const fetchRules = async () => {
+    const fetchRules = useCallback(async () => {
         setLoading(true)
         let query = supabase
             .from('commission_rules')
@@ -45,7 +41,11 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
             setRules(data || [])
         }
         setLoading(false)
-    }
+    }, [commissionerId])
+
+    useEffect(() => {
+        fetchRules()
+    }, [fetchRules])
 
     const handleToggleActive = async (id: string, currentActive: boolean) => {
         const { error } = await supabase
@@ -57,7 +57,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
             toast({ title: 'Error', description: 'No se pudo cambiar el estado de la regla', variant: 'destructive' })
         } else {
             toast({ title: currentActive ? 'Regla desactivada' : 'Regla activada', description: 'El estado se ha actualizado correctamente' })
-            fetchRules()
+            void fetchRules()
         }
     }
 
@@ -78,7 +78,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
         setDeleteTarget(null)
     }
 
-    const handleStartEdit = (rule: CommissionRule & { id: string; commission_pct: number }) => {
+    const handleStartEdit = (rule: CommissionRule) => {
         setEditingRule(rule.id)
         setEditPct(String(rule.commission_pct))
     }
@@ -146,7 +146,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
                                     </td>
                                 </tr>
                             ) : (
-                                rules.map((rule: any) => (
+                                rules.map((rule) => (
                                     <tr key={rule.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                         {!commissionerId && <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{rule.commissioners?.full_name || 'Desconocido'}</td>}
                                         <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{rule.supplier_name || 'Todas'}</td>

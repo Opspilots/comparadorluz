@@ -30,14 +30,17 @@ export function RecentActivity() {
                 .limit(5)
 
             if (contracts) {
-                const items: ActivityItem[] = contracts.map((c: any) => ({
-                    id: c.id,
-                    type: 'contract',
-                    title: `Contrato para ${c.customers?.name || 'Cliente desconocido'}`,
-                    subtitle: `Estado: ${c.status}`,
-                    date: c.created_at,
-                    status: c.status
-                }))
+                const items: ActivityItem[] = (contracts as { id: string, status: string, created_at: string, customers: { name?: string } | null }[]).map((c) => {
+                    const customerName = c.customers?.name || 'Cliente desconocido';
+                    return {
+                        id: c.id,
+                        type: 'contract',
+                        title: `Contrato para ${customerName}`,
+                        subtitle: `Estado: ${c.status}`,
+                        date: c.created_at,
+                        status: c.status
+                    };
+                });
                 setActivities(items)
             }
         } catch (error) {

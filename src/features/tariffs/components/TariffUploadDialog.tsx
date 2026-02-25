@@ -127,69 +127,175 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
 
                         try {
                             for (const extractedData of extractedDataArray) {
-                                // Create Tariff Version from Extracted Data
-                                const { data: tariffVersion, error: tvError } = await supabase
+                                // Find supplier and structure
+                                const { data: suppliers } = await supabase.from('suppliers').select('id, name');
+                                const supplierNameLower = (extractedData.supplier_name || '').toLowerCase();
+                                let supplierId = null;
+                                if (suppliers) {
+                                    const match = suppliers.find(s => s.name.toLowerCase().includes(supplierNameLower) || supplierNameLower.includes(s.name.toLowerCase()));
+                                    if (match) supplierId = match.id;
+                                    else if (suppliers.length > 0) supplierId = suppliers[0].id; // Fallback
+                                }
+
+                                const { data: structures } = await supabase.from('tariff_structures').select('id, code, energy_periods, power_periods');
+                                let structureId = null;
+                                let isGas = false;
+                                if (structures) {
+                                    const match = structures.find(s => s.code === extractedData.tariff_structure);
+                                    if (match) {
+                                        structureId = match.id;
+                                        isGas = match.code.startsWith('RL');
+                                    } else {
+                                        // Better fallback strategy
+                                        const supplyType = extractedData.supply_type || (extractedData.tariff_structure?.startsWith('RL') ? 'gas' : 'electricity');
+                                        isGas = supplyType === 'gas';
+                                        const fallbackCode = isGas ? 'RL.1' : '2.0TD';
+                                        const fallback = structures.find(s => s.code === fallbackCode);
+                                        if (fallback) structureId = fallback.id;
+                                        else if (structures.length > 0) structureId = structures[0].id;
+                                    }
+                                }
+
+                                const validFrom = extractedData.valid_from || new Date().toISOString();
+
+                                const payload = {
+                                    company_id: companyId,
+                                    batch_id: batch.id,
+                                    file_id: fileRecord.id,
+                                    supplier_id: supplierId,
+                                    tariff_structure_id: structureId,
+                                    tariff_name: extractedData.tariff_name || 'Tarifa Importada',
+                                    tariff_type: extractedData.tariff_structure || (isGas ? 'RL.1' : '2.0TD'),
+                                    is_indexed: extractedData.is_indexed || false,
+                                    contract_duration: extractedData.contract_duration || null,
+                                    valid_from: validFrom,
+                                    valid_to: extractedData.valid_to || null,
+                                    is_active: true
+                                };
+
+                                // Create or update Tariff Version from Extracted Data
+                                let versionCheckQuery = supabase
                                     .from('tariff_versions')
-                                    .insert({
-                                        company_id: companyId,
-                                        batch_id: batch.id,
-                                        file_id: fileRecord.id,
-                                        supplier_name: extractedData.supplier_name || 'Desconocida',
-                                        tariff_name: extractedData.tariff_name || 'Tarifa Importada',
-                                        tariff_type: extractedData.tariff_type || '2.0TD',
-                                        valid_from: extractedData.valid_from || new Date().toISOString(),
-                                        valid_to: extractedData.valid_to || null,
-                                        is_active: true
-                                    })
-                                    .select()
-                                    .single();
+                                    .select('id')
+                                    .eq('company_id', payload.company_id)
+                                    .eq('supplier_id', payload.supplier_id)
+                                    .eq('tariff_structure_id', payload.tariff_structure_id)
+                                    .ilike('tariff_name', payload.tariff_name)
+                                    .eq('valid_from', payload.valid_from);
+
+                                if (payload.contract_duration === null || payload.contract_duration === undefined) {
+                                    versionCheckQuery = versionCheckQuery.is('contract_duration', null);
+                                } else {
+                                    versionCheckQuery = versionCheckQuery.eq('contract_duration', payload.contract_duration);
+                                }
+
+                                const { data: existingVersion, error: existingError } = await versionCheckQuery.maybeSingle();
+
+                                if (existingError && existingError.code !== 'PGRST116') {
+                                    throw existingError;
+                                }
+
+                                let tariffVersion;
+                                let tvError;
+
+                                if (existingVersion) {
+                                    const { data: updatedVersion, error: updateError } = await supabase
+                                        .from('tariff_versions')
+                                        .update(payload)
+                                        .eq('id', existingVersion.id)
+                                        .select()
+                                        .single();
+                                    tariffVersion = updatedVersion;
+                                    tvError = updateError;
+                                } else {
+                                    const { data: insertedVersion, error: insertError } = await supabase
+                                        .from('tariff_versions')
+                                        .insert(payload)
+                                        .select()
+                                        .single();
+                                    tariffVersion = insertedVersion;
+                                    tvError = insertError;
+                                }
 
                                 if (tvError) throw tvError;
 
-                                const components = [];
+                                // Clean existing rates before inserting new ones to avoid duplicate entries when overwriting
+                                await supabase.from('tariff_rates').delete().eq('tariff_version_id', tariffVersion.id);
+
+                                const rates = [];
 
                                 // Energy Prices
-                                for (let p = 1; p <= 6; p++) {
-                                    const val = extractedData[`energy_p${p}`];
+                                if (isGas) {
+                                    // Gas only has one energy price (P1)
+                                    const val = extractedData.energy_p1;
                                     if (val !== null && val !== undefined) {
-                                        components.push({
-                                            company_id: companyId,
+                                        rates.push({
                                             tariff_version_id: tariffVersion.id,
-                                            component_type: 'energy_price',
-                                            period: `P${p}`,
-                                            price_eur_kwh: Number(val)
+                                            item_type: 'energy',
+                                            period: 'P1',
+                                            price: Number(val),
+                                            unit: 'EUR/kWh',
+                                            contract_duration: payload.contract_duration,
+                                            valid_from: payload.valid_from,
+                                            valid_to: payload.valid_to
                                         });
+                                    }
+                                } else {
+                                    // Electricity P1-P6
+                                    for (let p = 1; p <= 6; p++) {
+                                        const val = extractedData[`energy_p${p}`];
+                                        if (val !== null && val !== undefined) {
+                                            rates.push({
+                                                tariff_version_id: tariffVersion.id,
+                                                item_type: 'energy',
+                                                period: `P${p}`,
+                                                price: Number(val),
+                                                unit: 'EUR/kWh',
+                                                contract_duration: payload.contract_duration,
+                                                valid_from: payload.valid_from,
+                                                valid_to: payload.valid_to
+                                            });
+                                        }
                                     }
                                 }
 
-                                // Power Prices
-                                for (let p = 1; p <= 6; p++) {
-                                    const val = extractedData[`power_p${p}`];
-                                    if (val !== null && val !== undefined) {
-                                        components.push({
-                                            company_id: companyId,
-                                            tariff_version_id: tariffVersion.id,
-                                            component_type: 'power_price',
-                                            period: `P${p}`,
-                                            price_eur_kw_year: Number(val)
-                                        });
+                                // Power Prices (Electricity Only)
+                                if (!isGas) {
+                                    for (let p = 1; p <= 6; p++) {
+                                        const val = extractedData[`power_p${p}`];
+                                        if (val !== null && val !== undefined) {
+                                            rates.push({
+                                                tariff_version_id: tariffVersion.id,
+                                                item_type: 'power',
+                                                period: `P${p}`,
+                                                price: Number(val),
+                                                unit: 'EUR/kW/year',
+                                                contract_duration: payload.contract_duration,
+                                                valid_from: payload.valid_from,
+                                                valid_to: payload.valid_to
+                                            });
+                                        }
                                     }
                                 }
 
-                                // Fixed Fee
+                                // Fixed Fee (Shared but often Gas specialized)
                                 if (extractedData.fixed_fee !== null && extractedData.fixed_fee !== undefined) {
-                                    components.push({
-                                        company_id: companyId,
+                                    rates.push({
                                         tariff_version_id: tariffVersion.id,
-                                        component_type: 'fixed_fee',
-                                        fixed_price_eur_month: Number(extractedData.fixed_fee)
+                                        item_type: 'fixed_fee',
+                                        period: 'P1',
+                                        price: Number(extractedData.fixed_fee),
+                                        unit: 'EUR/month',
+                                        contract_duration: payload.contract_duration,
+                                        valid_from: payload.valid_from,
+                                        valid_to: payload.valid_to
                                     });
                                 }
 
-                                if (components.length > 0) {
+                                if (rates.length > 0) {
                                     const { error: cError } = await supabase
-                                        .from('tariff_components')
-                                        .insert(components);
+                                        .from('tariff_rates')
+                                        .insert(rates);
 
                                     if (cError) throw cError;
                                 }
@@ -197,14 +303,15 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
 
                             setUploads(prev => prev.map((u, i) => i === index ? { ...u, status: 'completed', progress: 100 } : u));
 
-                        } catch (creationError: any) {
+                        } catch (creationError: unknown) {
                             console.error("Error creating tariff from data:", creationError);
                             setUploads(prev => prev.map((u, i) => i === index ? { ...u, status: 'error', error: 'Import Failed', progress: 100 } : u));
                         }
                     }
-                } catch (err: any) {
+                } catch (err: unknown) {
+                    const errorMsg = err instanceof Error ? err.message : String(err);
                     console.error("Upload failed for file:", uploadState.file.name, err);
-                    setUploads(prev => prev.map((u, i) => i === index ? { ...u, status: 'error', error: err.message } : u));
+                    setUploads(prev => prev.map((u, i) => i === index ? { ...u, status: 'error', error: errorMsg } : u));
                 }
             });
 
@@ -221,11 +328,12 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
             queryClient.invalidateQueries({ queryKey: ['tariff-batches'] });
             queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
 
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
             toast({
                 variant: "destructive",
                 title: "Error creating batch",
-                description: err.message
+                description: errorMsg
             });
         }
     };

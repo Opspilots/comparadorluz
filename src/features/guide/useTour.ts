@@ -2,11 +2,21 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { useLocation } from 'react-router-dom'
 
+interface TourStep {
+    element: string;
+    popover: {
+        title: string;
+        description: string;
+        side: 'top' | 'right' | 'bottom' | 'left';
+        align: 'start' | 'center' | 'end';
+    };
+}
+
 export function useTour() {
     const location = useLocation()
 
     const startTour = () => {
-        let steps: any[] = []
+        let steps: TourStep[] = []
 
         if (location.pathname === '/') {
             steps = [

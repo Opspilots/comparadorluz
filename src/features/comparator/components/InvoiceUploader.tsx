@@ -3,7 +3,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface InvoiceUploaderProps {
-    onDataExtracted: (data: any) => void;
+    onDataExtracted: (data: unknown) => void;
     supplyType?: 'electricity' | 'gas';
 }
 
@@ -50,18 +50,20 @@ export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }:
                         const errorBody = await error.context.text()
                         const parsedError = JSON.parse(errorBody)
                         throw new Error(parsedError.error || error.message)
-                    } catch { }
+                    } catch (err: unknown) {
+                        console.error('Failed to parse error body:', err)
+                    }
                 }
                 throw error
             }
 
             setStatus('success')
             onDataExtracted(data)
-        } catch (err: any) {
+        } catch (error: unknown) {
             // ... error handling
-            console.error('Error uploading/extracting:', err)
+            console.error('Error uploading/extracting:', error)
             setStatus('error')
-            setErrorMessage(err.message || 'Error al procesar la factura')
+            setErrorMessage(error instanceof Error ? error.message : 'Error al procesar la factura')
         }
     }
 

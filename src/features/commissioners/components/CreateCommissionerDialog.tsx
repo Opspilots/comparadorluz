@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
-import { X, Mail, User, Check } from 'lucide-react'
+import { X, Mail, User, Check, Phone, Hash, MapPin, Percent } from 'lucide-react'
 
 interface CreateCommissionerDialogProps {
     isOpen: boolean
@@ -12,6 +12,10 @@ interface CreateCommissionerDialogProps {
 export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateCommissionerDialogProps) {
     const [email, setEmail] = useState('')
     const [fullName, setFullName] = useState('')
+    const [phone, setPhone] = useState('')
+    const [nif, setNif] = useState('')
+    const [address, setAddress] = useState('')
+    const [commissionPct, setCommissionPct] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
@@ -20,6 +24,10 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
         if (isOpen) {
             setEmail('')
             setFullName('')
+            setPhone('')
+            setNif('')
+            setAddress('')
+            setCommissionPct('')
             setError(null)
             setSuccess(false)
         }
@@ -32,16 +40,18 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
 
         try {
             // 1. Check if commissioner already exists by email
-            const { data: existing } = await supabase
-                .from('commissioners')
-                .select('id')
-                .eq('email', email)
-                .single()
+            if (email) {
+                const { data: existing } = await supabase
+                    .from('commissioners')
+                    .select('id')
+                    .eq('email', email)
+                    .single()
 
-            if (existing) {
-                setError('Ya existe un comisionado con este correo electrónico.')
-                setLoading(false)
-                return
+                if (existing) {
+                    setError('Ya existe un comisionado con este correo electrónico.')
+                    setLoading(false)
+                    return
+                }
             }
 
             // 2. Get company_id
@@ -57,14 +67,18 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
             if (!userData?.company_id) throw new Error('Error al obtener info de empresa')
 
             // 3. Insert new commissioner
+            const pct = commissionPct ? parseFloat(commissionPct) : 0
             const { error: createError } = await supabase
                 .from('commissioners')
                 .insert({
                     company_id: userData.company_id,
                     full_name: fullName,
-                    email: email,
+                    email: email || null,
+                    phone: phone || null,
+                    nif: nif || null,
+                    address: address || null,
                     is_active: true,
-                    commission_default_pct: 0
+                    commission_default_pct: pct
                 })
 
             if (createError) throw createError
@@ -75,9 +89,9 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
                 onClose()
             }, 2000)
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error creating commissioner:', err)
-            setError(err.message || 'Error al crear comisionado')
+            setError(err instanceof Error ? err.message : 'Error al crear comisionado')
         } finally {
             setLoading(false)
         }
@@ -91,7 +105,7 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
             background: 'rgba(0,0,0,0.5)', zIndex: 1000,
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-            <div className="card" style={{ width: '450px', maxWidth: '90%', padding: '2rem' }}>
+            <div className="card" style={{ width: '520px', maxWidth: '90%', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
                     <div style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Nuevo Comisionado</div>
                     <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
@@ -123,7 +137,7 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
 
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                                Nombre Completo
+                                Nombre Completo *
                             </label>
                             <div style={{ position: 'relative' }}>
                                 <User size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
@@ -138,18 +152,88 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
                             </div>
                         </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                    Correo Electrónico
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <Mail size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={e => setEmail(e.target.value)}
+                                        placeholder="ejemplo@empresa.com"
+                                        style={{ width: '100%', padding: '0.625rem 0.625rem 0.625rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                    Teléfono
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <Phone size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                    <input
+                                        type="tel"
+                                        value={phone}
+                                        onChange={e => setPhone(e.target.value)}
+                                        placeholder="612 345 678"
+                                        style={{ width: '100%', padding: '0.625rem 0.625rem 0.625rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                    NIF / CIF
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <Hash size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                    <input
+                                        type="text"
+                                        value={nif}
+                                        onChange={e => setNif(e.target.value)}
+                                        placeholder="12345678A"
+                                        style={{ width: '100%', padding: '0.625rem 0.625rem 0.625rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                    Comisión por defecto %
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <Percent size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
+                                        value={commissionPct}
+                                        onChange={e => setCommissionPct(e.target.value)}
+                                        placeholder="Ej: 5.00"
+                                        style={{ width: '100%', padding: '0.625rem 0.625rem 0.625rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                                Correo Electrónico
+                                Dirección
                             </label>
                             <div style={{ position: 'relative' }}>
-                                <Mail size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                <MapPin size={18} style={{ position: 'absolute', left: '0.75rem', top: '0.7rem', color: '#94a3b8' }} />
                                 <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder="ejemplo@empresa.com"
+                                    type="text"
+                                    value={address}
+                                    onChange={e => setAddress(e.target.value)}
+                                    placeholder="Calle, Ciudad, CP"
                                     style={{ width: '100%', padding: '0.625rem 0.625rem 0.625rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                                 />
                             </div>

@@ -48,7 +48,7 @@ export function Step4ScheduleRules({ data, onChange }: Step4Props) {
         onChange && onChange(updated);
     };
 
-    const updateSchedule = (id: string, field: keyof TariffSchedule, value: any) => {
+    const updateSchedule = <K extends keyof TariffSchedule>(id: string, field: K, value: TariffSchedule[K]) => {
         const updated = localSchedules.map(s => s.id === id ? { ...s, [field]: value } : s);
         setLocalSchedules(updated);
         onChange && onChange(updated);

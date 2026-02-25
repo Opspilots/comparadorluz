@@ -1,5 +1,5 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
 const corsHeaders = {
@@ -7,13 +7,13 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
-        const authHeader = req.headers.get('Authorization')
+        // const authHeader = req.headers.get('Authorization')
 
         // Create Supabase client
         const supabase = createClient(
@@ -21,7 +21,7 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { company_id, file_path, file_id, batch_id } = await req.json()
+        const { company_id, file_path, file_id } = await req.json()
 
         if (!company_id || !file_path) {
             throw new Error('Missing required fields: company_id, file_path')
@@ -54,11 +54,13 @@ serve(async (req) => {
             Responde con un ARRAY de objetos JSON, donde cada objeto representa una tarifa.
 
             PARA CADA TARIFA BUSCA LOS SIGUIENTES DATOS:
-            - supplier_name: Nombre de la comercializadora.
+            - supplier_name: Nombre de la comercializadora (ej: Iberdrola, Endesa, Naturgy, Galp). SI EL DOCUMENTO DICE "GALP" O "GFF", EL NOMBRE DEBE SER "Galp". NUNCA DEVUELVAS "GFF" O "gf".
             - tariff_name: Nombre comercial de la tarifa (incluye si es Precio Fijo, Indexado, etc).
-            - tariff_type: Tipo de peaje (2.0TD, 3.0TD, 6.1TD, etc).
-            - valid_from: Fecha de inicio de vigencia (YYYY-MM-DD). Si no hay fecha, usa la fecha de hoy.
-            - valid_to: Fecha de fin de vigencia (YYYY-MM-DD) o null si es indefinida.
+            - tariff_structure: Tipo de peaje (2.0TD, 3.0TD, 6.1TD, etc).
+            - valid_from: Fecha de inicio de vigencia (YYYY-MM-DD). BUSCA ACTIVAMENTE ESTA FECHA EN EL DOCUMENTO (ej: "Válido desde", "Precios aplicables a partir de"). Si no hay absolutamente ninguna fecha, usa la fecha de hoy.
+            - valid_to: Fecha de fin de vigencia (YYYY-MM-DD). BUSCA ACTIVAMENTE ESTA FECHA EN EL DOCUMENTO (ej: "hasta el", "Válido hasta"). Si no se especifica una fecha de fin, usa null. ASEGÚRATE DE DEVOLVER ESTOS DATOS Y NO DEJARLOS VACÍOS SI LA INFORMACIÓN ESTÁ EN EL TEXTO.
+            - contract_duration: Duración del contrato en MESES (ejemplo: 12). Si no se indica, usa null.
+            - is_indexed: true si es una tarifa a precio de mercado/indexada, false si es precio fijo.
             
             PRECIOS DE ENERGÍA (Variable) - €/kWh:
             - energy_p1: Precio P1
@@ -154,13 +156,14 @@ serve(async (req) => {
             status: 200,
         })
 
-    } catch (err: any) {
+    } catch (e: unknown) {
+        const error = e as Error;
         // If file_id is available, update status to failed
         // We need to re-create client or just log it, but we can't do much if we don't have scope here easily
         // In a real production app we would handle the error update transactionally if possible
-        console.error('Processing error:', err)
+        console.error('Processing error:', error)
 
-        return new Response(JSON.stringify({ error: err.message }), {
+        return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

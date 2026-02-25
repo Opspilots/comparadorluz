@@ -4,6 +4,8 @@ import type {
     CalculationBreakdown,
 } from '@/shared/types';
 import { GAS_CONSTANTS } from '@/shared/constants';
+import { calculateSavings } from './calculator';
+import { findActiveRate } from './tariffUtils';
 
 function round(value: number): number {
     return Math.round(value * 100) / 100;
@@ -16,16 +18,17 @@ export function calculateGasAnnualCost(input: CalculationInput): CalculationResu
         current_cost_eur,
     } = input;
 
-    const components = tariff_version.tariff_components || [];
+    const rates = tariff_version.tariff_rates || [];
+    const today = new Date().toISOString().split('T')[0];
 
     // 1. Fixed Term (Término Fijo)
-    const fixedFeeComponent = components.find(c => c.component_type === 'fixed_fee');
-    const fixedFeeMonthly = fixedFeeComponent?.fixed_price_eur_month || 0;
+    const fixedFeeRate = findActiveRate(rates as any, 'fixed_fee', undefined, today, tariff_version.contract_duration);
+    const fixedFeeMonthly = fixedFeeRate?.price || 0;
     const fixedFeeAnnual = round(fixedFeeMonthly * 12);
 
     // 2. Variable Term (Término Variable)
-    const energyComponent = components.find(c => c.component_type === 'energy_price');
-    const energyPrice = energyComponent?.price_eur_kwh || 0;
+    const energyRate = findActiveRate(rates as any, 'energy', undefined, today, tariff_version.contract_duration);
+    const energyPrice = energyRate?.price || 0;
     const energyCostAnnual = round(annual_consumption_kwh * energyPrice);
 
     // 3. Taxes
@@ -52,7 +55,7 @@ export function calculateGasAnnualCost(input: CalculationInput): CalculationResu
         total: totalAnnual,
         tax_breakdown: {
             iva,
-            electricity_tax: hydrocarbonTax // Repurposing field for Hydrocarbon tax
+            hydrocarbon_tax: hydrocarbonTax
         },
         period_breakdown: {
             'P1': { kwh: annual_consumption_kwh, cost: energyCostAnnual }
@@ -60,15 +63,7 @@ export function calculateGasAnnualCost(input: CalculationInput): CalculationResu
     };
 
     // Savings
-    let savings = {};
-    if (current_cost_eur && current_cost_eur > 0) {
-        const annualSavings = round(current_cost_eur - totalAnnual);
-        const savingsPct = round((annualSavings / current_cost_eur) * 100);
-        savings = {
-            annual_savings_eur: annualSavings,
-            savings_pct: savingsPct
-        };
-    }
+    const savings = calculateSavings(totalAnnual, current_cost_eur);
 
     return {
         annual_cost_eur: totalAnnual,

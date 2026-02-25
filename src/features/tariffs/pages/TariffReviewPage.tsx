@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
-import { TariffBatch, TariffVersion } from '@/shared/types';
+import { TariffBatch } from '@/shared/types';
 import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TariffComponentsEditor } from '../components/TariffComponentsEditor';
@@ -34,10 +34,10 @@ export default function TariffReviewPage() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('tariff_versions')
-                .select('*, tariff_components(*)')
+                .select('*, tariff_rates(*)')
                 .eq('batch_id', batchId);
             if (error) throw error;
-            return data as TariffVersion[];
+            return data as any[];
         },
         enabled: !!batchId
     });
@@ -207,7 +207,7 @@ export default function TariffReviewPage() {
                                 <div style={{ marginTop: '1.5rem' }}>
                                     <TariffComponentsEditor
                                         tariffVersionId={selectedVersion.id}
-                                        components={selectedVersion.tariff_components || []}
+                                        rates={selectedVersion.tariff_rates || []}
                                     />
                                 </div>
                             </div>

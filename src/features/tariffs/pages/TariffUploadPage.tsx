@@ -42,6 +42,14 @@ export default function TariffUploadPage() {
         setIsDragging(false);
     }, []);
 
+    const addFiles = useCallback((newFiles: File[]) => {
+        const fileStatuses: BatchFileStatus[] = newFiles.map(file => ({
+            file,
+            status: 'pending'
+        }));
+        setFiles(prev => [...prev, ...fileStatuses]);
+    }, []);
+
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
@@ -59,7 +67,7 @@ export default function TariffUploadPage() {
         }
 
         addFiles(droppedFiles);
-    }, []);
+    }, [addFiles, toast]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -70,13 +78,7 @@ export default function TariffUploadPage() {
         }
     };
 
-    const addFiles = (newFiles: File[]) => {
-        const fileStatuses: BatchFileStatus[] = newFiles.map(file => ({
-            file,
-            status: 'pending'
-        }));
-        setFiles(prev => [...prev, ...fileStatuses]);
-    };
+
 
     const removeFile = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index));
@@ -100,9 +102,9 @@ export default function TariffUploadPage() {
                 try {
                     await uploadBatchFile(batchId, userData!.company_id, newFilesState[i].file);
                     newFilesState[i].status = 'completed';
-                } catch (err: any) {
+                } catch (err: unknown) {
                     newFilesState[i].status = 'error';
-                    newFilesState[i].error = err.message;
+                    newFilesState[i].error = err instanceof Error ? err.message : String(err);
                 }
                 setFiles([...newFilesState]);
             }
@@ -123,7 +125,7 @@ export default function TariffUploadPage() {
             // Redirect to batch details
             setTimeout(() => navigate(`/admin/tariffs/batches/${batchId}`), 1000);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             // ... (error handling)
         } finally {
             setIsUploading(false);

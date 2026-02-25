@@ -24,7 +24,7 @@ export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
         onChange(data.rates.filter(r => r.id !== id));
     };
 
-    const updateRate = (id: string, field: keyof TariffRate, value: any) => {
+    const updateRate = <K extends keyof TariffRate>(id: string, field: K, value: TariffRate[K]) => {
         const updatedRates = data.rates.map(r => r.id === id ? { ...r, [field]: value } : r);
         onChange(updatedRates);
     };
@@ -51,7 +51,7 @@ export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
                             <select
                                 style={inputStyle}
                                 value={rate.item_type}
-                                onChange={(e) => updateRate(rate.id, 'item_type', e.target.value)}
+                                onChange={(e) => updateRate(rate.id, 'item_type', e.target.value as TariffRate['item_type'])}
                             >
                                 <option value="fixed_fee">Cuota Fija</option>
                                 <option value="tax">Impuesto</option>

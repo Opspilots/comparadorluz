@@ -95,29 +95,17 @@ export function Login() {
             if (authError) throw authError
             if (!authData.user) throw new Error('No se pudo crear el usuario.')
 
-            const { data: companyData, error: companyError } = await supabase
-                .from('companies')
-                .insert([{
-                    name: `Empresa de ${email.split('@')[0]}`,
-                    cif: `A${Math.floor(Math.random() * 90000000 + 10000000)}`,
-                    email: email,
-                }])
-                .select()
-                .single()
+            const randomCif = `A${Math.floor(Math.random() * 90000000 + 10000000)}`;
+            const companyName = `Empresa de ${email.split('@')[0]}`;
 
-            if (companyError) throw companyError
+            const { error: rpcError } = await supabase.rpc('create_company_with_user', {
+                p_user_id: authData.user.id,
+                p_email: email,
+                p_company_name: companyName,
+                p_cif: randomCif
+            })
 
-            const { error: userError } = await supabase
-                .from('users')
-                .insert([{
-                    id: authData.user.id,
-                    company_id: companyData.id,
-                    email: email,
-                    full_name: 'Usuario Inicial',
-                    role: 'admin'
-                }])
-
-            if (userError) throw userError
+            if (rpcError) throw rpcError
 
             setMessage('¡Cuenta creada! Se ha configurado tu empresa automáticamente. Ya puedes iniciar sesión.')
             setAuthMode('login')

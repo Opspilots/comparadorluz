@@ -1,11 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "std/http/server.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -78,9 +78,10 @@ serve(async (req) => {
             status: 200,
         })
 
-    } catch (err: any) {
-        console.error('Processing error:', err)
-        return new Response(JSON.stringify({ error: err.message }), {
+    } catch (e: unknown) {
+        const error = e as Error;
+        console.error('Processing error:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

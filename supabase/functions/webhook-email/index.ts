@@ -6,7 +6,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -24,10 +24,8 @@ serve(async (req) => {
         // Basic validation of Resend payload structure
         // Resend sends a JSON with 'from', 'to', 'subject', 'text', 'html'
         const fromEmail = payload.from
-        const toEmail = payload.to
         const subject = payload.subject
         const textBody = payload.text
-        const htmlBody = payload.html
 
         if (!fromEmail || !textBody) {
             console.log('Invalid payload, missing from or text')
@@ -45,7 +43,7 @@ serve(async (req) => {
         // 2. Find Customer by Email
         // Search in 'contacts' table first, then 'companies' (if B2B), or maybe 'customers' directly if they have email field (they do on contacts)
         // We will search in `contacts` table
-        const { data: contact, error: contactError } = await supabaseClient
+        const { data: contact } = await supabaseClient
             .from('contacts')
             .select('id, customer_id, company_id')
             .eq('email', cleanFromEmail)
@@ -102,7 +100,8 @@ serve(async (req) => {
             status: 200,
         })
 
-    } catch (error) {
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e : new Error(String(e))
         console.error('Error processing email webhook:', error)
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

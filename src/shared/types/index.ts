@@ -140,6 +140,9 @@ export interface TariffComponent {
     price_eur_kw_year?: number;
     fixed_price_eur_month?: number;
     tax_pct?: number;
+    contract_duration?: number | null; // Duration in months
+    valid_from?: string; // Price validity start
+    valid_to?: string;   // Price validity end
     created_at: string;
 }
 
@@ -159,6 +162,7 @@ export interface TariffVersion {
     is_automated?: boolean;
     automation_source?: string;
     last_synced_at?: string;
+    contract_duration?: number | null;
     created_at: string;
     updated_at: string;
     tariff_components?: TariffComponent[]; // For joined data
@@ -175,6 +179,9 @@ export interface TariffRate {
     price_formula?: string;
     index_type?: string;
     margin?: number;
+    contract_duration?: number | null;
+    valid_from?: string; // Price validity start
+    valid_to?: string;   // Price validity end
 }
 
 // ============================================================================
@@ -239,6 +246,19 @@ export interface ComparisonResult {
     tariff_version?: TariffVersion;
 }
 
+export interface GroupedComparisonResult {
+    tariff_version_id: string;
+    supplier_name: string;
+    tariff_name: string;
+    tariff_version: TariffVersion;
+    duration_options: Array<{
+        duration: number | null;
+        label: string;
+        result: ComparisonResult;
+    }>;
+    best_rank: number;
+}
+
 // ============================================================================
 // Calculation Types
 // ============================================================================
@@ -252,7 +272,8 @@ export interface CalculationBreakdown {
     total: number;
     tax_breakdown?: {
         iva: number;
-        electricity_tax: number;
+        electricity_tax?: number;
+        hydrocarbon_tax?: number;
     };
     period_breakdown?: {
         P1?: { kwh: number; cost: number };
@@ -381,7 +402,7 @@ export interface Campaign {
     body?: string;
     status: CampaignStatus;
     scheduled_at?: string;
-    filters?: Record<string, any>; // jsonb
+    filters?: Record<string, unknown>; // jsonb
     template_id?: string;
     created_at: string;
     updated_at: string;

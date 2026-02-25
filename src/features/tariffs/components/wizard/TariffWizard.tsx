@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/lib/supabase';
+import { Step1Upload } from './Step1Upload';
+import { Step2Candidates } from './Step2Candidates';
 import Step1Metadata from './Step1Metadata';
-import { Step2ParserPreview } from './Step2ParserPreview';
 import { Step3AEnergyPrices } from './Step3AEnergyPrices';
 import { Step3BPowerPrices } from './Step3BPowerPrices';
 import { Step4ScheduleRules } from './Step4ScheduleRules';
 import { Step5FeesAndTaxes } from './Step5FeesAndTaxes';
 import { Step6Summary } from './Step6Summary';
-import { TariffWizardState, TariffStructure } from '@/types/tariff';
+import { TariffWizardState, TariffStructure, DetectedTariff, TariffRate, TariffRateType, Supplier } from '@/types/tariff';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { Step3BGasFixedFee } from './Step3BGasFixedFee';
@@ -21,6 +22,7 @@ const INITIAL_STATE: TariffWizardState = {
         code: '',
         is_indexed: false,
         valid_from: new Date().toISOString().split('T')[0],
+        contract_duration: null,
     },
     rates: [],
     schedules: [],
@@ -29,21 +31,49 @@ const INITIAL_STATE: TariffWizardState = {
 };
 
 export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'electricity' | 'gas' }) {
-    const [state, setState] = useState<TariffWizardState>(INITIAL_STATE);
-    const [structures, setStructures] = useState<TariffStructure[]>([]);
-    const [suppliers, setSuppliers] = useState<any[]>([]);
-    const { toast } = useToast();
-
     const { id } = useParams();
+
+    const [state, setState] = useState<TariffWizardState>(() => {
+        if (!id) {
+            const savedItem = sessionStorage.getItem('tariffWizardState');
+            if (savedItem) {
+                try {
+                    return JSON.parse(savedItem);
+                } catch (e) {
+                    console.error("Failed to parse saved state", e);
+                }
+            }
+        }
+        return INITIAL_STATE;
+    });
+
+    const [candidates, setCandidates] = useState<DetectedTariff[]>(() => {
+        if (!id) {
+            const savedCandidates = sessionStorage.getItem('tariffWizardCandidates');
+            if (savedCandidates) {
+                try {
+                    return JSON.parse(savedCandidates);
+                } catch (e) {
+                    console.error("Failed to parse saved candidates", e);
+                }
+            }
+        }
+        return [];
+    });
+
+    const [structures, setStructures] = useState<TariffStructure[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const { toast } = useToast();
+    const navigate = useNavigate();
 
     // Fetch structures and suppliers on mount
     useEffect(() => {
         Promise.all([
             supabase.from('tariff_structures').select('*'),
-            supabase.from('suppliers').select('id, name').eq('is_active', true)
+            supabase.from('suppliers').select('id, name, is_active').eq('is_active', true)
         ]).then(([structs, supps]) => {
             if (structs.data) setStructures(structs.data);
-            if (supps.data) setSuppliers(supps.data);
+            if (supps.data) setSuppliers(supps.data as Supplier[]);
         });
     }, []);
 
@@ -64,6 +94,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                 if (version) {
                     setState(prev => ({
                         ...prev,
+                        currentStep: 3, // Start at Metadata for editing
                         metadata: {
                             supplier_id: version.supplier_id,
                             tariff_structure_id: version.tariff_structure_id,
@@ -71,6 +102,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                             code: version.product_code || '',
                             is_indexed: version.is_indexed,
                             valid_from: version.valid_from,
+                            contract_duration: version.contract_duration || null,
                         },
                         rates: version.tariff_rates || [],
                         schedules: version.tariff_schedules || [],
@@ -82,7 +114,20 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             }
         };
         loadTariff();
-    }, [id]);
+    }, [id, toast]);
+
+    // Persist to session storage
+    useEffect(() => {
+        if (!id) {
+            sessionStorage.setItem('tariffWizardState', JSON.stringify(state));
+        }
+    }, [state, id]);
+
+    useEffect(() => {
+        if (!id) {
+            sessionStorage.setItem('tariffWizardCandidates', JSON.stringify(candidates));
+        }
+    }, [candidates, id]);
 
     const currentStructure = structures.find(s => s.id === state.metadata.tariff_structure_id);
     const isGas = currentStructure?.code?.startsWith('RL') || false;
@@ -94,22 +139,116 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
         return initialSupplyType === 'gas' ? isGasStructure : !isGasStructure;
     });
 
-    const updateMetadata = (key: keyof TariffWizardState['metadata'], value: any) => {
+    const updateMetadata = <K extends keyof TariffWizardState['metadata']>(key: K, value: TariffWizardState['metadata'][K]) => {
         setState(prev => ({
             ...prev,
             metadata: { ...prev.metadata, [key]: value }
         }));
     };
 
-    // Removed autoFillFromParsed as CNMC import is gone
-
-    const updateRates = (newRates: any[]) => {
+    const updateRates = (newRates: TariffRate[]) => {
         setState(prev => ({ ...prev, rates: newRates }));
     };
 
+    // Initialize base rates when structure is selected and no rates exist
+    useEffect(() => {
+        if (!currentStructure) return;
+        const hasEnergy = state.rates.some(r => r.item_type === 'energy');
+        const hasPower = state.rates.some(r => r.item_type === 'power');
+        if (!hasEnergy && !hasPower) {
+            const initialDuration = state.metadata.contract_duration;
+            const newRates: TariffRate[] = [];
+            for (let i = 1; i <= currentStructure.energy_periods; i++) {
+                newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'energy', period: `P${i}`, price: null, price_formula: '', unit: 'EUR/kWh', confidence_score: 1.0, contract_duration: initialDuration });
+            }
+            for (let i = 1; i <= currentStructure.power_periods; i++) {
+                newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/year', confidence_score: 1.0, contract_duration: initialDuration });
+            }
+            setState(prev => ({ ...prev, rates: [...prev.rates, ...newRates] }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentStructure?.id]);
+
+    // Shared handlers so Energy and Power steps always stay in sync
+    const handleAddDuration = (months: number) => {
+        if (!currentStructure) return;
+        const key = months.toString();
+        const existing = state.rates.filter(r => r.item_type === 'energy' && r.contract_duration === months);
+        if (existing.length > 0) return; // already exists
+
+        const newRates: TariffRate[] = [];
+        for (let i = 1; i <= currentStructure.energy_periods; i++) {
+            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'energy', period: `P${i}`, price: null, price_formula: '', unit: 'EUR/kWh', confidence_score: 1.0, contract_duration: months });
+        }
+        for (let i = 1; i <= currentStructure.power_periods; i++) {
+            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/year', confidence_score: 1.0, contract_duration: months });
+        }
+        setState(prev => ({ ...prev, rates: [...prev.rates, ...newRates] }));
+        return key;
+    };
+
+    const handleAddValidityPeriod = (durationKey: string, validFrom: string) => {
+        if (!currentStructure) return;
+        const duration = durationKey === 'any' ? null : parseInt(durationKey);
+        const newRates: TariffRate[] = [];
+        for (let i = 1; i <= currentStructure.energy_periods; i++) {
+            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'energy', period: `P${i}`, price: null, price_formula: '', unit: 'EUR/kWh', confidence_score: 1.0, contract_duration: duration, valid_from: validFrom });
+        }
+        for (let i = 1; i <= currentStructure.power_periods; i++) {
+            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/year', confidence_score: 1.0, contract_duration: duration, valid_from: validFrom });
+        }
+        setState(prev => ({ ...prev, rates: [...prev.rates, ...newRates] }));
+    };
+
+    const handleDeleteDuration = (durationKey: string) => {
+        const duration = durationKey === 'any' ? null : parseInt(durationKey);
+        setState(prev => ({
+            ...prev,
+            rates: prev.rates.filter(r => {
+                if (r.item_type !== 'energy' && r.item_type !== 'power') return true;
+                if (duration === null) return r.contract_duration !== null;
+                return r.contract_duration !== duration;
+            })
+        }));
+    };
+
+    const handleDeleteValidityGroup = (durationKey: string, validFrom: string | null, validTo: string | null) => {
+        const duration = durationKey === 'any' ? null : parseInt(durationKey);
+        setState(prev => ({
+            ...prev,
+            rates: prev.rates.filter(r => {
+                if (r.item_type !== 'energy' && r.item_type !== 'power') return true;
+                const matchesDuration = duration === null ? r.contract_duration === null : r.contract_duration === duration;
+                const matchesValidity = (r.valid_from || null) === validFrom && (r.valid_to || null) === validTo;
+                return !(matchesDuration && matchesValidity);
+            })
+        }));
+    };
+
+    const handleUpdateValidity = (durationKey: string, oldValidFrom: string | null, oldValidTo: string | null, newValidFrom: string | null, newValidTo: string | null) => {
+        const duration = durationKey === 'any' ? null : parseInt(durationKey);
+        setState(prev => ({
+            ...prev,
+            rates: prev.rates.map(r => {
+                if (r.item_type !== 'energy' && r.item_type !== 'power') return r;
+                const matchesDuration = duration === null ? r.contract_duration === null : r.contract_duration === duration;
+                const matchesValidity = (r.valid_from || null) === oldValidFrom && (r.valid_to || null) === oldValidTo;
+                if (matchesDuration && matchesValidity) {
+                    return { ...r, valid_from: newValidFrom || undefined, valid_to: newValidTo || undefined };
+                }
+                return r;
+            })
+        }));
+    };
+
+    // Transition Logic
+    const goToStep = (step: number) => {
+        setState(prev => ({ ...prev, currentStep: step }));
+    };
+
     const nextStep = () => {
-        // Validation before proceeding
-        if (state.currentStep === 2) {
+        // Validation handled inside steps mostly, or check basic needs here
+        if (state.currentStep === 3) {
             if (!state.metadata.supplier_id || !state.metadata.name || !state.metadata.tariff_structure_id) {
                 toast({
                     variant: 'destructive',
@@ -120,39 +259,256 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             }
         }
 
-
-        let nextStep = state.currentStep + 1;
-        // Skip Schedule Rules (Step 5) for Gas
-        if (isGas && nextStep === 5) {
-            nextStep = 6;
+        let next = state.currentStep + 1;
+        // Skip Schedule Rules (Step 6) for Gas
+        if (isGas && next === 6) {
+            next = 7;
         }
-        setState(prev => ({ ...prev, currentStep: nextStep }));
+        goToStep(next);
     };
 
     const prevStep = () => {
-        let prevStep = state.currentStep - 1;
-        // Skip Schedule Rules (Step 5) for Gas
-        if (isGas && prevStep === 5) {
-            prevStep = 4;
+        let prev = state.currentStep - 1;
+        // Skip Schedule Rules (Step 6) for Gas
+        if (isGas && prev === 6) {
+            prev = 5;
         }
-        setState(prev => ({ ...prev, currentStep: Math.max(1, prevStep) }));
+        // If going back from Step 3 (Metadata), where do we go?
+        // If we came from Candidates (Step 2), go there.
+        // If we are editing (ID exists), maybe go nowhere or back to list?
+        if (prev === 2 && id) {
+            // If editing existing, maybe back to dashboard?
+            navigate(-1);
+            return;
+        }
+
+        goToStep(Math.max(1, prev));
+    };
+
+    // Handlers for Step 1 & 2
+    const handleTariffsDetected = (newCandidates: DetectedTariff[], _file: File) => {
+        setCandidates(prev => {
+            const combined = [...prev, ...newCandidates];
+
+            // Aggregation logic: merge tariffs with same supplier, structure, and supply type
+            const aggregated: DetectedTariff[] = [];
+
+            combined.forEach(candidate => {
+                const isMatch = (a: DetectedTariff) =>
+                    a.tariff_structure === candidate.tariff_structure &&
+                    a.supply_type === candidate.supply_type &&
+                    (a.supplier_name || '').toLowerCase() === (candidate.supplier_name || '').toLowerCase() &&
+                    (a.tariff_name || '').toLowerCase() === (candidate.tariff_name || '').toLowerCase();
+
+                const matchIndex = aggregated.findIndex(isMatch);
+
+                if (matchIndex !== -1) {
+                    const existing = aggregated[matchIndex];
+
+                    // Normalize existing price_sets to ensure they retain their duration and validity
+                    let existingSets = existing.price_sets || [];
+                    if (existingSets.length === 0) {
+                        existingSets = [{
+                            contract_duration: existing.contract_duration ? parseInt(String(existing.contract_duration), 10) : null,
+                            valid_from: undefined,
+                            valid_to: undefined,
+                            energy_prices: existing.energy_prices || [],
+                            power_prices: existing.power_prices || [],
+                            fixed_term_prices: existing.fixed_term_prices || []
+                        }];
+                    } else {
+                        // Inject root duration if missing
+                        existingSets = existingSets.map(set => ({
+                            ...set,
+                            contract_duration: set.contract_duration ?? (existing.contract_duration ? parseInt(String(existing.contract_duration), 10) : null)
+                        }));
+                    }
+
+                    // Normalize new price_sets
+                    let newSets = candidate.price_sets || [];
+                    if (newSets.length === 0) {
+                        newSets = [{
+                            contract_duration: candidate.contract_duration ? parseInt(String(candidate.contract_duration), 10) : null,
+                            valid_from: undefined,
+                            valid_to: undefined,
+                            energy_prices: candidate.energy_prices || [],
+                            power_prices: candidate.power_prices || [],
+                            fixed_term_prices: candidate.fixed_term_prices || []
+                        }];
+                    } else {
+                        // Inject root duration if missing
+                        newSets = newSets.map(set => ({
+                            ...set,
+                            contract_duration: set.contract_duration ?? (candidate.contract_duration ? parseInt(String(candidate.contract_duration), 10) : null)
+                        }));
+                    }
+
+                    existing.price_sets = [...existingSets, ...newSets];
+                } else {
+                    // Normalize candidate if it doesn't have price_sets
+                    if (!candidate.price_sets || candidate.price_sets.length === 0) {
+                        candidate.price_sets = [{
+                            contract_duration: candidate.contract_duration ? parseInt(String(candidate.contract_duration), 10) : null,
+                            valid_from: undefined,
+                            valid_to: undefined,
+                            energy_prices: candidate.energy_prices || [],
+                            power_prices: candidate.power_prices || [],
+                            fixed_term_prices: candidate.fixed_term_prices || []
+                        }];
+                    } else {
+                        candidate.price_sets = candidate.price_sets.map(set => ({
+                            ...set,
+                            contract_duration: set.contract_duration ?? (candidate.contract_duration ? parseInt(String(candidate.contract_duration), 10) : null)
+                        }));
+                    }
+                    aggregated.push(candidate);
+                }
+            });
+
+            return aggregated;
+        });
+        goToStep(2); // Go to Results Table
+    };
+
+    const handleEditCandidate = (candidate: DetectedTariff) => {
+        // Map candidate to state
+        // Populate metadata
+        const metadataUpdates: Partial<TariffWizardState['metadata']> = {};
+        if (candidate.tariff_name) metadataUpdates.name = candidate.tariff_name;
+        if (candidate.is_indexed !== undefined) metadataUpdates.is_indexed = candidate.is_indexed;
+
+        // Parse contract_duration (already numeric from Step1Upload, but IA might return string)
+        const parsedDuration = candidate.contract_duration ? parseInt(String(candidate.contract_duration), 10) : null;
+        metadataUpdates.contract_duration = parsedDuration;
+
+        // Map validity_date from first price_set to metadata.valid_from
+        let firstValidity: string | undefined = undefined;
+        if (candidate.price_sets && candidate.price_sets.length > 0) {
+            firstValidity = candidate.price_sets.find(s => s.valid_from)?.valid_from;
+        }
+        if (firstValidity) {
+            metadataUpdates.valid_from = firstValidity;
+        }
+
+        // Resolve structure ID, filtering by supply_type if present
+        if (candidate.tariff_structure) {
+            let matchStructures = structures;
+            if (candidate.supply_type) {
+                matchStructures = structures.filter(s => {
+                    const isGasStruct = s.code?.startsWith('RL');
+                    return candidate.supply_type === 'gas' ? isGasStruct : !isGasStruct;
+                });
+            }
+            const s = matchStructures.find(s => s.code === candidate.tariff_structure || s.name.includes(candidate.tariff_structure!));
+            if (s) metadataUpdates.tariff_structure_id = s.id;
+        }
+        if (candidate.supplier_name) {
+            const s = suppliers.find(s => s.name.toLowerCase().includes(candidate.supplier_name!.toLowerCase()));
+            if (s) metadataUpdates.supplier_id = s.id;
+        }
+
+        // Build rates from price_sets (each set has its own valid_from/valid_to)
+        const newRates: TariffWizardState['rates'] = [];
+        const createRate = (
+            item: { period?: string, price: number, unit?: string },
+            type: TariffRateType,
+            set: { valid_from?: string; valid_to?: string; contract_duration?: number | null; }
+        ): TariffRate => ({
+            id: crypto.randomUUID(),
+            tariff_version_id: '',
+            item_type: type,
+            period: item.period || (type === 'fixed_fee' ? 'P1' : undefined),
+            price: item.price,
+            unit: item.unit || (type === 'energy' ? 'EUR/kWh' : type === 'power' ? 'EUR/kW/year' : 'EUR/month'),
+            contract_duration: set.contract_duration != null ? parseInt(String(set.contract_duration), 10) : parsedDuration, // Fallback to candidate global duration
+            valid_from: set.valid_from || undefined, // DO NOT fallback to metadata — only use explicit validity from the price_set
+            valid_to: set.valid_to || undefined,
+        });
+
+        const sets = candidate.price_sets && candidate.price_sets.length > 0
+            ? candidate.price_sets
+            : [{ energy_prices: candidate.energy_prices, power_prices: candidate.power_prices, fixed_term_prices: candidate.fixed_term_prices }];
+
+        sets.forEach(set => {
+            (set.energy_prices || []).forEach(p => newRates.push(createRate(p, 'energy', set)));
+            (set.power_prices || []).forEach(p => newRates.push(createRate(p, 'power', set)));
+            (set.fixed_term_prices || []).forEach(p => newRates.push(createRate(p, 'fixed_fee', set)));
+        });
+
+        setState(prev => ({
+            ...prev,
+            currentStep: 3, // Go to Metadata
+            metadata: { ...prev.metadata, ...metadataUpdates },
+            rates: newRates
+        }));
+    };
+
+    const handleManualEntry = () => {
+        // Reset state?
+        // Go to Step 3 directly with empty state
+        goToStep(3);
+    };
+
+    const handleFinish = () => {
+        // Clear session storage on success
+        if (!id) {
+            sessionStorage.removeItem('tariffWizardState');
+            sessionStorage.removeItem('tariffWizardCandidates');
+        }
+
+        if (candidates.length > 0) {
+            goToStep(2);
+        } else {
+            // Default behavior (navigate away)
+            navigate('/dashboard/tariffs');
+        }
+    };
+
+    const handleDiscard = () => {
+        if (confirm("¿Estás seguro de que quieres descartar el progreso? Se perderán todos los datos escaneados no guardados.")) {
+            sessionStorage.removeItem('tariffWizardState');
+            sessionStorage.removeItem('tariffWizardCandidates');
+            setState(INITIAL_STATE);
+            setCandidates([]);
+        }
+    };
+
+
+    const getStepLabel = (step: number) => {
+        switch (step) {
+            case 1: return 'Carga';
+            case 2: return 'Resultados';
+            case 3: return 'Datos Básicos';
+            case 4: return isGas ? 'Término Variable' : 'Energía';
+            case 5: return isGas ? 'Término Fijo' : 'Potencia';
+            case 6: return 'Horarios'; // Skipped for Gas
+            case 7: return 'Extras';
+            case 8: return 'Resumen';
+            default: return '';
+        }
     };
 
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#111827', margin: 0 }}>Asistente de Tarifa</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    <span>Paso {state.currentStep} de 7</span>
-                    <span style={{ color: '#d1d5db' }}>|</span>
-                    <span>{
-                        state.currentStep === 1 ? 'Subir Factura' :
-                            state.currentStep === 2 ? 'Configuración' :
-                                state.currentStep === 3 ? (isGas ? 'Término Variable' : 'Energía') :
-                                    state.currentStep === 4 ? (isGas ? 'Término Fijo' : 'Potencia') :
-                                        state.currentStep === 5 ? 'Horarios' :
-                                            state.currentStep === 6 ? 'Extras' : 'Resumen'
-                    }</span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <div>
+                        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#111827', margin: 0 }}>Asistente de Tarifa</h1>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                            <span>Paso {state.currentStep} de 8</span>
+                            <span style={{ color: '#d1d5db' }}>|</span>
+                            <span>{getStepLabel(state.currentStep)}</span>
+                        </div>
+                    </div>
+                    {!id && (state.currentStep > 1 || candidates.length > 0) && (
+                        <button
+                            onClick={handleDiscard}
+                            className="btn btn-secondary btn-sm"
+                            style={{ color: '#ef4444', borderColor: '#fecaca', backgroundColor: '#fef2f2' }}
+                        >
+                            Descartar Borrador
+                        </button>
+                    )}
                 </div>
                 {/* Progress Bar */}
                 <div style={{ width: '100%', background: '#e5e7eb', borderRadius: '9999px', height: '0.625rem', marginTop: '1rem' }}>
@@ -161,49 +517,28 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                         height: '0.625rem',
                         borderRadius: '9999px',
                         transition: 'all 0.3s',
-                        width: `${(state.currentStep / 7) * 100}%`
+                        width: `${(state.currentStep / 8) * 100}%`
                     }}></div>
                 </div>
             </div>
 
             <div className="card" style={{ padding: '2rem', minHeight: '400px', background: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
                 {state.currentStep === 1 && (
-                    <Step2ParserPreview
-                        data={state}
-                        onDataExtracted={(extractedMetadata, extractedRates) => {
-                            // Update Metadata
-                            if (extractedMetadata.name) updateMetadata('name', extractedMetadata.name);
-                            if (extractedMetadata.tariff_structure_id) {
-                                const structId = extractedMetadata.tariff_structure_id;
-                                const foundStruct = structures.find(s => s.code === structId || s.name.includes(structId));
-                                if (foundStruct) updateMetadata('tariff_structure_id', foundStruct.id);
-                            }
-                            if (extractedMetadata.supplier_id) {
-                                const supplierName = extractedMetadata.supplier_id;
-                                const foundSupplier = suppliers.find(s => s.name.toLowerCase().includes(supplierName.toLowerCase()));
-                                if (foundSupplier) updateMetadata('supplier_id', foundSupplier.id);
-                            }
-
-                            // Update Rates if found
-                            if (extractedRates && extractedRates.length > 0) {
-                                updateRates(extractedRates);
-                            }
-
-                            const msgDeps = [];
-                            if (extractedMetadata.supplier_id) msgDeps.push('Comercializadora');
-                            if (extractedMetadata.tariff_structure_id) msgDeps.push('Peaje');
-                            if (extractedRates && extractedRates.length > 0) msgDeps.push('Precios');
-
-                            toast({
-                                title: "Datos Extraídos",
-                                description: msgDeps.length > 0
-                                    ? `Se han detectado: ${msgDeps.join(', ')}`
-                                    : "No se detectaron datos automáticos. Por favor rellena los campos."
-                            });
-                        }}
+                    <Step1Upload
+                        onTariffsDetected={handleTariffsDetected}
+                        onManualEntry={handleManualEntry}
                     />
                 )}
                 {state.currentStep === 2 && (
+                    <Step2Candidates
+                        candidates={candidates}
+                        onAddDocument={() => goToStep(1)}
+                        onEdit={handleEditCandidate}
+                        onRemove={(id) => setCandidates(prev => prev.filter(c => c.id !== id))}
+                        onUpdateCandidates={setCandidates}
+                    />
+                )}
+                {state.currentStep === 3 && (
                     <Step1Metadata
                         data={state.metadata}
                         mode={id ? 'edit' : 'create'}
@@ -212,15 +547,20 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                         structures={filteredStructures}
                     />
                 )}
-                {state.currentStep === 3 && (
+                {state.currentStep === 4 && (
                     <Step3AEnergyPrices
                         data={state}
                         structure={currentStructure}
                         onChange={updateRates}
+                        onAddDuration={handleAddDuration}
+                        onAddValidityPeriod={handleAddValidityPeriod}
+                        onDeleteDuration={handleDeleteDuration}
+                        onDeleteValidityGroup={handleDeleteValidityGroup}
+                        onUpdateValidity={handleUpdateValidity}
                     />
                 )}
 
-                {state.currentStep === 4 && (
+                {state.currentStep === 5 && (
                     isGas ? (
                         <Step3BGasFixedFee
                             data={state}
@@ -232,26 +572,31 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                             data={state}
                             structure={currentStructure}
                             onChange={updateRates}
+                            onAddDuration={handleAddDuration}
+                            onAddValidityPeriod={handleAddValidityPeriod}
+                            onDeleteDuration={handleDeleteDuration}
+                            onDeleteValidityGroup={handleDeleteValidityGroup}
+                            onUpdateValidity={handleUpdateValidity}
                         />
                     )
                 )}
-                {state.currentStep === 5 && (
+                {state.currentStep === 6 && (
                     <Step4ScheduleRules
                         data={state}
                         onChange={(schedules) => setState(prev => ({ ...prev, schedules }))}
                     />
                 )}
-                {state.currentStep === 6 && (
+                {state.currentStep === 7 && (
                     <Step5FeesAndTaxes
                         data={state}
                         onChange={updateRates}
                     />
                 )}
-                {state.currentStep === 7 && (
+                {state.currentStep === 8 && (
                     <Step6Summary
                         data={state}
                         mode={id ? 'edit' : 'create'}
-                        onSave={() => { }} // Handled internally in Step6 for now
+                        onSave={handleFinish}
                     />
                 )}
             </div>
@@ -264,13 +609,14 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                     style={{
                         display: 'flex', alignItems: 'center', gap: '0.5rem',
                         opacity: state.currentStep === 1 ? 0.5 : 1,
-                        cursor: state.currentStep === 1 ? 'not-allowed' : 'pointer'
+                        cursor: state.currentStep === 1 ? 'not-allowed' : 'pointer',
+                        visibility: state.currentStep === 1 || state.currentStep === 2 ? 'hidden' : 'visible' // Hide Back on first steps?
                     }}
                 >
                     <ChevronLeft size={16} /> Anterior
                 </button>
 
-                {state.currentStep < 7 && (
+                {state.currentStep > 2 && state.currentStep < 8 && (
                     <button
                         onClick={nextStep}
                         className="btn btn-primary"

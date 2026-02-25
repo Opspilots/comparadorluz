@@ -28,26 +28,26 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
     const [payouts, setPayouts] = useState<Payout[]>([])
 
     useEffect(() => {
+        const fetchPayouts = async () => {
+            setLoading(true)
+            const { data, error } = await supabase
+                .from('payouts')
+                .select('*')
+                .eq('commissioner_id', commissionerId)
+                .order('period_month', { ascending: false })
+
+            if (error) {
+                console.error('Error fetching payouts:', error)
+            } else {
+                setPayouts(data || [])
+            }
+            setLoading(false)
+        }
+
         if (commissionerId) {
             fetchPayouts()
         }
     }, [commissionerId])
-
-    const fetchPayouts = async () => {
-        setLoading(true)
-        const { data, error } = await supabase
-            .from('payouts')
-            .select('*')
-            .eq('commissioner_id', commissionerId)
-            .order('period_month', { ascending: false })
-
-        if (error) {
-            console.error('Error fetching payouts:', error)
-        } else {
-            setPayouts(data || [])
-        }
-        setLoading(false)
-    }
 
     const getStatusBadge = (status: string) => {
         const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }

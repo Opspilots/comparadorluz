@@ -1,5 +1,26 @@
 import { supabase } from '@/shared/lib/supabase';
 
+/**
+ * Returns the company_id for the currently authenticated user.
+ * Centralises the repeated getUser() → users.select('company_id') pattern.
+ */
+export async function getUserCompanyId(): Promise<string> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const { data, error } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+    if (error || !data?.company_id) {
+        throw new Error('No se encontró la empresa del usuario');
+    }
+
+    return data.company_id;
+}
+
 export interface Message {
     id: string;
     customer_id: string;
@@ -35,7 +56,19 @@ export interface Conversation {
     count: number;
 }
 
-export async function getConversations(channel?: 'email' | 'whatsapp'): Promise<Conversation[]> {
+interface ConversationMessage {
+    customer_id: string;
+    created_at: string;
+    content: string;
+    channel: 'email' | 'whatsapp';
+    recipient_contact: string;
+    customers: {
+        id: string;
+        name: string;
+    } | { id: string; name: string }[] | null;
+}
+
+export async function getConversations(companyId: string, channel?: 'email' | 'whatsapp'): Promise<Conversation[]> {
     let query = supabase
         .from('messages')
         .select(`
@@ -49,7 +82,9 @@ export async function getConversations(channel?: 'email' | 'whatsapp'): Promise<
                 name
             )
         `)
-        .order('created_at', { ascending: false });
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(500);
 
     if (channel) {
         query = query.eq('channel', channel);
@@ -61,12 +96,18 @@ export async function getConversations(channel?: 'email' | 'whatsapp'): Promise<
 
     const conversationsMap = new Map<string, Conversation>();
 
-    data?.forEach((msg: any) => {
+    data?.forEach((msg: ConversationMessage) => {
         if (!msg.customer_id) return;
+        const customer = Array.isArray(msg.customers) ? msg.customers[0] : msg.customers;
         if (!conversationsMap.has(msg.customer_id)) {
             conversationsMap.set(msg.customer_id, {
-                customer: msg.customers as any,
-                lastMessage: msg,
+                customer: customer || { id: msg.customer_id, name: 'Desconocido' },
+                lastMessage: {
+                    customer_id: msg.customer_id,
+                    created_at: msg.created_at,
+                    content: msg.content,
+                    recipient_contact: msg.recipient_contact || ''
+                },
                 count: 1
             });
         } else {
@@ -78,11 +119,12 @@ export async function getConversations(channel?: 'email' | 'whatsapp'): Promise<
     return Array.from(conversationsMap.values());
 }
 
-export async function getMessages(customerId: string, channel?: 'email' | 'whatsapp'): Promise<Message[]> {
+export async function getMessages(customerId: string, companyId: string, channel?: 'email' | 'whatsapp'): Promise<Message[]> {
     let query = supabase
         .from('messages')
         .select('*')
-        .eq('customer_id', customerId);
+        .eq('customer_id', customerId)
+        .eq('company_id', companyId);
 
     if (channel) {
         query = query.eq('channel', channel);
@@ -91,13 +133,23 @@ export async function getMessages(customerId: string, channel?: 'email' | 'whats
     const { data, error } = await query.order('created_at', { ascending: true });
 
     if (error) throw error;
-    return (data || []).map((m: any) => ({
+    return (data || []).map((m) => ({
         ...m,
-        direction: m.direction || 'outbound'
-    }));
+        direction: (m as Message).direction || 'outbound'
+    })) as Message[];
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_TYPE_PREFIXES = ['image/', 'application/pdf', 'text/', 'application/vnd.', 'application/msword'];
+
 export async function uploadAttachment(file: File) {
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`El archivo "${file.name}" es demasiado grande (máx 10 MB)`);
+    }
+    if (!ALLOWED_TYPE_PREFIXES.some(prefix => file.type.startsWith(prefix))) {
+        throw new Error(`Tipo de archivo no permitido: ${file.type}`);
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
@@ -141,8 +193,10 @@ export async function sendMessage(payload: {
             content: payload.content,
             subject: payload.subject,
             attachments: payload.attachments,
-            status: 'sent',
-            created_at: new Date().toISOString()
+            status: 'pending',
+            direction: 'outbound',
+            created_at: new Date().toISOString(),
+            sent_at: null
         })
         .select()
         .single();
@@ -150,17 +204,23 @@ export async function sendMessage(payload: {
     if (error) throw error;
 
     // Trigger Edge Function for real sending
-    // We don't await this to avoid blocking the UI, but we log errors
-    supabase.functions.invoke('send-message', {
+    const { error: invokeError } = await supabase.functions.invoke('send-message', {
         body: { messageId: data.id }
-    }).then(({ error: invokeError }) => {
-        if (invokeError) console.error('Error triggering real send:', invokeError);
     });
+
+    if (invokeError) {
+        // Mark message as failed in DB
+        await supabase
+            .from('messages')
+            .update({ status: 'failed' })
+            .eq('id', data.id);
+        console.error('Error en envío real:', invokeError);
+    }
 
     return {
         ...data,
         direction: 'outbound'
-    };
+    } as Message;
 }
 
 

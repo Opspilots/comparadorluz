@@ -1,0 +1,43 @@
+{
+  "tariff_versions": [
+    "id",
+    "company_id",
+    "batch_id",
+    "file_id",
+    "tariff_name",
+    "tariff_code",
+    "tariff_type",
+    "valid_from",
+    "valid_to",
+    "is_active",
+    "created_at",
+    "updated_at",
+    "supplier_id",
+    "tariff_structure_id",
+    "is_indexed",
+    "source_file_id",
+    "completion_status",
+    "is_automated",
+    "automation_source",
+    "last_synced_at",
+    "contract_duration"
+  ],
+  "tariff_rates": [
+    "id",
+    "tariff_version_id",
+    "item_type",
+    "period",
+    "price",
+    "price_formula",
+    "unit",
+    "confidence_score",
+    "source_page",
+    "source_bbox",
+    "created_at",
+    "index_type",
+    "margin",
+    "contract_duration",
+    "valid_from",
+    "valid_to"
+  ]
+}

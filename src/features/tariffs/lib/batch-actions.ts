@@ -1,5 +1,19 @@
 import { supabase } from '@/shared/lib/supabase';
 
+interface ExtractedTariffData {
+    supplier_name: string;
+    tariff_name: string;
+    tariff_code: string;
+    tariff_type: string;
+    valid_from: string;
+    components?: Array<{
+        component_type: string;
+        period: string;
+        price_eur_kwh?: number;
+        price_eur_kw_year?: number;
+    }>;
+}
+
 export async function publishBatchFile(fileId: string, companyId: string, userId: string): Promise<string> {
     // 1. Fetch the file and its extracted data
     const { data: file, error: fetchError } = await supabase
@@ -11,7 +25,7 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
     if (fetchError || !file) throw new Error('Archivo no encontrado');
     if (!file.extracted_data) throw new Error('No hay datos extraídos para publicar');
 
-    const data = file.extracted_data as any;
+    const data = file.extracted_data as unknown as ExtractedTariffData;
 
     // 2. Resolve Supplier ID (Create if not exists mock logic, or find exact match)
     // For now, let's try to find a supplier by name, or default to a generic one if you want
@@ -25,9 +39,9 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
     // Fallback: Get ANY supplier if not found (just to make it work)
     let supplierId = supplier?.id;
     if (!supplierId) {
-        const { data: anySupplier } = await supabase.from('suppliers').select('id').limit(1).single();
-        if (!anySupplier) throw new Error('No existen comercializadoras en el sistema.');
-        supplierId = anySupplier.id;
+        const { data: fallbackSupplier } = await supabase.from('suppliers').select('id').limit(1).single() as { data: { id: string } | null };
+        if (!fallbackSupplier) throw new Error('No existen comercializadoras en el sistema.');
+        supplierId = fallbackSupplier.id;
     }
 
     // 3. Create Tariff Record
@@ -65,7 +79,7 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
 
     // 5. Create Components (Prices)
     if (data.components && data.components.length > 0) {
-        const componentsToInsert = data.components.map((comp: any) => ({
+        const componentsToInsert = data.components.map((comp) => ({
             tariff_version_id: newVersion.id,
             component_type: comp.component_type, // 'energy_price' | 'power_price'
             period: comp.period,

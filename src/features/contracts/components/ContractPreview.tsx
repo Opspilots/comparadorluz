@@ -4,12 +4,26 @@ import { supabase } from '@/shared/lib/supabase'
 import { PDFViewer } from '@react-pdf/renderer'
 import { ContractDocument } from './ContractDocument'
 import { ArrowLeft } from 'lucide-react'
+import type { Customer, SupplyPoint, TariffVersion } from '@/shared/types'
+import type { Supplier } from '@/types/tariff'
+
+interface ContractPreviewData {
+    id: string;
+    contract_number: string;
+    signed_at: string;
+    annual_value_eur: number;
+    status: string;
+    notes?: string;
+    customers?: Customer;
+    supply_points?: SupplyPoint;
+    tariff_versions?: TariffVersion & { suppliers?: Supplier };
+}
 
 export function ContractPreview() {
     const { id } = useParams()
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
-    const [contract, setContract] = useState<any>(null) // Using any here as a stopgap to fix the build, will define proper interface in next refinement if needed
+    const [contract, setContract] = useState<ContractPreviewData | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
@@ -85,7 +99,9 @@ export function ContractPreview() {
                         contract={{
                             contract_number: contract.contract_number,
                             signed_at: contract.signed_at,
-                            annual_value_eur: contract.annual_value_eur
+                            annual_value_eur: contract.annual_value_eur,
+                            status: contract.status,
+                            notes: contract.notes,
                         }}
                         customer={contract.customers}
                         tariff={contract.tariff_versions}

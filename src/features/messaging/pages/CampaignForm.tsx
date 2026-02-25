@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/shared/lib/supabase';
+import { getUserCompanyId } from '../lib/messaging-service';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
@@ -347,65 +348,66 @@ export function CampaignForm() {
     const [recipientCount, setRecipientCount] = useState<number | null>(null);
 
     useEffect(() => {
+        const fetchCampaign = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('campaigns')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (error) {
+                toast({ title: 'Error', description: 'Error al cargar la campaña', variant: 'destructive' });
+                navigate('/admin/messages/campaigns');
+                return;
+            }
+
+            if (data) {
+                setName(data.name);
+                setChannel(data.channel || 'email');
+                setSubject(data.subject || '');
+                setBody(data.body || '');
+                if (data.filters) {
+                    setCustomerType(data.filters.customer_type || 'all');
+                    setCustomerStatus(data.filters.status || 'all');
+                }
+                if (data.scheduled_at) {
+                    // Format for datetime-local input: YYYY-MM-DDThh:mm
+                    const date = new Date(data.scheduled_at);
+                    const isoString = date.toISOString().slice(0, 16);
+                    setScheduledAt(isoString);
+                }
+            }
+            setLoading(false);
+        };
+
         if (isEditing) {
             fetchCampaign();
         }
-    }, [id]);
+    }, [id, isEditing, navigate, toast]);
 
     useEffect(() => {
+        const estimateRecipients = async () => {
+            const companyId = await getUserCompanyId();
+            let query = supabase.from('customers').select('id', { count: 'exact', head: true }).eq('company_id', companyId);
+
+            if (customerType !== 'all') {
+                query = query.eq('customer_type', customerType);
+            }
+            if (customerStatus !== 'all') {
+                query = query.eq('status', customerStatus);
+            }
+
+            const { count, error } = await query;
+            if (!error) {
+                setRecipientCount(count);
+            }
+        };
+
         if (step === 2) {
             estimateRecipients();
         }
     }, [customerType, customerStatus, step]);
-
-    const fetchCampaign = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('campaigns')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-        if (error) {
-            toast({ title: 'Error', description: 'Error al cargar la campaña', variant: 'destructive' });
-            navigate('/admin/messages/campaigns');
-            return;
-        }
-
-        if (data) {
-            setName(data.name);
-            setChannel(data.channel || 'email');
-            setSubject(data.subject || '');
-            setBody(data.body || '');
-            if (data.filters) {
-                setCustomerType(data.filters.customer_type || 'all');
-                setCustomerStatus(data.filters.status || 'all');
-            }
-            if (data.scheduled_at) {
-                // Format for datetime-local input: YYYY-MM-DDThh:mm
-                const date = new Date(data.scheduled_at);
-                const isoString = date.toISOString().slice(0, 16);
-                setScheduledAt(isoString);
-            }
-        }
-        setLoading(false);
-    };
-
-    const estimateRecipients = async () => {
-        let query = supabase.from('customers').select('id', { count: 'exact', head: true });
-
-        if (customerType !== 'all') {
-            query = query.eq('customer_type', customerType);
-        }
-        if (customerStatus !== 'all') {
-            query = query.eq('status', customerStatus);
-        }
-
-        const { count, error } = await query;
-        if (!error) {
-            setRecipientCount(count);
-        }
-    };
 
     const handleSave = async (targetStatus: Campaign['status'] = 'draft') => {
         setLoading(true);

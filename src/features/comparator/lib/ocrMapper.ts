@@ -2,29 +2,30 @@ import { normalizeNumber } from '@/shared/lib/utils';
 
 
 interface OcrData {
-    customer_name?: string;
-    cif?: string;
-    supply_type?: string;
-    atrr?: string;
-    tariff_type?: string;
-    annual_consumption?: string | number;
-    contracted_power?: string | number;
-    cups?: string;
-    current_cost?: string | number;
-    power_p1?: string | number;
-    power_p2?: string | number;
-    power_p3?: string | number;
-    power_p4?: string | number;
-    power_p5?: string | number;
-    power_p6?: string | number;
-    p1_consumption_pct?: string | number;
-    p2_consumption_pct?: string | number;
-    p3_consumption_pct?: string | number;
-    p4_consumption_pct?: string | number;
-    p5_consumption_pct?: string | number;
-    p6_consumption_pct?: string | number;
-    current_supplier?: string;
-    conversion_factor?: string | number;
+    customer_name?: any;
+    cif?: any;
+    supply_type?: any;
+    atrr?: any;
+    tariff_type?: any;
+    annual_consumption?: any;
+    contracted_power?: any;
+    cups?: any;
+    current_cost?: any;
+    power_p1?: any;
+    power_p2?: any;
+    power_p3?: any;
+    power_p4?: any;
+    power_p5?: any;
+    power_p6?: any;
+    p1_consumption_pct?: any;
+    p2_consumption_pct?: any;
+    p3_consumption_pct?: any;
+    p4_consumption_pct?: any;
+    p5_consumption_pct?: any;
+    p6_consumption_pct?: any;
+    current_supplier?: any;
+    conversion_factor?: any;
+    [key: string]: any;
 }
 
 export interface MappedOcrData {
@@ -52,14 +53,55 @@ export interface MappedOcrData {
     currentSupplier?: string;
 }
 
-export function mapOcrData(data: OcrData, suppliers: { id: string, name: string }[]): MappedOcrData {
+function flattenObject(ob: any): any {
+    var toReturn: any = {};
+    for (var i in ob) {
+        if (!ob.hasOwnProperty(i)) continue;
+        if ((typeof ob[i]) == 'object' && ob[i] !== null) {
+            var flatObject = flattenObject(ob[i]);
+            for (var x in flatObject) {
+                if (!flatObject.hasOwnProperty(x)) continue;
+                toReturn[x] = flatObject[x];
+            }
+        } else {
+            toReturn[i] = ob[i];
+        }
+    }
+    return toReturn;
+}
+
+function processRawData(rawData: any): OcrData {
+    if (!rawData) return {};
+
+    let parsedData = rawData;
+    if (typeof rawData === 'string') {
+        try {
+            parsedData = JSON.parse(rawData);
+        } catch (e) {
+            console.error("Failed to parse stringified OCR data", e);
+        }
+    }
+
+    let data = Array.isArray(parsedData) ? parsedData[0] : parsedData;
+    if (data && typeof data === 'object') {
+        data = flattenObject(data);
+    }
+    return data || {};
+}
+
+export function mapOcrData(rawData: any, suppliers: { id: string, name: string }[]): MappedOcrData {
+    const data = processRawData(rawData);
     const updates: MappedOcrData = {};
 
-    if (data.customer_name) updates.customerName = data.customer_name;
-    if (data.cif) updates.cif = data.cif;
+    if (data.customer_name) updates.customerName = String(data.customer_name);
+    if (data.cif) updates.cif = String(data.cif);
+
+    const supplyTypeStr = String(data.supply_type || '').toLowerCase();
+    const atrrStr = String(data.atrr || '').toUpperCase();
+    const tariffTypeRaw = String(data.tariff_type || '').toUpperCase();
 
     // Supply Type Detection
-    if (data.supply_type === 'gas' || data.atrr?.includes('RL') || data.tariff_type?.includes('RL')) {
+    if (supplyTypeStr === 'gas' || atrrStr.includes('RL') || tariffTypeRaw.includes('RL')) {
         updates.supplyType = 'gas';
         // Set Conversion Factor: Use extracted if available
         if (data.conversion_factor) {
@@ -71,7 +113,7 @@ export function mapOcrData(data: OcrData, suppliers: { id: string, name: string 
     }
 
     if (data.tariff_type) {
-        let t = data.tariff_type.toUpperCase().replace(/\s/g, ''); // Remove spaces
+        let t = tariffTypeRaw.replace(/\s/g, ''); // Remove spaces
         // Electricity
         if (t.includes('2.0') || t.includes('20TD')) t = '2.0TD';
         else if (t.includes('3.0') || t.includes('30TD')) t = '3.0TD';
@@ -83,11 +125,11 @@ export function mapOcrData(data: OcrData, suppliers: { id: string, name: string 
         else if (t.includes('RL.3') || t.includes('RL3')) t = 'RL.3';
         else if (t.includes('RL.4') || t.includes('RL4') || t.includes('RL.4')) t = 'RL.4'; // RL.4 covers others usually in small consumers
 
-        updates.tariffType = t;
+        if (t !== '') updates.tariffType = t;
     }
     if (data.annual_consumption) updates.consumption = normalizeNumber(data.annual_consumption);
     if (data.contracted_power) updates.power = normalizeNumber(data.contracted_power);
-    if (data.cups) updates.cups = data.cups;
+    if (data.cups) updates.cups = String(data.cups);
     if (data.current_cost) updates.currentCost = normalizeNumber(data.current_cost);
 
     // Map power periods
@@ -113,20 +155,20 @@ export function mapOcrData(data: OcrData, suppliers: { id: string, name: string 
         updates.consP2 = ((p2 / totalConsumption) * 100).toFixed(2);
         updates.consP3 = ((p3 / totalConsumption) * 100).toFixed(2);
 
-        let remaining = 100 - (parseFloat(updates.consP1!) + parseFloat(updates.consP2!) + parseFloat(updates.consP3!));
+        let remaining = 100 - (parseFloat(updates.consP1) + parseFloat(updates.consP2) + parseFloat(updates.consP3));
 
         if (p4 > 0) {
             updates.consP4 = ((p4 / totalConsumption) * 100).toFixed(2);
-            remaining -= parseFloat(updates.consP4!);
+            remaining -= parseFloat(updates.consP4);
         }
         if (p5 > 0) {
             updates.consP5 = ((p5 / totalConsumption) * 100).toFixed(2);
-            remaining -= parseFloat(updates.consP5!);
+            remaining -= parseFloat(updates.consP5);
         }
         if (p6 > 0) {
             updates.consP6 = remaining.toFixed(2);
-        } else if (remaining !== 0) {
-            const p3Val = parseFloat(updates.consP3!) + remaining;
+        } else if (remaining !== 0 && updates.consP3) {
+            const p3Val = parseFloat(updates.consP3) + remaining;
             updates.consP3 = p3Val.toFixed(2);
         }
 
@@ -137,12 +179,14 @@ export function mapOcrData(data: OcrData, suppliers: { id: string, name: string 
     }
 
     if (data.current_supplier && typeof data.current_supplier === 'string') {
-        const supplierName = data.current_supplier;
+        const supplierName = String(data.current_supplier);
         const foundSupplier = suppliers.find(s =>
             s.name.toLowerCase().includes(supplierName.toLowerCase()) ||
             supplierName.toLowerCase().includes(s.name.toLowerCase())
         );
         updates.currentSupplier = foundSupplier ? foundSupplier.name : supplierName;
+    } else if (data.current_supplier) {
+        updates.currentSupplier = String(data.current_supplier);
     }
 
     return updates;

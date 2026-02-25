@@ -129,7 +129,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
 
         setIsUploading(true);
         try {
-            let attachments: Message['attachments'] = [];
+            const attachments: Message['attachments'] = [];
 
             for (const file of selectedFiles) {
                 const uploaded = await uploadAttachment(file);
@@ -149,7 +149,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && !isUploading) {
             e.preventDefault();
             handleSend();
         }

@@ -74,7 +74,7 @@ export default function BatchDetailsPage() {
         return (
             <div className="container mx-auto py-8 text-center text-red-500">
                 <div style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Error cargando el lote</div>
-                <p style={{ marginBottom: '1rem' }}>{(error as any)?.message || 'Lote no encontrado'}</p>
+                <p style={{ marginBottom: '1rem' }}>{error instanceof Error ? error.message : String(error) || 'Lote no encontrado'}</p>
                 <button
                     onClick={() => navigate('/admin/tariffs')}
                     style={{

@@ -4,42 +4,44 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Commissioner } from '@/shared/types'
 import { CommissionRulesTab } from '../components/CommissionRulesTab'
+import { CommissionerPerformanceTab } from '../components/CommissionerPerformanceTab'
 import { CommissionerContractsTab } from '../components/CommissionerContractsTab'
 import { CommissionerPayoutsTab } from '../components/CommissionerPayoutsTab'
-import { ArrowLeft, Settings, FileText, Wallet, Mail } from 'lucide-react'
+import { ArrowLeft, Settings, FileText, Wallet, Mail, TrendingUp } from 'lucide-react'
 
-type Tab = 'rules' | 'contracts' | 'payouts'
+type Tab = 'performance' | 'rules' | 'contracts' | 'payouts'
 
 export function CommissionerDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
     const [commissioner, setCommissioner] = useState<Commissioner | null>(null)
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<Tab>('rules')
+    const [activeTab, setActiveTab] = useState<Tab>('performance')
 
     useEffect(() => {
+        const fetchCommissioner = async () => {
+            setLoading(true)
+            const { data, error } = await supabase
+                .from('commissioners')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            if (error) {
+                console.error('Error fetching commissioner:', error)
+            } else {
+                setCommissioner(data)
+            }
+            setLoading(false)
+        }
+
         if (id) {
             fetchCommissioner()
         }
     }, [id])
 
-    const fetchCommissioner = async () => {
-        setLoading(true)
-        const { data, error } = await supabase
-            .from('commissioners')
-            .select('*')
-            .eq('id', id)
-            .single()
-
-        if (error) {
-            console.error('Error fetching commissioner:', error)
-        } else {
-            setCommissioner(data)
-        }
-        setLoading(false)
-    }
-
     const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+        { id: 'performance', label: 'Rendimiento', icon: TrendingUp },
         { id: 'rules', label: 'Reglas de Comisión', icon: Settings },
         { id: 'contracts', label: 'Contratos', icon: FileText },
         { id: 'payouts', label: 'Liquidaciones', icon: Wallet },
@@ -163,6 +165,10 @@ export function CommissionerDetailPage() {
 
             {/* Tabs Content */}
             <div className="animate-fade-in">
+                {activeTab === 'performance' && (
+                    <CommissionerPerformanceTab commissionerId={commissioner.id} />
+                )}
+
                 {activeTab === 'rules' && (
                     <CommissionRulesTab commissionerId={commissioner.id} />
                 )}

@@ -9,10 +9,11 @@ interface Step1Props {
         code: string;
         is_indexed: boolean;
         valid_from: string;
+        contract_duration: number | null;
     };
     mode?: 'create' | 'edit';
-    onChange: (key: keyof Step1Props['data'], value: any) => void;
-    suppliers?: any[]; // Now passed from parent
+    onChange: <K extends keyof Step1Props['data']>(key: K, value: Step1Props['data'][K]) => void;
+    suppliers?: import('@/types/tariff').Supplier[]; // Now passed from parent
     structures?: TariffStructure[]; // Now passed from parent
 }
 
@@ -136,6 +137,8 @@ export default function Step1Metadata({ data, mode = 'create', onChange, supplie
                         placeholder="Ref. Interna"
                     />
                 </div>
+
+
             </div>
         </div>
     );

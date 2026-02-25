@@ -6,7 +6,7 @@ export interface CreateNotificationParams {
     title: string
     message: string
     link?: string
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
 }
 
 export async function createNotification(params: CreateNotificationParams) {
@@ -33,7 +33,7 @@ export async function createNotificationForCurrentUser(
     title: string,
     message: string,
     link?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
 ) {
     const { data: { user } } = await supabase.auth.getUser()
 

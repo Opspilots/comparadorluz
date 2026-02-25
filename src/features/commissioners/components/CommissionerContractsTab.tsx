@@ -13,33 +13,33 @@ export function CommissionerContractsTab({ commissionerId }: CommissionerContrac
     const [contracts, setContracts] = useState<Contract[]>([])
 
     useEffect(() => {
+        const fetchContracts = async () => {
+            setLoading(true)
+            const { data, error } = await supabase
+                .from('contracts')
+                .select(`
+                    *,
+                    customers (name, cif),
+                    tariff_versions (
+                        tariff_name,
+                        suppliers (name)
+                    )
+                `)
+                .eq('commercial_id', commissionerId)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                console.error('Error fetching contracts:', error)
+            } else {
+                setContracts(data || [])
+            }
+            setLoading(false)
+        }
+
         if (commissionerId) {
             fetchContracts()
         }
     }, [commissionerId])
-
-    const fetchContracts = async () => {
-        setLoading(true)
-        const { data, error } = await supabase
-            .from('contracts')
-            .select(`
-                *,
-                customers (name, cif),
-                tariff_versions (
-                    tariff_name,
-                    suppliers (name)
-                )
-            `)
-            .eq('commercial_id', commissionerId)
-            .order('created_at', { ascending: false })
-
-        if (error) {
-            console.error('Error fetching contracts:', error)
-        } else {
-            setContracts(data || [])
-        }
-        setLoading(false)
-    }
 
     // Spanish translations for status
     const statusLabels: Record<string, string> = {

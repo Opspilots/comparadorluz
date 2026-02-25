@@ -6,7 +6,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     const { method } = req
     const url = new URL(req.url)
 
@@ -53,7 +53,6 @@ serve(async (req) => {
 
                 const from = message.from // e.g., "34600123456"
                 const textBody = message.text?.body || '[Multimedia/Other]'
-                const msgType = message.type
 
                 // Find customer by phone (normalize by checking endsWith for safety against +34/0034)
                 // We'll select contacts where phone matches roughly
@@ -61,7 +60,7 @@ serve(async (req) => {
                 // Better: exact match if we standardise phones.
                 // We will try exact match first.
 
-                const { data: contact, error: contactError } = await supabaseClient
+                const { data: contact } = await supabaseClient
                     .from('contacts')
                     .select('id, customer_id, company_id')
                     .or(`phone.eq.${from},phone.eq.+${from}`)
@@ -103,7 +102,8 @@ serve(async (req) => {
 
         return new Response('Method Not Allowed', { status: 405 })
 
-    } catch (error) {
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e : new Error(String(e))
         console.error('Error processing WhatsApp webhook:', error)
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
