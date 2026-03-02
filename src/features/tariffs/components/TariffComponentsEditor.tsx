@@ -308,7 +308,7 @@ function TariffPricesGrid({ rates, register }: { rates: TariffRate[], register: 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--border)', padding: '1rem', borderRadius: '0.5rem', backgroundColor: 'var(--surface)' }}>
                 <h3 style={{ fontWeight: 600, fontSize: '1.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                     <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
-                    Término de Potencia (€/kW/año)
+                    Término de Potencia (€/kW/mes)
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                     {powerComponents.map((comp) => (

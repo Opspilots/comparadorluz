@@ -79,6 +79,18 @@ export function findActiveRate(
 }
 
 /**
+ * Convert a power price to its monthly equivalent for display purposes.
+ * The DB may store values as annual (EUR/kW/year) or daily (EUR/kW/day).
+ * All display should be in EUR/kW/month.
+ */
+export function toPowerMonthly(price: number, unit: string | undefined | null): number {
+    const u = (unit || '').toUpperCase();
+    if (u.includes('YEAR') || u.includes('AÑO') || u.includes('ANO')) return price / 12;
+    if (u.includes('DAY') || u.includes('DIA') || u.includes('DÍA')) return price * (365 / 12);
+    return price; // already monthly
+}
+
+/**
  * Checks if there are multiple rates (history) for a given period and item type.
  */
 export function hasRateHistory(

@@ -179,9 +179,9 @@ export function Step3BPowerPrices({ data, structure, onChange, onAddDuration, on
                                     }}
                                     showUnitSelector={true}
                                     unitOptions={[
+                                        { value: 'EUR/kW/month', label: '€/kW/mes' },
                                         { value: 'EUR/kW/year', label: '€/kW/año' },
-                                        { value: 'EUR/kW/day', label: '€/kW/día' },
-                                        { value: 'EUR/kW/month', label: '€/kW/mes' }
+                                        { value: 'EUR/kW/day', label: '€/kW/día' }
                                     ]}
                                 />
                             ))}

@@ -2,24 +2,12 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const ALLOWED_ORIGINS = [
-    'https://comparadorluz.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:4173',
-]
-
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('origin') ?? ''
-    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    }
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req: Request) => {
-    const corsHeaders = getCorsHeaders(req)
-
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -113,6 +101,17 @@ serve(async (req: Request) => {
 
             if (!waToken || !waPhoneId) throw new Error('WhatsApp credentials missing in company settings')
 
+            // Normalize phone number to international format (E.164 without +)
+            let phone = (message.recipient_contact || '').replace(/[\s\-\(\)\+]/g, '')
+            // If it doesn't start with a country code, assume Spain (34)
+            if (phone.startsWith('0')) {
+                phone = '34' + phone.slice(1)
+            } else if (!phone.startsWith('34') && phone.length === 9) {
+                phone = '34' + phone
+            }
+
+            console.log(`[WhatsApp] Original: "${message.recipient_contact}" -> Normalized: "${phone}"`)
+
             const response = await fetch(`https://graph.facebook.com/v18.0/${waPhoneId}/messages`, {
                 method: 'POST',
                 headers: {
@@ -121,13 +120,14 @@ serve(async (req: Request) => {
                 },
                 body: JSON.stringify({
                     messaging_product: "whatsapp",
-                    to: message.recipient_contact,
+                    to: phone,
                     type: "text",
                     text: { body: message.content }
                 }),
             })
 
             const result = await response.json()
+            console.log(`[WhatsApp] API response:`, JSON.stringify(result))
             if (!response.ok) throw new Error(`WhatsApp error: ${JSON.stringify(result)}`)
 
             // Update message status

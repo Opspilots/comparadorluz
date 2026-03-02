@@ -153,7 +153,15 @@ function getPowerPrices(rates: TariffRate[], contractDuration: number | null): M
     periods.forEach(period => {
         const activeRate = findActiveRate(rates as any, 'power', period, today, contractDuration);
         if (activeRate && activeRate.price !== null) {
-            prices.set(period, activeRate.price);
+            // Normalize to annual for calculation regardless of stored unit
+            let annualPrice = activeRate.price;
+            if (activeRate.unit === 'EUR/kW/month') {
+                annualPrice = activeRate.price * 12;
+            } else if (activeRate.unit === 'EUR/kW/day') {
+                annualPrice = activeRate.price * 365;
+            }
+            // EUR/kW/year is already annual
+            prices.set(period, annualPrice);
         }
     });
 
@@ -207,9 +215,10 @@ export function calculateEnergyComponent(
  * Calculate power component cost (fixed part based on contracted power)
  * 
  * Formula: Σ(contracted_power * price_per_period)
- * In Spain, power prices are annual (EUR/kW/year)
- * 
- * @param powerPrices - Map of period → EUR/kW/year
+ * Power prices are normalized to annual internally for calculation.
+ * Stored unit may be EUR/kW/month, EUR/kW/year, or EUR/kW/day.
+ *
+ * @param powerPrices - Map of period → annual EUR/kW (already normalized by getPowerPrices)
  * @param contractedPower - Contracted power in kW
  * @returns Total annual power cost
  */

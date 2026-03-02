@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 
 import { TariffRate, TariffVersion, Supplier, TariffStructure, TariffSchedule } from '@/types/tariff';
-import { findActiveRate, hasRateHistory } from '../lib/tariffUtils';
+import { findActiveRate, hasRateHistory, toPowerMonthly } from '../lib/tariffUtils';
 
 interface JoinedTariff extends TariffVersion {
     tariff_rates: TariffRate[];
@@ -339,7 +339,7 @@ export default function TariffDetailsPage() {
                                                                                 <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.25rem' }}>{p}</div>
                                                                                 {hasRateHistory(tariff.tariff_rates || [], 'power', p, dKey === 'any' ? null : parseInt(dKey)) && <Clock size={12} style={{ color: '#6366f1' }} />}
                                                                             </div>
-                                                                            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#2563eb' }}>{active.price?.toFixed(6)} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#6b7280' }}>{active.unit}</span></div>
+                                                                            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#2563eb' }}>{active.price != null ? toPowerMonthly(active.price, active.unit).toFixed(6) : '-'} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#6b7280' }}>€/kW/mes</span></div>
                                                                         </div>
                                                                     );
                                                                 });

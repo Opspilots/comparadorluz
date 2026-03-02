@@ -1,320 +1,666 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
-import { encode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
+// @ts-ignore
+declare const Deno: any;
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Valid tariff structures in the Spanish energy market
+const VALID_STRUCTURES = new Set([
+    '2.0TD', '3.0TD', '6.1TD', '6.2TD', '6.3TD', '6.4TD',
+    'RL.1', 'RL.2', 'RL.3', 'RL.4',
+]);
+
+const SUPPLY_TYPES = new Set(['electricity', 'gas']);
+
+// Period counts per tariff structure
+const PERIOD_MAP: Record<string, { energy: number; power: number }> = {
+    '2.0TD': { energy: 3, power: 2 },
+    '3.0TD': { energy: 6, power: 6 },
+    '6.1TD': { energy: 6, power: 6 },
+    '6.2TD': { energy: 6, power: 6 },
+    '6.3TD': { energy: 6, power: 6 },
+    '6.4TD': { energy: 6, power: 6 },
+    'RL.1': { energy: 1, power: 0 },
+    'RL.2': { energy: 1, power: 0 },
+    'RL.3': { energy: 1, power: 0 },
+    'RL.4': { energy: 1, power: 0 },
+};
+
+// Plausible price ranges (post-unit normalization)
+const ENERGY_MIN = 0.001;  // EUR/kWh
+const ENERGY_MAX = 1.5;    // EUR/kWh
+const POWER_MIN  = 0.001;  // EUR/kW/month
+const POWER_MAX  = 500;    // EUR/kW/month (wide range to cover 6.xTD)
+
+// ============================================================================
+// Post-processing & validation
+// ============================================================================
+
+interface PriceItem {
+    period: string | undefined;
+    price: number;
+    unit?: string;
 }
 
-serve(async (req: Request) => {
-    // Handle CORS preflight requests
+interface PriceSet {
+    contract_duration?: number | null;
+    valid_from?: string | null;
+    valid_to?: string | null;
+    energy_prices?: PriceItem[];
+    power_prices?: PriceItem[];
+    fixed_term_prices?: PriceItem[];
+}
+
+interface ExtractedTariff {
+    supplier_name?: string;
+    tariff_structure?: string;
+    supply_type?: string;
+    tariff_name?: string;
+    is_indexed?: boolean;
+    contract_duration?: number | null;
+    price_sets?: PriceSet[];
+}
+
+interface ExtractionResult {
+    tariffs: ExtractedTariff[];
+    debug_raw_text?: string;
+}
+
+/**
+ * Normalize a single power price to EUR/kW/month.
+ */
+function normalizePowerPrice(item: PriceItem): PriceItem {
+    const unit = (item.unit || '').toUpperCase();
+    let price = item.price;
+
+    if (unit.includes('DAY') || unit.includes('DIA') || unit.includes('DÍA')) {
+        price = item.price * (365 / 12);
+    } else if (unit.includes('YEAR') || unit.includes('AÑO') || unit.includes('ANO')) {
+        price = item.price / 12;
+    }
+
+    return { ...item, price: Math.round(price * 1000000) / 1000000, unit: 'EUR/kW/month' };
+}
+
+/**
+ * Normalize an energy price to EUR/kWh.
+ */
+function normalizeEnergyPrice(item: PriceItem): PriceItem {
+    let price = item.price;
+    const unit = (item.unit || '').toUpperCase();
+
+    if (unit.includes('MWH') || (price > 1.5 && !unit.includes('KWH'))) {
+        price = item.price / 1000;
+    }
+
+    return { ...item, price: Math.round(price * 1000000) / 1000000, unit: 'EUR/kWh' };
+}
+
+/**
+ * Deduplicate price items by period label.
+ * Strategy: last occurrence wins (AI tends to output header labels before actual values).
+ * Items with no period are kept as-is.
+ */
+function deduplicateByPeriod(items: PriceItem[]): PriceItem[] {
+    const map = new Map<string, PriceItem>();
+    const noPeriod: PriceItem[] = [];
+    for (const item of items) {
+        if (item.period) {
+            map.set(item.period.toUpperCase(), item); // last wins
+        } else {
+            noPeriod.push(item);
+        }
+    }
+    return [...Array.from(map.values()), ...noPeriod];
+}
+
+/**
+ * Filter energy prices by plausible range.
+ */
+function filterEnergyRange(items: PriceItem[]): PriceItem[] {
+    return items.filter(p => p.price >= ENERGY_MIN && p.price <= ENERGY_MAX);
+}
+
+/**
+ * Filter power prices by plausible range (after normalization to monthly).
+ */
+function filterPowerRange(items: PriceItem[]): PriceItem[] {
+    return items.filter(p => p.price >= POWER_MIN && p.price <= POWER_MAX);
+}
+
+/**
+ * Enforce PERIOD_MAP limits: trim to max expected periods for this tariff structure.
+ * Sorts by period label (P1, P2...) and keeps only the first N.
+ */
+function enforceMaxPeriods(items: PriceItem[], maxPeriods: number): PriceItem[] {
+    if (items.length <= maxPeriods) return items;
+    // Sort: P1 < P2 < P3... then keep first N
+    const sorted = [...items].sort((a, b) => {
+        const ka = a.period || 'Z';
+        const kb = b.period || 'Z';
+        return ka.localeCompare(kb, undefined, { numeric: true });
+    });
+    return sorted.slice(0, maxPeriods);
+}
+
+/**
+ * Validate and clean the extracted data.
+ */
+function validateAndNormalize(data: ExtractionResult): ExtractionResult {
+    if (!data.tariffs || !Array.isArray(data.tariffs)) {
+        data.tariffs = [];
+    }
+
+    const cleaned: ExtractedTariff[] = [];
+
+    for (const tariff of data.tariffs) {
+        // Normalize tariff_structure
+        if (tariff.tariff_structure) {
+            tariff.tariff_structure = tariff.tariff_structure.toUpperCase().trim()
+                .replace(/,/g, '.')
+                .replace(/O(?=TD)/g, '0');
+        }
+
+        // Validate supply_type
+        if (!tariff.supply_type || !SUPPLY_TYPES.has(tariff.supply_type)) {
+            tariff.supply_type = tariff.tariff_structure?.startsWith('RL') ? 'gas' : 'electricity';
+        }
+
+        // Ensure tariff_name
+        if (!tariff.tariff_name || tariff.tariff_name.trim() === '') {
+            tariff.tariff_name = `Tarifa ${tariff.tariff_structure || 'Desconocida'} - ${tariff.supplier_name || 'Sin nombre'}`;
+        }
+
+        // Clean supplier_name
+        if (tariff.supplier_name) {
+            tariff.supplier_name = tariff.supplier_name
+                .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+                .trim();
+        }
+
+        // Normalize contract_duration
+        if (tariff.contract_duration) {
+            tariff.contract_duration = Math.round(Number(tariff.contract_duration));
+            if (tariff.contract_duration <= 0 || tariff.contract_duration > 120) {
+                tariff.contract_duration = null;
+            }
+        }
+
+        if (!tariff.price_sets || !Array.isArray(tariff.price_sets) || tariff.price_sets.length === 0) {
+            tariff.price_sets = [];
+        }
+
+        // Get period limits for this tariff structure
+        const limits = PERIOD_MAP[tariff.tariff_structure || ''] || { energy: 6, power: 6 };
+
+        for (const set of tariff.price_sets) {
+            // Normalize set contract_duration
+            if (set.contract_duration) {
+                set.contract_duration = Math.round(Number(set.contract_duration));
+                if (set.contract_duration <= 0 || set.contract_duration > 120) {
+                    set.contract_duration = null;
+                }
+            }
+
+            // Validate dates
+            if (set.valid_from && !/^\d{4}-\d{2}-\d{2}$/.test(set.valid_from)) {
+                set.valid_from = null;
+            }
+            if (set.valid_to && !/^\d{4}-\d{2}-\d{2}$/.test(set.valid_to)) {
+                set.valid_to = null;
+            }
+
+            // ── Energy prices ──
+            if (set.energy_prices && Array.isArray(set.energy_prices)) {
+                let ep = set.energy_prices
+                    .filter(p => p.price != null && !isNaN(Number(p.price)))
+                    .map(p => ({
+                        ...normalizeEnergyPrice({ ...p, price: Number(p.price) }),
+                        period: p.period || undefined,
+                    }));
+
+                // Assign missing periods
+                ep.forEach((p, i) => { if (!p.period) p.period = `P${i + 1}`; });
+
+                // Post-processing pipeline: deduplicate → range filter → period limit
+                ep = deduplicateByPeriod(ep);
+                ep = filterEnergyRange(ep);
+                ep = enforceMaxPeriods(ep, limits.energy);
+
+                set.energy_prices = ep;
+            } else {
+                set.energy_prices = [];
+            }
+
+            // ── Power prices ──
+            if (set.power_prices && Array.isArray(set.power_prices)) {
+                let pp = set.power_prices
+                    .filter(p => p.price != null && !isNaN(Number(p.price)))
+                    .map(p => ({
+                        ...normalizePowerPrice({ ...p, price: Number(p.price) }),
+                        period: p.period || undefined,
+                    }));
+
+                pp.forEach((p, i) => { if (!p.period) p.period = `P${i + 1}`; });
+
+                // Post-processing pipeline
+                pp = deduplicateByPeriod(pp);
+                pp = filterPowerRange(pp);
+                pp = enforceMaxPeriods(pp, limits.power);
+
+                set.power_prices = pp;
+            } else {
+                set.power_prices = [];
+            }
+
+            // ── Fixed term prices ──
+            if (set.fixed_term_prices && Array.isArray(set.fixed_term_prices)) {
+                set.fixed_term_prices = set.fixed_term_prices
+                    .filter(p => p.price != null && !isNaN(Number(p.price)))
+                    .map(p => ({ ...p, price: Number(p.price), unit: p.unit || 'EUR/month' }));
+            } else {
+                set.fixed_term_prices = [];
+            }
+        }
+
+        // Remove empty price_sets
+        tariff.price_sets = tariff.price_sets.filter(
+            set => (set.energy_prices && set.energy_prices.length > 0) ||
+                   (set.power_prices && set.power_prices.length > 0) ||
+                   (set.fixed_term_prices && set.fixed_term_prices.length > 0)
+        );
+
+        if (tariff.price_sets.length > 0) {
+            cleaned.push(tariff);
+        } else {
+            console.warn(`Dropping tariff "${tariff.tariff_name}" — no valid price sets after normalization`);
+        }
+    }
+
+    // Deduplicate tariffs: merge price_sets only if same structure+supply+supplier
+    const mergedMap = new Map<string, ExtractedTariff>();
+    for (const tariff of cleaned) {
+        const key = `${tariff.supplier_name || ''}_${tariff.tariff_structure || ''}_${tariff.supply_type || ''}`;
+        if (mergedMap.has(key)) {
+            const existing = mergedMap.get(key)!;
+            existing.price_sets = [...(existing.price_sets || []), ...(tariff.price_sets || [])];
+        } else {
+            mergedMap.set(key, tariff);
+        }
+    }
+
+    return {
+        tariffs: Array.from(mergedMap.values()),
+        debug_raw_text: data.debug_raw_text || '',
+    };
+}
+
+// ============================================================================
+// Gemini Prompt
+// ============================================================================
+
+const EXTRACTION_PROMPT = `
+Eres un analizador OCR especializado en el mercado energético español. Tu ÚNICA tarea es extraer precios de tarifas de electricidad y gas de documentos PDF.
+
+ANALIZA EL DOCUMENTO ADJUNTO PASO A PASO:
+1. Identifica el nombre de la comercializadora (logo, encabezado, pie de página).
+2. Identifica qué peajes aparecen en el documento (2.0TD, 3.0TD, 6.1TD, etc.).
+3. Localiza TODAS las tablas de precios y determina si son:
+   a) TABLAS INDIVIDUALES: una tabla por peaje separado (lo más común)
+   b) TABLAS COMPARATIVAS: una sola tabla donde las COLUMNAS son distintos peajes
+
+4. Extrae los valores numéricos con MÁXIMA PRECISIÓN (todos los decimales visibles).
+
+════════════════════════════════════════════════════════════
+⚠️ REGLA CRÍTICA — TABLAS COMPARATIVAS (muy importante):
+
+Si el documento tiene UNA TABLA con múltiples peajes como columnas, como:
+
+        │  2.0TD  │  3.0TD  │  6.1TD  │
+───────────────────────────────────────
+P1      │ 0.1234  │ 0.1567  │ 0.1890  │
+P2      │ 0.1034  │ 0.1234  │ 0.1567  │
+P3      │ 0.0834  │ ...     │ ...     │
+
+→ DEBES crear UN OBJETO SEPARADO en "tariffs" para CADA COLUMNA/PEAJE.
+→ El 0.1234 de 2.0TD va en el objeto de 2.0TD, el 0.1567 de 3.0TD en el de 3.0TD. NUNCA juntes valores de diferentes columnas en el mismo objeto.
+→ Para 2.0TD: energy_prices tendrá EXACTAMENTE 3 entradas (P1, P2, P3), power_prices EXACTAMENTE 2 (P1, P2).
+→ Para 3.0TD/6.xTD: energy_prices tendrá EXACTAMENTE 6 entradas (P1-P6), power_prices EXACTAMENTE 6 (P1-P6).
+════════════════════════════════════════════════════════════
+
+⚠️ OTRA REGLA CRÍTICA — NO PROCESES TÍTULOS COMO PRECIOS:
+
+Las etiquetas de fila ("P1", "P2", "Término de Energía", "Término de Potencia", "Período") son TÍTULOS, NO PRECIOS.
+→ "P1" como etiqueta de fila → es el valor del campo "period", NO un precio.
+→ Solo extrae como "price" los valores numéricos decimales reales (0.1234, 2.5102, etc.).
+→ NUNCA pongas price: 1 o price: 2 por haber leído "P1" o "P2" como precio.
+
+════════════════════════════════════════════════════════════
+
+ESTRUCTURA DE SALIDA (JSON estricto):
+{
+    "tariffs": [
+        {
+            "supplier_name": "Nombre exacto de la Comercializadora",
+            "tariff_structure": "2.0TD",
+            "supply_type": "electricity",
+            "tariff_name": "Nombre comercial de la tarifa",
+            "is_indexed": false,
+            "contract_duration": null,
+            "price_sets": [
+                {
+                    "contract_duration": null,
+                    "valid_from": null,
+                    "valid_to": null,
+                    "energy_prices": [
+                        { "period": "P1", "price": 0.123456 },
+                        { "period": "P2", "price": 0.103456 },
+                        { "period": "P3", "price": 0.083456 }
+                    ],
+                    "power_prices": [
+                        { "period": "P1", "price": 2.510250, "unit": "EUR/kW/month" },
+                        { "period": "P2", "price": 0.871500, "unit": "EUR/kW/month" }
+                    ],
+                    "fixed_term_prices": []
+                }
+            ]
+        },
+        {
+            "supplier_name": "Nombre exacto de la Comercializadora",
+            "tariff_structure": "RL.1",
+            "supply_type": "gas",
+            "tariff_name": "Nombre comercial de la tarifa gas",
+            "is_indexed": false,
+            "contract_duration": null,
+            "price_sets": [
+                {
+                    "contract_duration": null,
+                    "valid_from": null,
+                    "valid_to": null,
+                    "energy_prices": [
+                        { "period": "P1", "price": 0.056789 }
+                    ],
+                    "power_prices": [],
+                    "fixed_term_prices": [
+                        { "period": "P1", "price": 7.23, "unit": "EUR/month" }
+                    ]
+                }
+            ]
+        }
+    ],
+    "debug_raw_text": "Fragmento del texto donde encontraste los precios principales"
+}
+
+REGLAS GENERALES:
+
+AGRUPACIÓN:
+- NUNCA dupliques objetos en "tariffs" con el mismo supplier_name + tariff_structure + supply_type.
+- Diferentes duraciones (12m vs 24m) o diferentes vigencias → price_sets SEPARADOS dentro del MISMO tariff.
+- Diferentes peajes (2.0TD vs 3.0TD) → SIEMPRE objetos separados en "tariffs".
+
+CLASIFICACIÓN:
+- Peajes RL.1, RL.2, RL.3, RL.4 → supply_type: "gas"
+- Peajes 2.0TD, 3.0TD, 6.xTD → supply_type: "electricity"
+
+PERIODOS POR PEAJE (máximo estricto, NO añadir más):
+- 2.0TD: Energía exactamente P1-P3 (3 periodos), Potencia exactamente P1-P2 (2 periodos)
+- 3.0TD: Energía exactamente P1-P6 (6 periodos), Potencia exactamente P1-P6 (6 periodos)
+- 6.1TD/6.2TD/6.3TD/6.4TD: igual que 3.0TD (6+6)
+- RL.1-RL.4 (GAS): Energía solo P1 (1 periodo, en €/kWh = Término Variable), sin potencia.
+  El Término Fijo o Cuota Fija mensual (€/mes) → ponlo en "fixed_term_prices" con period: "P1".
+
+GAS — ESTRUCTURA DE PEAJES (usa el consumo anual o la denominación del documento):
+- RL.1: consumo anual ≤ 5.000 kWh/año (pequeño consumidor)
+- RL.2: consumo anual entre 5.001 y 50.000 kWh/año
+- RL.3: consumo anual entre 50.001 y 100.000 kWh/año
+- RL.4: consumo anual > 100.000 kWh/año
+Si el documento indica el peaje de gas (RL.1, RL.2, etc.) úsalo directamente.
+Si no lo indica, usa RL.1 como valor por defecto para gas residencial.
+
+CONVERSIÓN DE UNIDADES (IMPORTANTE):
+- Energía: Siempre en €/kWh. Si ves €/MWh → DIVIDE por 1000.
+- Potencia: Siempre en €/kW/mes. Pon SIEMPRE "unit": "EUR/kW/month".
+  * Si ves €/kW/día → MULTIPLICA por 30.4167
+  * Si ves €/kW/año → DIVIDE por 12
+
+DURACIÓN vs VIGENCIA (NO confundir):
+- contract_duration: Meses del contrato (12, 24, 36). Solo si está explícito.
+- valid_from/valid_to: Fechas en YYYY-MM-DD. Solo si están explícitas.
+
+TARIFAS INDEXADAS:
+- OMIE, Pool, Precio Mercado → is_indexed: true, price = FEE/sobreprecio (0 si no hay)
+
+PRECISIÓN NUMÉRICA:
+- Copia TODOS los decimales visibles (hasta 6 decimales).
+- Separador decimal: SIEMPRE punto (.). Ejemplo: "0,123456" → 0.123456
+
+FORMATO:
+- Devuelve ÚNICAMENTE JSON válido, sin comentarios ni texto adicional.
+`;
+
+// ============================================================================
+// Main Handler
+// ============================================================================
+
+Deno.serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+        return new Response('ok', { headers: corsHeaders });
     }
 
     try {
         console.log("Edge Function 'parse-tariff-document' started.");
 
-        // 1. Validate secrets FIRST
-        const geminiKey = Deno.env.get('GEMINI_API_KEY')
+        // 1. Validate secrets
+        const geminiKey = Deno.env.get('GEMINI_API_KEY');
         if (!geminiKey) {
-            console.error("CRITICAL: GEMINI_API_KEY is missing in Edge Function secrets.");
+            console.error("CRITICAL: GEMINI_API_KEY is missing.");
             return new Response(JSON.stringify({
-                error: 'Configuration Error: GEMINI_API_KEY is missing.',
-                details: 'Please set the GEMINI_API_KEY secret in the Supabase Dashboard.'
+                error: 'Error de configuración: GEMINI_API_KEY no está configurada.',
+                details: 'Configura el secreto GEMINI_API_KEY en el panel de Supabase.'
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 503, // Service Unavailable
-            })
+                status: 503,
+            });
         }
 
-        const authHeader = req.headers.get('Authorization')
+        const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
-            console.error("No Authorization header found in request.");
-            throw new Error('No Authorization header')
+            return new Response(JSON.stringify({
+                error: 'No autorizado',
+                details: 'Falta la cabecera Authorization.'
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
         }
 
-        // Create Supabase client
-        /* const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        ) */
-
-        // Parse Request Body (Handle JSON or FormData)
-        let fileBase64 = "";
-        let fileType = "application/pdf";
-        let fileName = "document.pdf";
+        // 2. Parse request body
+        let fileBase64 = '';
+        let fileType = 'application/pdf';
+        let fileName = 'document.pdf';
 
         const contentType = req.headers.get('content-type') || '';
 
         if (contentType.includes('application/json')) {
-            console.log("Processing JSON request...");
             const body = await req.json();
-            if (!body.fileData) {
-                throw new Error("Missing 'fileData' in JSON body");
-            }
+            if (!body.fileData) throw new Error("Falta 'fileData' en el cuerpo JSON");
             fileBase64 = body.fileData;
             fileType = body.fileType || fileType;
             fileName = body.fileName || fileName;
-            console.log(`Received Base64 file via JSON: ${fileName} (${fileType})`);
+            console.log(`JSON request: ${fileName} (${fileType})`);
 
         } else if (contentType.includes('multipart/form-data')) {
-            console.log("Processing FormData request...");
             const formData = await req.formData();
             const file = formData.get('file') as File;
-
-            if (!file) {
-                throw new Error("No file found in formData");
-            }
-
+            if (!file) throw new Error('No se encontró ningún archivo en formData');
             fileName = file.name;
             fileType = file.type;
-            console.log(`Received File via FormData: ${fileName} (${fileType}), size: ${file.size}`);
-
-            // Encode to Base64
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                fileBase64 = encode(new Uint8Array(arrayBuffer));
-            } catch (e: unknown) {
-                const error = e instanceof Error ? e : new Error(String(e));
-                throw new Error(`Failed to encode file: ${error.message}`);
-            }
+            console.log(`FormData request: ${fileName} (${fileType}), size: ${file.size}`);
+            const arrayBuffer = await file.arrayBuffer();
+            fileBase64 = arrayBufferToBase64(arrayBuffer);
 
         } else {
-            throw new Error(`Unsupported Content-Type: ${contentType}`);
+            throw new Error(`Content-Type no soportado: ${contentType}`);
         }
 
-        // Strip data URI prefix (e.g. "data:application/pdf;base64,") if present
+        // Strip data URI prefix if present
         if (fileBase64.startsWith('data:')) {
             const commaIdx = fileBase64.indexOf(',');
-            if (commaIdx !== -1) {
-                fileBase64 = fileBase64.substring(commaIdx + 1);
-            }
+            if (commaIdx !== -1) fileBase64 = fileBase64.substring(commaIdx + 1);
         }
 
+        // 3. Call Gemini API with retry logic
+        console.log("Calling Gemini API (gemini-2.5-flash)...");
 
-
-        // Improved Prompt for Tariff Extraction using Gemini 2.0 capabilities
-        const geminiPrompt = `
-            Eres un experto en el sector energético español (electricidad y gas). Tu tarea es analizar este documento (Ficha de Tarifas, Contrato, Factura o Anexo de Precios) y extraer TODAS las configuraciones de tarifas que encuentres.
-
-            OBJETIVO PRINCIPAL: Extraer los PRECIOS UNITARIOS de Energía y Potencia. Diferencia claramente entre tarifas eléctricas y de gas.
-
-            ESTRUCTURA DE SALIDA (JSON):
-            {
-                "tariffs": [
-                    {
-                        "supplier_name": "Nombre Comercializadora (ej: Iberdrola, Endesa, Naturgy...)",
-                        "tariff_structure": "2.0TD" | "3.0TD" | "6.1TD" | "6.2TD" | "RL.1" | "RL.2" | "RL.3" | "RL.4",
-                        "supply_type": "electricity" | "gas",
-                        "tariff_name": "Nombre comercial de la tarifa",
-                        "is_indexed": false,
-                        "contract_duration": 12, // Duración por defecto si aplica a toda la tarifa, o null.
-                        "price_sets": [
-                            {
-                                "contract_duration": 12, // Precios si firmas a 12 meses
-                                "valid_from": "2024-01-01", // Fecha de inicio de validez si aplica (YYYY-MM-DD), o null
-                                "valid_to": "2024-06-30", // Fecha fin de validez si aplica (YYYY-MM-DD), o null
-                                "energy_prices": [
-                                    { "period": "P1", "price": 0.123456 },
-                                    { "period": "P2", "price": 0.103456 }
-                                ],
-                                "power_prices": [
-                                    { "period": "P1", "price": 30.123, "unit": "EUR/kW/year" },
-                                    { "period": "P2", "price": 10.456, "unit": "EUR/kW/year" }
-                                ],
-                                "fixed_term_prices": [
-                                    { "period": "P1", "price": 5.43, "unit": "EUR/month" }
-                                ]
-                            },
-                            {
-                                "contract_duration": 24, // Precios distintos si firmas a 24 meses
-                                "valid_from": null,
-                                "valid_to": null,
-                                "energy_prices": [
-                                    { "period": "P1", "price": 0.110000 },
-                                    { "period": "P2", "price": 0.090000 }
-                                ],
-                                "power_prices": [
-                                    { "period": "P1", "price": 30.123, "unit": "EUR/kW/year" },
-                                    { "period": "P2", "price": 10.456, "unit": "EUR/kW/year" }
-                                ]
-                            }
-                        ]
-                    }
-                ],
-                "debug_raw_text": "Breve muestra del texto crudo donde encontraste los precios."
-            }
-
-            REGLAS CRÍTICAS DE EXTRACCIÓN Y AGRUPACIÓN:
-
-            0. **PROHIBICIÓN ESTRICTA DE DUPLICAR PEAJES**: 
-               - NUNCA, BAJO NINGUNA CIRCUNSTANCIA, debes generar múltiples objetos en el array "tariffs" si comparten el mismo Peaje ("tariff_structure") y el mismo Suministro ("supply_type").
-               - Si un documento lista precios para un peaje (ej. "2.0TD") pero con diferentes duraciones de contrato (ej: 12 meses vs 24 meses) o diferentes periodos de vigencia (ej: "Enero a Junio" vs "Julio a Diciembre"), DEBES FUSIONARLOS TODOS OBLIGATORIAMENTE dentro del array \`price_sets\` de un **único** objeto de tarifa.
-               - El array "tariffs" SOLO debe tener múltiples objetos si hay peajes físicamente distintos (ej. uno para 2.0TD y otro para 3.0TD).
-
-            1. **supply_type**: 
-               - Si la tarifa usa peajes tipo "RL.x" o menciona "gas", "gas natural", "m³", "factor de conversión" → "gas".
-               - Si usa peajes tipo "2.0TD", "3.0TD", "6.xTD" o menciona "electricidad", "kWh de consumo eléctrico" → "electricity".
-               - Si no queda claro, pon "electricity" por defecto.
-
-            2. **contract_duration (EXCLUSIVO PARA DURACIÓN DEL CONTRATO)**: 
-               - Número ENTERO de MESES del contrato (ej: 12, 24, 36). 
-               - Si dice "1 año", pon 12. Si dice "2 años", pon 24. 
-               - A nivel de \`price_set\`, si un bloque de precios especifica que es el precio exigido al firmar a "12 meses" o "24 meses", indícalo obligatoriamente aquí (\`contract_duration\`).
-               - ¡NUNCA confundas la 'duración del contrato' con las 'fechas de vigencia'! (Ej. no pongas "12 meses" como un rango de fechas \`valid_to\`).
-
-            3. **Rangos de Vigencia (valid_from / valid_to)**:
-               - ÚNICAMENTE rige el periodo exacto del calendario durante el cual se puede contratar la tarifa (ej: "Del 01/01/2026 al 30/06/2026").
-               - Si el documento muestra precios que cambian según la fecha de facturación en el año, crea un price_set SEPARADO para cada rango de fechas indicando \`valid_from\` y \`valid_to\` en formato ISO (YYYY-MM-DD).
-               - NUNCA uses los campos valid_from o valid_to para reflejar la duración de 12 o 24 meses del contrato.
-               - IMPORTANTE: NUNCA INVENTES FECHAS de validez basadas en los 12 o 24 meses. Si el contrato dura 12 u 24 meses, pero NO DICE "válido del 1 de enero al 31 de diciembre", ENTONCES NO PONGAS FECHAS, déjalas vacías e informa únicamente el "contract_duration".
-
-            4. **Precios de Energía (€/kWh)**:
-               - Si encuentras precios en €/MWh, DIVIDE por 1000. (Ej: 120 €/MWh -> 0.120 €/kWh).
-
-            5. **Precios de Potencia (€/kW/año)**:
-               - Si encuentras precios en €/kW/día, MULTIPLICA por 365. (Ej: 0.10 €/kW/día -> 36.5 €/kW/año).
-               - Si encuentras precios en €/kW/mes, MULTIPLICA por 12.
-               - Indica la unidad final en el campo "unit". PREFERIBLEMENTE "EUR/kW/year".
-
-            6. **Tarifas Indexadas (Pass-through/OMIE)**:
-               - Si ves fórmulas tipo "OMIE + 0.01" o "Precio Mercado + Fee", marca "is_indexed": true.
-               - En este caso, el "price" de energy_prices debe ser el FEE o GESTIÓN (sobreprecio) si aparece. Si no, pon 0.
-
-            7. **Nombres de Tarifa y Fechas**:
-               - Si no encuentras un nombre comercial claro, INVENTA uno descriptivo basado en la estructura (ej: "Tarifa 2.0TD Fija"). NO dejes este campo vacío.
-
-            8. **Término Fijo (fixed_term_prices)**: 
-               - Solo para GAS (término fijo mensual) o cargos fijos extra que no sean energía ni potencia.
-
-            9. **Formato**:
-               - Devuelve SOLO el JSON válido. Usa punto (.) para decimales.
-        `
-
-        console.log("Calling Gemini API with model gemini-2.5-flash...");
-
-        let response;
+        let response: Response | undefined;
         let retries = 0;
         const maxRetries = 3;
-        let delay = 5000; // Start with 5s delay (Gemini free tier resets per minute)
+        let delay = 5000;
 
         while (retries <= maxRetries) {
             try {
-                response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: AbortSignal.timeout(120000), // 120s timeout (Supabase limit is ~150s)
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: geminiPrompt },
-                                { inline_data: { mime_type: fileType, data: fileBase64 } }
-                            ]
-                        }],
-                        generationConfig: {
-                            responseMimeType: 'application/json',
-                            thinkingConfig: {
-                                thinkingBudget: 2048 // Limit thinking tokens to avoid timeout
+                response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        signal: AbortSignal.timeout(120000),
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: EXTRACTION_PROMPT },
+                                    { inline_data: { mime_type: fileType, data: fileBase64 } }
+                                ]
+                            }],
+                            generationConfig: {
+                                responseMimeType: 'application/json',
+                                temperature: 0.1,
+                                thinkingConfig: { thinkingBudget: 4096 }
                             }
-                        }
-                    })
-                });
+                        })
+                    }
+                );
 
                 if (response.ok) break;
 
                 const errorText = await response.text();
-                console.warn(`Gemini API Attempt ${retries + 1} failed: ${response.status} - ${errorText}`);
+                console.warn(`Gemini attempt ${retries + 1}/${maxRetries}: ${response.status} - ${errorText}`);
 
                 if (response.status === 429 && retries < maxRetries) {
-                    // Add jitter to avoid thundering herd
-                    const jitter = Math.random() * 2000;
-                    const waitMs = delay + jitter;
-                    console.log(`Rate limit hit. Retrying in ${Math.round(waitMs)}ms (attempt ${retries + 1}/${maxRetries})...`);
-                    await new Promise(resolve => setTimeout(resolve, waitMs));
+                    const waitMs = delay + Math.random() * 2000;
+                    console.log(`Rate limited. Retrying in ${Math.round(waitMs)}ms...`);
+                    await new Promise(r => setTimeout(r, waitMs));
                     retries++;
-                    delay *= 2; // Exponential backoff: 5s → 10s → 20s
+                    delay *= 2;
                     continue;
                 }
 
-                // If not 429 or max retries reached
                 if (response.status === 429) {
                     return new Response(JSON.stringify({
-                        error: 'La IA está saturada temporalmente. Por favor, intenta de nuevo en unos minutos.',
-                        details: 'Gemini API Rate Limit Exceeded after retries'
-                    }), {
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                        status: 429,
-                    });
+                        error: 'La IA está saturada temporalmente. Inténtalo de nuevo en unos minutos.',
+                        details: 'Gemini API rate limit after retries'
+                    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
                 }
+
                 throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
 
             } catch (e: unknown) {
                 if (retries === maxRetries) throw e;
                 const error = e instanceof Error ? e : new Error(String(e));
-                console.error(`Fetch error on attempt ${retries + 1}:`, error);
+                console.error(`Fetch error attempt ${retries + 1}:`, error.message);
                 retries++;
-                await new Promise(resolve => setTimeout(resolve, delay));
+                await new Promise(r => setTimeout(r, delay));
                 delay *= 2;
             }
         }
 
         if (!response || !response.ok) {
-            throw new Error(`Failed to get successful response from Gemini after ${maxRetries} retries`);
+            throw new Error(`No se obtuvo respuesta válida de Gemini tras ${maxRetries} reintentos`);
         }
 
-        const aiResult = await response.json()
-        console.log("Gemini API response received.");
+        // 4. Parse Gemini response
+        const aiResult = await response.json();
 
-        if (!aiResult.candidates || aiResult.candidates.length === 0 || !aiResult.candidates[0].content) {
-            console.error("Gemini returned no candidates:", JSON.stringify(aiResult));
-            throw new Error("Gemini returned no content.");
+        if (!aiResult.candidates?.length || !aiResult.candidates[0].content) {
+            console.error("Gemini returned no candidates:", JSON.stringify(aiResult).substring(0, 500));
+            if (aiResult.candidates?.[0]?.finishReason === 'SAFETY') {
+                throw new Error('El documento fue bloqueado por el filtro de seguridad de la IA.');
+            }
+            throw new Error('La IA no devolvió contenido. El documento puede estar vacío o ser ilegible.');
         }
 
-        const textResponse = aiResult.candidates[0].content.parts[0].text
+        const textResponse = aiResult.candidates[0].content.parts[0].text;
+        console.log(`Gemini response length: ${textResponse.length} chars`);
 
-        // Robust JSON Extraction (borrowed from comparator logic)
-        let extractedData
+        // 5. Robust JSON extraction
+        let extractedData: ExtractionResult;
         try {
-            // 1. Try direct parse
             extractedData = JSON.parse(textResponse);
-        } catch (e: unknown) {
-            // 2. Try regex for markdown code blocks
-            const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/) || textResponse.match(/```\s*([\s\S]*?)\s*```/)
+        } catch {
+            const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/) ||
+                              textResponse.match(/```\s*([\s\S]*?)\s*```/);
             if (jsonMatch) {
                 try {
-                    extractedData = JSON.parse(jsonMatch[1])
-                } catch (e2: unknown) {
-                    const error2 = e2 instanceof Error ? e2 : new Error(String(e2));
-                    console.warn("Failed to parse JSON from markdown block:", error2);
+                    extractedData = JSON.parse(jsonMatch[1]);
+                } catch {
+                    const cleaned = jsonMatch[1]
+                        .replace(/,\s*}/g, '}')
+                        .replace(/,\s*]/g, ']')
+                        .replace(/\/\/[^\n]*/g, '');
+                    extractedData = JSON.parse(cleaned);
                 }
-            }
-
-            // 3. Last resort cleanup
-            if (!extractedData) {
-                try {
-                    const cleanJson = textResponse.replace(/^```json/, '').replace(/```$/, '').trim();
-                    extractedData = JSON.parse(cleanJson);
-                } catch (e3: unknown) {
-                    console.error("Failed to parse AI JSON response. Raw text:", textResponse);
-                    throw new Error('Failed to parse AI JSON response: ' + textResponse.substring(0, 100));
+            } else {
+                const firstBrace = textResponse.indexOf('{');
+                const lastBrace = textResponse.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace > firstBrace) {
+                    extractedData = JSON.parse(textResponse.substring(firstBrace, lastBrace + 1));
+                } else {
+                    console.error("Failed to extract JSON. Raw:", textResponse.substring(0, 300));
+                    throw new Error('No se pudo interpretar la respuesta de la IA como JSON válido.');
                 }
             }
         }
 
-        console.log("Data extracted successfully:", JSON.stringify(extractedData).substring(0, 100) + "...");
+        // 6. Post-process: validate, normalize, deduplicate, enforce limits
+        const normalizedData = validateAndNormalize(extractedData);
 
-        return new Response(JSON.stringify(extractedData), {
+        console.log(`Extraction complete: ${normalizedData.tariffs.length} tariff(s) found`);
+        normalizedData.tariffs.forEach((t, i) => {
+            const totalSets = t.price_sets?.length || 0;
+            const totalEnergy = t.price_sets?.reduce((sum, s) => sum + (s.energy_prices?.length || 0), 0) || 0;
+            const totalPower = t.price_sets?.reduce((sum, s) => sum + (s.power_prices?.length || 0), 0) || 0;
+            console.log(`  [${i}] ${t.supplier_name} | ${t.tariff_structure} | sets:${totalSets} | E:${totalEnergy} | P:${totalPower}`);
+        });
+
+        return new Response(JSON.stringify(normalizedData), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
-        })
+        });
 
     } catch (e: unknown) {
         const error = e instanceof Error ? e : new Error(String(e));
-        console.error("Fatal Error in Edge Function:", error);
-        return new Response(JSON.stringify({ error: error.message, details: error.toString() }), {
+        console.error("Fatal Error:", error.message);
+        return new Response(JSON.stringify({
+            error: error.message,
+            details: error.toString()
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
-        })
+        });
     }
-})
+});

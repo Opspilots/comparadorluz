@@ -43,11 +43,24 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
             const formData = new FormData();
             formData.append('file', f);
 
-            const { data: extracted, error } = await supabase.functions.invoke('parse-tariff-document', {
-                body: formData
-            });
+            const fnResponse = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-tariff-document`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                    },
+                    body: formData,
+                }
+            );
 
-            if (error) throw error;
+            if (!fnResponse.ok) {
+                const errData = await fnResponse.json().catch(() => ({ error: `HTTP ${fnResponse.status}` }));
+                throw new Error(errData.error || `Error ${fnResponse.status} al analizar el documento.`);
+            }
+
+            const extracted = await fnResponse.json();
             if (!extracted) throw new Error("No se recibieron datos de la IA");
 
             const rawTariffs = extracted.tariffs && Array.isArray(extracted.tariffs) ? extracted.tariffs : [extracted];

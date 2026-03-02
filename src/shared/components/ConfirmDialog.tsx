@@ -1,4 +1,13 @@
-import { X, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/shared/components/ui/dialog'
+import { Button } from '@/shared/components/ui/button'
 
 interface ConfirmDialogProps {
     isOpen: boolean
@@ -21,73 +30,31 @@ export function ConfirmDialog({
     onConfirm,
     onCancel
 }: ConfirmDialogProps) {
-    if (!isOpen) return null
-
     const colors = variant === 'danger'
-        ? { bg: '#fef2f2', icon: '#ef4444', btn: '#ef4444', btnHover: '#dc2626' }
-        : { bg: '#fffbeb', icon: '#f59e0b', btn: '#f59e0b', btnHover: '#d97706' }
+        ? "bg-red-50 text-red-500"
+        : "bg-amber-50 text-amber-500"
 
     return (
-        <div
-            style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(0,0,0,0.5)', zIndex: 1100,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                animation: 'fadeIn 0.15s ease-out'
-            }}
-            onClick={onCancel}
-        >
-            <div
-                className="card"
-                style={{
-                    width: '420px', maxWidth: '90%', padding: '1.5rem',
-                    animation: 'slideUp 0.2s ease-out'
-                }}
-                onClick={e => e.stopPropagation()}
-            >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{
-                            width: '40px', height: '40px', borderRadius: '50%',
-                            background: colors.bg, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            <AlertTriangle size={20} style={{ color: colors.icon }} />
-                        </div>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>{title}</h3>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+            <DialogContent className="sm:max-w-[420px]">
+                <DialogHeader className="flex flex-row items-center gap-3 space-y-0">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colors}`}>
+                        <AlertTriangle className="h-5 w-5" />
                     </div>
-                    <button onClick={onCancel} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                        <X size={18} />
-                    </button>
-                </div>
-
-                <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+                    <DialogTitle>{title}</DialogTitle>
+                </DialogHeader>
+                <DialogDescription className="py-2">
                     {message}
-                </p>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                    <button
-                        onClick={onCancel}
-                        className="btn btn-secondary"
-                    >
+                </DialogDescription>
+                <DialogFooter className="mt-4 gap-2 sm:gap-0">
+                    <Button variant="outline" onClick={onCancel}>
                         {cancelLabel}
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            background: colors.btn,
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                            fontSize: '0.875rem'
-                        }}
-                    >
+                    </Button>
+                    <Button variant={variant === 'danger' ? 'destructive' : 'default'} onClick={onConfirm} className={variant === 'warning' ? "bg-amber-500 hover:bg-amber-600 outline-none text-white" : ""}>
                         {confirmLabel}
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }

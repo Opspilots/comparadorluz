@@ -269,7 +269,7 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                                                 item_type: 'power',
                                                 period: `P${p}`,
                                                 price: Number(val),
-                                                unit: 'EUR/kW/year',
+                                                unit: 'EUR/kW/month',
                                                 contract_duration: payload.contract_duration,
                                                 valid_from: payload.valid_from,
                                                 valid_to: payload.valid_to

@@ -3,7 +3,7 @@ import { TariffVersion } from '@/shared/types';
 import { format } from 'date-fns';
 import { Calendar, ExternalLink, History } from 'lucide-react';
 import { removeEmojis } from '@/shared/lib/utils';
-import { findActiveRate, hasRateHistory } from '../lib/tariffUtils';
+import { findActiveRate, hasRateHistory, toPowerMonthly } from '../lib/tariffUtils';
 
 interface ElectricityTariffTableProps {
     tariffs: TariffVersion[];
@@ -39,7 +39,7 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                         <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Comercializadora</th>
                         <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Tipo</th>
                         <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Energía (€/kWh)</th>
-                        <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Potencia (€/kW/año)</th>
+                        <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Potencia (€/kW/mes)</th>
                         <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Validez</th>
                         <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Estado</th>
                         <th style={{ padding: '1rem' }}></th>
@@ -150,7 +150,7 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                                                         )}
                                                     </div>
                                                     <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>
-                                                        {active?.price != null ? active.price.toFixed(4) : (active?.price_formula ? 'Fórmula' : '-')}
+                                                        {active?.price != null ? toPowerMonthly(active.price, active.unit).toFixed(4) : (active?.price_formula ? 'Fórmula' : '-')}
                                                     </span>
                                                 </div>
                                             );

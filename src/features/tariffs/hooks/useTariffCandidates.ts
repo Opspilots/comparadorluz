@@ -176,7 +176,7 @@ export function useTariffCandidates(
 
                 sets.forEach(set => {
                     (set.energy_prices || []).forEach(p => addRate(p, 'energy', 'EUR/kWh', set));
-                    (set.power_prices || []).forEach(p => addRate(p, 'power', 'EUR/kW/year', set));
+                    (set.power_prices || []).forEach(p => addRate(p, 'power', p.unit || 'EUR/kW/month', set));
                     (set.fixed_term_prices || []).forEach(p => addRate(p, 'fixed_fee', 'EUR/month', set));
                 });
 

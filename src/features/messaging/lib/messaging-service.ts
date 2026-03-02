@@ -214,7 +214,25 @@ export async function sendMessage(payload: {
             .from('messages')
             .update({ status: 'failed' })
             .eq('id', data.id);
-        console.error('Error en envío real:', invokeError);
+
+        let actualError = 'Error desconocido en Edge Function';
+
+        // The invoke API returns FunctionsHttpError with a context containing the response
+        if (invokeError.context) {
+            try {
+                // Read the JSON body { error: "message" } returned by our Deno catch block
+                const edgeBody = await invokeError.context.json();
+                if (edgeBody.error) {
+                    actualError = edgeBody.error;
+                }
+            } catch (e) {
+                // fallback if body is not JSON or cannot be read
+                console.error("Failed to parse edge response:", e);
+            }
+        }
+
+        console.error('Error en envío real:', invokeError, actualError);
+        throw new Error(`Fallo al enviar: ${actualError}`);
     }
 
     return {

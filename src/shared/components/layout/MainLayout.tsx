@@ -8,28 +8,39 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     return (
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background)' }}>
             <Sidebar />
             <div style={{
                 flex: 1,
                 marginLeft: 'var(--sidebar-width)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                minWidth: 0,
             }}>
                 <header style={{
                     position: 'sticky',
                     top: 0,
-                    zIndex: 10,
-                    background: 'white',
+                    zIndex: 50,
+                    height: 'var(--header-height)',
+                    background: 'rgba(255,255,255,0.88)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
                     borderBottom: '1px solid var(--border)',
-                    padding: '0.75rem 2rem',
+                    padding: '0 1.75rem',
                     display: 'flex',
                     justifyContent: 'flex-end',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: '0.5rem',
                 }}>
                     <NotificationBell />
                 </header>
-                <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+                <main style={{
+                    flex: 1,
+                    padding: '2rem 2rem',
+                    maxWidth: '1440px',
+                    width: '100%',
+                    margin: '0 auto',
+                }}>
                     {children}
                 </main>
             </div>

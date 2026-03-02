@@ -11,7 +11,7 @@ import { Step5FeesAndTaxes } from './Step5FeesAndTaxes';
 import { Step6Summary } from './Step6Summary';
 import { TariffWizardState, TariffStructure, DetectedTariff, TariffRate, TariffRateType, Supplier } from '@/types/tariff';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ListChecks, Building2, X } from 'lucide-react';
 import { Step3BGasFixedFee } from './Step3BGasFixedFee';
 
 const INITIAL_STATE: TariffWizardState = {
@@ -33,20 +33,6 @@ const INITIAL_STATE: TariffWizardState = {
 export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'electricity' | 'gas' }) {
     const { id } = useParams();
 
-    const [state, setState] = useState<TariffWizardState>(() => {
-        if (!id) {
-            const savedItem = sessionStorage.getItem('tariffWizardState');
-            if (savedItem) {
-                try {
-                    return JSON.parse(savedItem);
-                } catch (e) {
-                    console.error("Failed to parse saved state", e);
-                }
-            }
-        }
-        return INITIAL_STATE;
-    });
-
     const [candidates, setCandidates] = useState<DetectedTariff[]>(() => {
         if (!id) {
             const savedCandidates = sessionStorage.getItem('tariffWizardCandidates');
@@ -61,8 +47,32 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
         return [];
     });
 
+    const [state, setState] = useState<TariffWizardState>(() => {
+        if (!id) {
+            const savedItem = sessionStorage.getItem('tariffWizardState');
+            if (savedItem) {
+                try {
+                    const parsed = JSON.parse(savedItem);
+                    // If there are pending candidates, always return to the candidates list
+                    const savedCandidates = sessionStorage.getItem('tariffWizardCandidates');
+                    if (savedCandidates) {
+                        const parsedCandidates = JSON.parse(savedCandidates);
+                        if (Array.isArray(parsedCandidates) && parsedCandidates.length > 0) {
+                            return { ...parsed, currentStep: 2 };
+                        }
+                    }
+                    return parsed;
+                } catch (e) {
+                    console.error("Failed to parse saved state", e);
+                }
+            }
+        }
+        return INITIAL_STATE;
+    });
+
     const [structures, setStructures] = useState<TariffStructure[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [unknownSupplier, setUnknownSupplier] = useState<string | null>(null);
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -140,6 +150,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
     });
 
     const updateMetadata = <K extends keyof TariffWizardState['metadata']>(key: K, value: TariffWizardState['metadata'][K]) => {
+        if (key === 'supplier_id' && value) setUnknownSupplier(null);
         setState(prev => ({
             ...prev,
             metadata: { ...prev.metadata, [key]: value }
@@ -162,7 +173,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                 newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'energy', period: `P${i}`, price: null, price_formula: '', unit: 'EUR/kWh', confidence_score: 1.0, contract_duration: initialDuration });
             }
             for (let i = 1; i <= currentStructure.power_periods; i++) {
-                newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/year', confidence_score: 1.0, contract_duration: initialDuration });
+                newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/month', confidence_score: 1.0, contract_duration: initialDuration });
             }
             setState(prev => ({ ...prev, rates: [...prev.rates, ...newRates] }));
         }
@@ -181,7 +192,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'energy', period: `P${i}`, price: null, price_formula: '', unit: 'EUR/kWh', confidence_score: 1.0, contract_duration: months });
         }
         for (let i = 1; i <= currentStructure.power_periods; i++) {
-            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/year', confidence_score: 1.0, contract_duration: months });
+            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/month', confidence_score: 1.0, contract_duration: months });
         }
         setState(prev => ({ ...prev, rates: [...prev.rates, ...newRates] }));
         return key;
@@ -195,7 +206,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'energy', period: `P${i}`, price: null, price_formula: '', unit: 'EUR/kWh', confidence_score: 1.0, contract_duration: duration, valid_from: validFrom });
         }
         for (let i = 1; i <= currentStructure.power_periods; i++) {
-            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/year', confidence_score: 1.0, contract_duration: duration, valid_from: validFrom });
+            newRates.push({ id: crypto.randomUUID(), tariff_version_id: '', item_type: 'power', period: `P${i}`, price: null, unit: 'EUR/kW/month', confidence_score: 1.0, contract_duration: duration, valid_from: validFrom });
         }
         setState(prev => ({ ...prev, rates: [...prev.rates, ...newRates] }));
     };
@@ -403,8 +414,16 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             if (s) metadataUpdates.tariff_structure_id = s.id;
         }
         if (candidate.supplier_name) {
-            const s = suppliers.find(s => s.name.toLowerCase().includes(candidate.supplier_name!.toLowerCase()));
-            if (s) metadataUpdates.supplier_id = s.id;
+            const s = suppliers.find(s =>
+                s.name.toLowerCase().includes(candidate.supplier_name!.toLowerCase()) ||
+                candidate.supplier_name!.toLowerCase().includes(s.name.toLowerCase())
+            );
+            if (s) {
+                metadataUpdates.supplier_id = s.id;
+                setUnknownSupplier(null);
+            } else {
+                setUnknownSupplier(candidate.supplier_name);
+            }
         }
 
         // Build rates from price_sets (each set has its own valid_from/valid_to)
@@ -419,7 +438,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             item_type: type,
             period: item.period || (type === 'fixed_fee' ? 'P1' : undefined),
             price: item.price,
-            unit: item.unit || (type === 'energy' ? 'EUR/kWh' : type === 'power' ? 'EUR/kW/year' : 'EUR/month'),
+            unit: item.unit || (type === 'energy' ? 'EUR/kWh' : type === 'power' ? 'EUR/kW/month' : 'EUR/month'),
             contract_duration: set.contract_duration != null ? parseInt(String(set.contract_duration), 10) : parsedDuration, // Fallback to candidate global duration
             valid_from: set.valid_from || undefined, // DO NOT fallback to metadata — only use explicit validity from the price_set
             valid_to: set.valid_to || undefined,
@@ -500,15 +519,26 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                             <span>{getStepLabel(state.currentStep)}</span>
                         </div>
                     </div>
-                    {!id && (state.currentStep > 1 || candidates.length > 0) && (
-                        <button
-                            onClick={handleDiscard}
-                            className="btn btn-secondary btn-sm"
-                            style={{ color: '#ef4444', borderColor: '#fecaca', backgroundColor: '#fef2f2' }}
-                        >
-                            Descartar Borrador
-                        </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {!id && candidates.length > 0 && state.currentStep > 2 && (
+                            <button
+                                onClick={() => goToStep(2)}
+                                className="btn btn-secondary btn-sm"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: '#2563eb', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}
+                            >
+                                <ListChecks size={14} /> Volver a tarifas OCR
+                            </button>
+                        )}
+                        {!id && (state.currentStep > 1 || candidates.length > 0) && (
+                            <button
+                                onClick={handleDiscard}
+                                className="btn btn-secondary btn-sm"
+                                style={{ color: '#ef4444', borderColor: '#fecaca', backgroundColor: '#fef2f2' }}
+                            >
+                                Descartar Borrador
+                            </button>
+                        )}
+                    </div>
                 </div>
                 {/* Progress Bar */}
                 <div style={{ width: '100%', background: '#e5e7eb', borderRadius: '9999px', height: '0.625rem', marginTop: '1rem' }}>
@@ -521,6 +551,45 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                     }}></div>
                 </div>
             </div>
+
+            {/* Unknown supplier warning banner */}
+            {unknownSupplier && state.currentStep >= 3 && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '0.5rem',
+                    padding: '0.75rem 1rem', marginBottom: '1rem', gap: '0.75rem'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#92400e' }}>
+                        <Building2 size={16} />
+                        <span>
+                            La comercializadora <strong>"{unknownSupplier}"</strong> no está registrada.
+                            Regístrala antes de guardar la tarifa o selecciona una manualmente.
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                        <button
+                            onClick={() => {
+                                sessionStorage.setItem('tariffWizardState', JSON.stringify(state));
+                                sessionStorage.setItem('tariffWizardCandidates', JSON.stringify(candidates));
+                                navigate('/admin/suppliers');
+                            }}
+                            style={{
+                                fontSize: '0.8rem', fontWeight: 600, padding: '0.375rem 0.75rem',
+                                background: '#f59e0b', color: 'white', border: 'none',
+                                borderRadius: '0.375rem', cursor: 'pointer'
+                            }}
+                        >
+                            + Registrar comercializadora
+                        </button>
+                        <button
+                            onClick={() => setUnknownSupplier(null)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e' }}
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="card" style={{ padding: '2rem', minHeight: '400px', background: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
                 {state.currentStep === 1 && (
@@ -596,6 +665,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                     <Step6Summary
                         data={state}
                         mode={id ? 'edit' : 'create'}
+                        fromOCR={!id && candidates.length > 0}
                         onSave={handleFinish}
                     />
                 )}

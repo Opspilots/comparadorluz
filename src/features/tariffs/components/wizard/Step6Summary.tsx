@@ -9,10 +9,11 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 interface Step6Props {
     data: TariffWizardState;
     mode?: 'create' | 'edit';
+    fromOCR?: boolean;
     onSave: () => void;
 }
 
-export function Step6Summary({ data, mode = 'create' }: Step6Props) {
+export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }: Step6Props) {
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
     const { toast } = useToast();
@@ -185,7 +186,11 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
                 description: `La tarifa ${data.metadata.name} ha sido guardada correctamente.`,
             });
 
-            navigate('/admin/tariffs');
+            if (fromOCR) {
+                onSave();
+            } else {
+                navigate('/admin/tariffs');
+            }
 
         } catch (err: unknown) {
             console.error(err);
@@ -238,9 +243,11 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
                         </span>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
-                        {isComplete
-                            ? "La tarifa está lista para ser activada y utilizada en recomendaciones."
-                            : "Puedes guardar como borrador y terminar de editar más tarde."}
+                        {fromOCR
+                            ? "La tarifa se guardará como borrador. Puedes activarla desde la tabla de tarifas seleccionándola."
+                            : isComplete
+                                ? "La tarifa está lista para ser activada y utilizada en recomendaciones."
+                                : "Puedes guardar como borrador y terminar de editar más tarde."}
                     </p>
                 </div>
             </div>
@@ -265,13 +272,15 @@ export function Step6Summary({ data, mode = 'create' }: Step6Props) {
                     >
                         {saving ? <Loader2 size={16} className="animate-spin" /> : 'Guardar Borrador'}
                     </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => handleSave(true)}
-                        disabled={saving || !isComplete}
-                    >
-                        {saving ? <Loader2 size={16} className="animate-spin" /> : mode === 'edit' ? 'Actualizar Tarifa' : 'Publicar y Activar'}
-                    </button>
+                    {!fromOCR && (
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => handleSave(true)}
+                            disabled={saving || !isComplete}
+                        >
+                            {saving ? <Loader2 size={16} className="animate-spin" /> : mode === 'edit' ? 'Actualizar Tarifa' : 'Publicar y Activar'}
+                        </button>
+                    )}
                 </div>
             </div>
 

@@ -30,6 +30,7 @@ import { ContractPreview } from '@/features/contracts/components/ContractPreview
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { CommissionersPage } from '@/features/commissioners/pages/CommissionersPage'
 import { CommissionerDetailPage } from '@/features/commissioners/pages/CommissionerDetailPage'
+import SuppliersPage from '@/features/tariffs/pages/SuppliersPage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
     const [session, setSession] = useState<Session | null>(null)
@@ -90,6 +91,7 @@ function App() {
                                     <Route path="/admin/tariffs/:id" element={<TariffDetailsPage />} />
                                     <Route path="/admin/tariffs/new" element={<TariffEditorPage />} />
                                     <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
+                                    <Route path="/admin/suppliers" element={<SuppliersPage />} />
 
                                     {/* Messaging */}
                                     <Route path="/admin/messages" element={<MessagingLayout />}>
