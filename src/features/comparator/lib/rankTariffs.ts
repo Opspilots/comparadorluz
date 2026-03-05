@@ -97,7 +97,10 @@ export function rankTariffs(
 
                 // Skip if no rates match this scenario or no usable energy prices exist
                 if (activeComponents.length === 0) return;
-                if (!activeComponents.some(c => c.item_type === 'energy' && c.price !== null && c.price !== undefined)) return;
+                // For indexed tariffs, energy rates may have price=null with margin instead
+                const hasDirectPrices = activeComponents.some(c => c.item_type === 'energy' && c.price !== null && c.price !== undefined);
+                const hasIndexedRates = tariff.is_indexed && activeComponents.some(c => c.item_type === 'energy');
+                if (!hasDirectPrices && !hasIndexedRates) return;
 
                 // Create a virtual tariff version for this scenario
                 const scenarioTariff: TariffVersion = {

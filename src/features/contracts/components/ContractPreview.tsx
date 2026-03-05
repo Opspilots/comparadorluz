@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import { PDFViewer } from '@react-pdf/renderer'
 import { ContractDocument } from './ContractDocument'
-import { ArrowLeft } from 'lucide-react'
-import type { Customer, SupplyPoint, TariffVersion } from '@/shared/types'
+import { ArrowLeft, Settings } from 'lucide-react'
+import type { Customer, SupplyPoint, TariffVersion, ContractTemplate } from '@/shared/types'
 import type { Supplier } from '@/types/tariff'
 
 interface ContractPreviewData {
@@ -24,37 +24,46 @@ export function ContractPreview() {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [contract, setContract] = useState<ContractPreviewData | null>(null)
+    const [template, setTemplate] = useState<ContractTemplate | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        const fetchContractData = async () => {
+        const fetchData = async () => {
             try {
-                const { data, error } = await supabase
-                    .from('contracts')
-                    .select(`
-                        *,
-                        customers (*),
-                        supply_points (*),
-                        tariff_versions (
+                const [contractRes, templateRes] = await Promise.all([
+                    supabase
+                        .from('contracts')
+                        .select(`
                             *,
-                            suppliers (*)
-                        )
-                    `)
-                    .eq('id', id)
-                    .single()
+                            customers (*),
+                            supply_points (*),
+                            tariff_versions (
+                                *,
+                                suppliers (*)
+                            )
+                        `)
+                        .eq('id', id)
+                        .single(),
+                    supabase
+                        .from('contract_templates')
+                        .select('*')
+                        .single(),
+                ])
 
-                if (error) throw error
-                setContract(data)
+                if (contractRes.error) throw contractRes.error
+                setContract(contractRes.data)
+                // Template may not exist yet — that's fine
+                if (!templateRes.error) setTemplate(templateRes.data)
             } catch (err) {
-                const error = err as Error;
-                console.error('Error fetching contract for preview:', error)
-                setError(error.message || 'Error al cargar el contrato')
+                const e = err as Error
+                console.error('Error fetching contract for preview:', e)
+                setError(e.message || 'Error al cargar el contrato')
             } finally {
                 setLoading(false)
             }
         }
 
-        fetchContractData()
+        fetchData()
     }, [id])
 
     if (loading) {
@@ -64,6 +73,7 @@ export function ContractPreview() {
                     <div style={{ width: '40px', height: '40px', border: '4px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%', margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
                     <p style={{ color: '#64748b' }}>Preparando vista previa del contrato...</p>
                 </div>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
         )
     }
@@ -81,15 +91,28 @@ export function ContractPreview() {
         <div style={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button onClick={() => navigate('/contracts')} className="btn btn-secondary" style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ArrowLeft size={20} />
+                    <button
+                        onClick={() => navigate('/contracts')}
+                        style={{ padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', borderRadius: 8, background: 'white', cursor: 'pointer' }}
+                    >
+                        <ArrowLeft size={20} color="#64748b" />
                     </button>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#0f172a' }}>
                         Vista Previa: {contract.contract_number}
                     </div>
                 </div>
-                <div style={{ color: '#64748b', fontSize: '0.875rem' }}>
-                    Cliente: <strong>{contract.customers?.name}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                        Cliente: <strong>{contract.customers?.name}</strong>
+                    </div>
+                    <button
+                        onClick={() => navigate('/contracts/template')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: 8, background: 'white', fontSize: '0.8125rem', color: '#64748b', cursor: 'pointer', fontWeight: 500 }}
+                        title="Personalizar plantilla"
+                    >
+                        <Settings size={14} />
+                        Personalizar plantilla
+                    </button>
                 </div>
             </div>
 
@@ -106,14 +129,10 @@ export function ContractPreview() {
                         customer={contract.customers}
                         tariff={contract.tariff_versions}
                         supplyPoint={contract.supply_points}
+                        template={template}
                     />
                 </PDFViewer>
             </div>
-            <style>{`
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
-                }
-            `}</style>
         </div>
     )
 }

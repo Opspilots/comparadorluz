@@ -142,11 +142,16 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
     const currentStructure = structures.find(s => s.id === state.metadata.tariff_structure_id);
     const isGas = currentStructure?.code?.startsWith('RL') || false;
 
-    // Filter structures based on initialSupplyType (if provided, usually for new tariffs)
+    // Filter structures: if a structure is already selected, derive the supply type from it;
+    // otherwise fall back to initialSupplyType. This ensures that when editing a gas OCR
+    // candidate from an electricity wizard context, the gas structures are correctly shown.
+    const effectiveSupplyType = currentStructure
+        ? (currentStructure.code?.startsWith('RL') ? 'gas' : 'electricity')
+        : initialSupplyType;
     const filteredStructures = structures.filter(s => {
-        if (!initialSupplyType) return true;
+        if (!effectiveSupplyType) return true;
         const isGasStructure = s.code?.startsWith('RL');
-        return initialSupplyType === 'gas' ? isGasStructure : !isGasStructure;
+        return effectiveSupplyType === 'gas' ? isGasStructure : !isGasStructure;
     });
 
     const updateMetadata = <K extends keyof TariffWizardState['metadata']>(key: K, value: TariffWizardState['metadata'][K]) => {
@@ -414,10 +419,15 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             if (s) metadataUpdates.tariff_structure_id = s.id;
         }
         if (candidate.supplier_name) {
-            const s = suppliers.find(s =>
-                s.name.toLowerCase().includes(candidate.supplier_name!.toLowerCase()) ||
-                candidate.supplier_name!.toLowerCase().includes(s.name.toLowerCase())
-            );
+            // Normalize: lowercase + remove accents/diacritics for fuzzy matching
+            const norm = (str: string) =>
+                str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            const normCandidate = norm(candidate.supplier_name);
+            const s = suppliers.find(s => {
+                const normSupplier = norm(s.name);
+                // Match if either string is a substring of the other (handles OCR extra words)
+                return normSupplier.includes(normCandidate) || normCandidate.includes(normSupplier);
+            });
             if (s) {
                 metadataUpdates.supplier_id = s.id;
                 setUnknownSupplier(null);
@@ -568,10 +578,28 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                         <button
-                            onClick={() => {
-                                sessionStorage.setItem('tariffWizardState', JSON.stringify(state));
-                                sessionStorage.setItem('tariffWizardCandidates', JSON.stringify(candidates));
-                                navigate('/admin/suppliers');
+                            onClick={async () => {
+                                try {
+                                    const slug = unknownSupplier.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                                    const { data: newSupplier, error } = await supabase
+                                        .from('suppliers')
+                                        .insert({
+                                            name: unknownSupplier,
+                                            slug: slug,
+                                            is_active: true
+                                        })
+                                        .select()
+                                        .single();
+
+                                    if (error) throw error;
+
+                                    setSuppliers(prev => [...prev, newSupplier as Supplier]);
+                                    updateMetadata('supplier_id', newSupplier.id);
+                                    setUnknownSupplier(null);
+                                    toast({ title: 'Comercializadora creada', description: `Se ha registrado "${unknownSupplier}" correctamente.` });
+                                } catch (err: any) {
+                                    toast({ variant: 'destructive', title: 'Error', description: err.message });
+                                }
                             }}
                             style={{
                                 fontSize: '0.8rem', fontWeight: 600, padding: '0.375rem 0.75rem',

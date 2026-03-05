@@ -126,7 +126,26 @@ function getEnergyPrices(
         if (prices.size > 0) return prices;
     }
 
-    // Fallback/Standard: find best active prices for each period
+    // Indexed tariff but no market prices provided: use reference price + margin as estimate
+    if (tariff_version.is_indexed) {
+        rates.filter((r: TariffRate) => r.item_type === 'energy').forEach((r: TariffRate) => {
+            if (r.period) {
+                const activeRate = findActiveRate(rates as any, 'energy', r.period, today, tariff_version.contract_duration);
+                if (!activeRate || activeRate.id !== r.id) return;
+                // Effective price = reference base price (or 0) + margin
+                // Use r.* (typed as TariffRate from @/shared/types which includes margin)
+                const basePrice = r.price ?? 0;
+                const margin = r.margin ?? 0;
+                const finalPrice = basePrice + margin;
+                if (finalPrice > 0) {
+                    prices.set(r.period, finalPrice);
+                }
+            }
+        });
+        if (prices.size > 0) return prices;
+    }
+
+    // Standard fixed: find best active prices for each period
     const energyRateEntries = rates.filter(r => r.item_type === 'energy');
     const periods = Array.from(new Set(energyRateEntries.map(r => r.period).filter(Boolean))) as string[];
 
@@ -253,7 +272,12 @@ export function calculateFixedFee(rates: TariffRate[], contractDuration: number 
         return 0;
     }
 
-    // Convert monthly to annual
+    // Convert to annual based on stored unit
+    const unit = (activeRate.unit || '').toUpperCase();
+    if (unit.includes('YEAR') || unit.includes('AÑO') || unit.includes('ANO')) {
+        return round(activeRate.price);
+    }
+    // Default: assume monthly and convert to annual
     return round(activeRate.price * 12);
 }
 
@@ -390,7 +414,7 @@ export function calculateElectricityAnnualCost(input: CalculationInput): Calcula
     const powerCost = calculatePowerComponent(powerPrices, powerInputs);
 
     // 5. CALCULATE PENALTIES
-    const reactivePenalty = reactive_energy_kvarh * 0.041554; // Avg price EUR/kVarh
+    const reactivePenalty = round(reactive_energy_kvarh * 0.041554); // Avg price EUR/kVarh
 
     // Excess Power (Maximeter) - Simplified Model for 3.0TD/6.1TD
     // Rule: Penalty if Demand > 105% of Contracted Power

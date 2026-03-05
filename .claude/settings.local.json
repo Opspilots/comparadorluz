@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint)",
+      "Bash(npx eslint src/features/tariffs/hooks/useTariffCandidates.ts src/features/tariffs/components/wizard/Step2Candidates.tsx --ext ts,tsx)",
+      "Bash(npx eslint src/features/tariffs/components/wizard/Step2Candidates.tsx --ext ts,tsx)",
+      "Bash(npx supabase functions deploy parse-tariff-document --no-verify-jwt)"
     ]
   }
 }

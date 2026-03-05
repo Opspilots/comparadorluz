@@ -390,6 +390,34 @@ export interface CommissionRule {
     commissioners?: { full_name: string };
 }
 
+export interface ContractTemplate {
+    id: string;
+    company_id: string;
+    // Colors
+    primary_color: string;
+    accent_color: string;
+    text_color: string;
+    section_bg_color: string;
+    notes_bg_color: string;
+    notes_border_color: string;
+    // Header
+    contract_title: string;
+    company_name: string;
+    company_tagline?: string;
+    company_logo_url?: string;
+    // Footer
+    footer_text: string;
+    footer_show_date: boolean;
+    footer_show_page_number: boolean;
+    // Typography & layout
+    font_size_base: number;
+    page_padding: number;
+    // Legal
+    custom_legal_text?: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled';
 
 export interface Campaign {

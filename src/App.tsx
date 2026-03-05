@@ -27,6 +27,7 @@ import { CampaignForm } from '@/features/messaging/pages/CampaignForm'
 import { ContractList } from '@/features/contracts/components/ContractList'
 import { ContractForm } from '@/features/contracts/components/ContractForm'
 import { ContractPreview } from '@/features/contracts/components/ContractPreview'
+import { ContractTemplateEditor } from '@/features/contracts/components/ContractTemplateEditor'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { CommissionersPage } from '@/features/commissioners/pages/CommissionersPage'
 import { CommissionerDetailPage } from '@/features/commissioners/pages/CommissionerDetailPage'
@@ -103,6 +104,7 @@ function App() {
                                         <Route path=":customerId" element={<ConversationPage />} />
                                     </Route>
                                     <Route path="/contracts" element={<ContractList />} />
+                                    <Route path="/contracts/template" element={<ContractTemplateEditor />} />
                                     <Route path="/contracts/new" element={<ContractForm />} />
                                     <Route path="/contracts/:id" element={<ContractForm />} />
                                     <Route path="/contracts/:id/view" element={<ContractPreview />} />

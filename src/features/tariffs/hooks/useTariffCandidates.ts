@@ -20,6 +20,58 @@ interface TariffRateInsert {
     valid_to?: string | null;
 }
 
+const sanitizeDate = (d: unknown) => {
+    if (!d) return null;
+    const dateObj = new Date(d as string);
+    return isNaN(dateObj.getTime()) ? null : d as string;
+};
+
+function buildRatesFromCandidate(
+    candidate: DetectedTariff,
+    versionId: string,
+    fallbackValidFrom: string
+): TariffRateInsert[] {
+    const parsedDuration = candidate.contract_duration ?? null;
+    const ratesToInsert: TariffRateInsert[] = [];
+
+    const addRate = (
+        p: RateInput,
+        type: string,
+        defaultUnit: string,
+        set: { valid_from?: string | null; valid_to?: string | null; contract_duration?: number | null }
+    ) => {
+        ratesToInsert.push({
+            tariff_version_id: versionId,
+            item_type: type,
+            period: p.period || 'P1',
+            price: p.price,
+            unit: p.unit || defaultUnit,
+            contract_duration: set.contract_duration !== undefined ? (set.contract_duration ?? null) : (parsedDuration ?? null),
+            valid_from: sanitizeDate(set.valid_from !== undefined ? (set.valid_from ?? null) : (fallbackValidFrom ?? null)),
+            valid_to: sanitizeDate(set.valid_to !== undefined ? (set.valid_to ?? null) : null)
+        });
+    };
+
+    const sets = candidate.price_sets && candidate.price_sets.length > 0
+        ? candidate.price_sets
+        : [{
+            energy_prices: candidate.energy_prices,
+            power_prices: candidate.power_prices,
+            fixed_term_prices: candidate.fixed_term_prices,
+            contract_duration: candidate.contract_duration,
+            valid_from: fallbackValidFrom,
+            valid_to: null
+        }];
+
+    sets.forEach(set => {
+        (set.energy_prices || []).forEach(p => addRate(p, 'energy', 'EUR/kWh', set));
+        (set.power_prices || []).forEach(p => addRate(p, 'power', (p as RateInput).unit || 'EUR/kW/month', set));
+        (set.fixed_term_prices || []).forEach(p => addRate(p, 'fixed_fee', 'EUR/month', set));
+    });
+
+    return ratesToInsert;
+}
+
 export function useTariffCandidates(
     candidates: DetectedTariff[],
     onUpdateCandidates: (newCandidates: DetectedTariff[]) => void
@@ -37,19 +89,13 @@ export function useTariffCandidates(
         });
     };
 
-    const handleBulkSave = async () => {
-        const selected = candidates.filter(c => selectedIds.has(c.id));
+    const handleBulkSave = async (overrideIds?: Set<string>) => {
+        const idsToProcess = overrideIds ?? selectedIds;
+        const selected = candidates.filter(c => idsToProcess.has(c.id));
         if (selected.length === 0) return;
 
         setProcessing(true);
         try {
-            // Helper to prevent e.g '2026-02-29' crashing Supabase inserts
-            const sanitizeDate = (d: any) => {
-                if (!d) return null;
-                const dateObj = new Date(d);
-                return isNaN(dateObj.getTime()) ? null : d;
-            };
-
             const { data: user } = await supabase.auth.getUser();
             const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user!.id).single();
             const companyId = company?.company_id;
@@ -79,7 +125,6 @@ export function useTariffCandidates(
                 const parsedDuration = item.contract_duration ?? null;
                 const firstSet = item.price_sets?.[0];
 
-                // Attempt to read validity from the root first, fallback to first price set if nested, then default to today for start
                 const rootValidFrom = item.valid_from !== undefined ? item.valid_from : firstSet?.valid_from;
                 const rootValidTo = item.valid_to !== undefined ? item.valid_to : firstSet?.valid_to;
 
@@ -145,40 +190,9 @@ export function useTariffCandidates(
 
                 if (vError || !version) throw vError || new Error("Failed to create or update version");
 
-                // Clean existing rates before inserting new ones to avoid duplicate entries when overwriting
                 await supabase.from('tariff_rates').delete().eq('tariff_version_id', version.id);
 
-                const ratesToInsert: TariffRateInsert[] = [];
-                const addRate = (p: RateInput, type: string, defaultUnit: string, set: { valid_from?: string | null; valid_to?: string | null; contract_duration?: number | null; }) => {
-                    ratesToInsert.push({
-                        tariff_version_id: version.id,
-                        item_type: type,
-                        period: p.period || 'P1',
-                        price: p.price,
-                        unit: p.unit || defaultUnit,
-                        contract_duration: set.contract_duration !== undefined ? (set.contract_duration ?? null) : (parsedDuration ?? null), // Use set duration, fallback to global
-                        valid_from: sanitizeDate(set.valid_from !== undefined ? (set.valid_from ?? null) : (validFrom ?? null)),
-                        valid_to: sanitizeDate(set.valid_to !== undefined ? (set.valid_to ?? null) : (validTo ?? null))
-                    });
-                };
-
-                // Use price_sets if available, else fall back to legacy flat arrays
-                const sets = item.price_sets && item.price_sets.length > 0
-                    ? item.price_sets
-                    : [{
-                        energy_prices: item.energy_prices,
-                        power_prices: item.power_prices,
-                        fixed_term_prices: item.fixed_term_prices,
-                        contract_duration: item.contract_duration, // Legacy support mapping
-                        valid_from: validFrom,
-                        valid_to: validTo
-                    }];
-
-                sets.forEach(set => {
-                    (set.energy_prices || []).forEach(p => addRate(p, 'energy', 'EUR/kWh', set));
-                    (set.power_prices || []).forEach(p => addRate(p, 'power', p.unit || 'EUR/kW/month', set));
-                    (set.fixed_term_prices || []).forEach(p => addRate(p, 'fixed_fee', 'EUR/month', set));
-                });
+                const ratesToInsert = buildRatesFromCandidate(item, version.id, validFrom);
 
                 if (ratesToInsert.length > 0) {
                     const { error: rError } = await supabase.from('tariff_rates').insert(ratesToInsert);
@@ -189,11 +203,15 @@ export function useTariffCandidates(
 
             if (savedCount > 0) {
                 toast({ title: "Guardado", description: `${savedCount} tarifas guardadas como borrador.` });
-                const remaining = candidates.filter(c => !selectedIds.has(c.id));
+                const processedIds = idsToProcess;
+                const remaining = candidates.filter(c => !processedIds.has(c.id));
                 onUpdateCandidates(remaining);
-                setSelectedIds(new Set());
+                setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    processedIds.forEach(id => next.delete(id));
+                    return next;
+                });
             } else {
-
                 toast({ variant: 'destructive', title: "Error", description: "No se pudieron guardar las tarifas seleccionadas." });
             }
 
@@ -206,11 +224,103 @@ export function useTariffCandidates(
         }
     };
 
+    // Updates an existing tariff version with the candidate's prices and publishes it
+    const quickUpdate = async (candidate: DetectedTariff, existingVersionId: string): Promise<void> => {
+        setProcessing(true);
+        try {
+            const firstSet = candidate.price_sets?.[0];
+            const validFrom = firstSet?.valid_from || candidate.valid_from || new Date().toISOString().split('T')[0];
+
+            // Replace rates
+            await supabase.from('tariff_rates').delete().eq('tariff_version_id', existingVersionId);
+
+            const ratesToInsert = buildRatesFromCandidate(candidate, existingVersionId, validFrom);
+
+            if (ratesToInsert.length > 0) {
+                const { error: rError } = await supabase.from('tariff_rates').insert(ratesToInsert);
+                if (rError) throw rError;
+            }
+
+            // Update version: new valid_from, mark active and complete
+            const { error: vError } = await supabase
+                .from('tariff_versions')
+                .update({
+                    valid_from: sanitizeDate(validFrom),
+                    is_active: true,
+                    completion_status: 'complete'
+                })
+                .eq('id', existingVersionId);
+
+            if (vError) throw vError;
+
+            toast({ title: "Tarifa actualizada", description: `"${candidate.tariff_name}" actualizada y publicada.` });
+            onUpdateCandidates(candidates.filter(c => c.id !== candidate.id));
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                next.delete(candidate.id);
+                return next;
+            });
+        } catch (e: unknown) {
+            const err = e as Error;
+            toast({ variant: 'destructive', title: "Error al actualizar", description: err.message });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    // Bulk-updates multiple matched candidates and publishes them
+    const bulkUpdate = async (pairs: Array<{ candidate: DetectedTariff; existingVersionId: string }>) => {
+        if (pairs.length === 0) return;
+        setProcessing(true);
+        let updatedCount = 0;
+        const processedIds = new Set<string>();
+
+        try {
+            for (const { candidate, existingVersionId } of pairs) {
+                const firstSet = candidate.price_sets?.[0];
+                const validFrom = firstSet?.valid_from || candidate.valid_from || new Date().toISOString().split('T')[0];
+
+                await supabase.from('tariff_rates').delete().eq('tariff_version_id', existingVersionId);
+
+                const ratesToInsert = buildRatesFromCandidate(candidate, existingVersionId, validFrom);
+
+                if (ratesToInsert.length > 0) {
+                    const { error: rError } = await supabase.from('tariff_rates').insert(ratesToInsert);
+                    if (rError) throw rError;
+                }
+
+                const { error: vError } = await supabase
+                    .from('tariff_versions')
+                    .update({ valid_from: sanitizeDate(validFrom), is_active: true, completion_status: 'complete' })
+                    .eq('id', existingVersionId);
+
+                if (vError) throw vError;
+                processedIds.add(candidate.id);
+                updatedCount++;
+            }
+
+            toast({ title: "Actualización masiva completada", description: `${updatedCount} tarifas actualizadas y publicadas.` });
+            onUpdateCandidates(candidates.filter(c => !processedIds.has(c.id)));
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                processedIds.forEach(id => next.delete(id));
+                return next;
+            });
+        } catch (e: unknown) {
+            const err = e as Error;
+            toast({ variant: 'destructive', title: "Error en actualización masiva", description: err.message });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     return {
         selectedIds,
         setSelectedIds,
         processing,
         toggleSelection,
-        handleBulkSave
+        handleBulkSave,
+        quickUpdate,
+        bulkUpdate
     };
 }

@@ -165,6 +165,7 @@ export default function TariffDashboard() {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [durationFilter, setDurationFilter] = useState<string>('all');
     const [viewDate, setViewDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     const navigate = useNavigate();
@@ -224,7 +225,7 @@ export default function TariffDashboard() {
 
             // Supply Type Filter (via Tab)
             if (activeTab === 'electricity') {
-                query = query.in('tariff_type', ['2.0TD', '3.0TD', '6.0', '6.1TD', '3.0A', '6.1A']);
+                query = query.in('tariff_type', ['2.0TD', '3.0TD', '6.0', '6.1TD', '6.2TD', '3.0A', '6.1A']);
             } else {
                 query = query.in('tariff_type', ['RL.1', 'RL.2', 'RL.3', 'RL.4']);
             }
@@ -322,15 +323,45 @@ export default function TariffDashboard() {
     }, [tariffs]);
 
     // Define available types based on active tab
-    const electricityTypes = ['2.0TD', '3.0TD', '6.0', '6.1TD'];
+    const electricityTypes = ['2.0TD', '3.0TD', '6.0', '6.1TD', '6.2TD'];
     const gasTypes = ['RL.1', 'RL.2', 'RL.3', 'RL.4'];
     const availableTariffTypes = activeTab === 'electricity' ? electricityTypes : gasTypes;
+
+    // Collect unique contract durations from tariff_versions and their tariff_rates
+    const availableDurations = useMemo(() => {
+        if (!tariffs) return [];
+        const durations = new Set<number | null>();
+        tariffs.forEach(t => {
+            durations.add(t.contract_duration ?? null);
+            (t.tariff_rates || []).forEach((r: { contract_duration?: number | null }) => {
+                durations.add(r.contract_duration ?? null);
+            });
+        });
+        return Array.from(durations).sort((a, b) => {
+            if (a === null) return -1;
+            if (b === null) return 1;
+            return a - b;
+        });
+    }, [tariffs]);
+
+    // Client-side duration filter
+    const filteredTariffs = useMemo(() => {
+        if (!tariffs || durationFilter === 'all') return tariffs;
+        const targetDuration = durationFilter === 'sin_compromiso' ? null : parseInt(durationFilter);
+        return tariffs.filter(t => {
+            if (t.contract_duration === targetDuration) return true;
+            return (t.tariff_rates || []).some((r: { contract_duration?: number | null }) =>
+                (r.contract_duration ?? null) === targetDuration
+            );
+        });
+    }, [tariffs, durationFilter]);
 
     const resetFilters = () => {
         setSearchTerm('');
         setTypeFilter('all');
         setStatusFilter('all');
         setSupplierFilter('all');
+        setDurationFilter('all');
         setStartDate('');
         setEndDate('');
         setSelectedIds([]);
@@ -461,6 +492,21 @@ export default function TariffDashboard() {
                         {availableTariffTypes.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
 
+                    {availableDurations.length > 1 && (
+                        <select
+                            value={durationFilter}
+                            onChange={(e) => setDurationFilter(e.target.value)}
+                            style={STYLES.select}
+                        >
+                            <option value="all">Todas las duraciones</option>
+                            {availableDurations.map(d => (
+                                <option key={d ?? 'null'} value={d === null ? 'sin_compromiso' : String(d)}>
+                                    {d === null ? 'Sin compromiso' : `${d} meses`}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
                     <div style={STYLES.statusFilter}>
                         <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>Estado:</span>
                         {(['all', 'active', 'inactive'] as const).map(s => (
@@ -475,7 +521,7 @@ export default function TariffDashboard() {
                     </div>
                 </div>
 
-                {(searchTerm || typeFilter !== 'all' || statusFilter !== 'all' || supplierFilter !== 'all' || startDate || endDate) && (
+                {(searchTerm || typeFilter !== 'all' || statusFilter !== 'all' || supplierFilter !== 'all' || durationFilter !== 'all' || startDate || endDate) && (
                     <button
                         onClick={resetFilters}
                         style={STYLES.clearButton}
@@ -491,16 +537,16 @@ export default function TariffDashboard() {
                     <div style={STYLES.loadingContainer}>
                         <Loader2 className="animate-spin" style={{ color: activeTab === 'electricity' ? '#ca8a04' : '#ea580c', width: '2rem', height: '2rem' }} />
                     </div>
-                ) : tariffs && tariffs.length > 0 ? (
+                ) : filteredTariffs && filteredTariffs.length > 0 ? (
                     activeTab === 'electricity'
                         ? <ElectricityTariffTable
-                            tariffs={tariffs}
+                            tariffs={filteredTariffs}
                             selectedIds={selectedIds}
                             onSelectionChange={setSelectedIds}
                             viewDate={viewDate}
                         />
                         : <GasTariffTable
-                            tariffs={tariffs}
+                            tariffs={filteredTariffs}
                             selectedIds={selectedIds}
                             onSelectionChange={setSelectedIds}
                             viewDate={viewDate}

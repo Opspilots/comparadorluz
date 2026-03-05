@@ -1,23 +1,63 @@
 // @ts-ignore
 declare const Deno: any;
 
+import { encode } from "std/encoding/base64.ts";
+
 // ============================================================================
 // Helpers
 // ============================================================================
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
+    return encode(new Uint8Array(buffer));
 }
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Known aggregator/comparison portals that are NOT energy suppliers
+const KNOWN_AGGREGATORS = [
+    'informaenergia', 'tarifasgasluz', 'comparatarifas', 'selectra',
+    'kelisto', 'helpmycash', 'lumio', 'energygo', 'tarifasgas',
+    'comparagasluz', 'preciogas', 'tarifasgasyluz', 'comparador',
+    'comparativa', 'comparaluz', 'ocu', 'facua',
+];
+
+// Known Spanish energy suppliers for extraction from tariff name
+const KNOWN_SUPPLIERS = [
+    'galp', 'naturgy', 'endesa', 'iberdrola', 'repsol', 'totalenergies', 'total energies',
+    'plenitude', 'viesgo', 'audax', 'axpo', 'cepsa', 'bp energy', 'holaluz',
+    'factor energia', 'factorenergia', 'som energia', 'somenergia',
+    'fenie', 'feníe', 'aldro', 'octopus', 'wekiwi', 'pepe energy', 'pepeenergy',
+    'nexus', 'baser', 'sistar', 'ekidom', 'enerbia', 'nufri', 'enel',
+    'edf', 'acciona', 'engie', 'lucera', 'essent', 'enii', 'naturgas',
+];
+
+/**
+ * Checks if a name matches a known aggregator portal (case-insensitive, partial match).
+ */
+function isAggregator(name: string): boolean {
+    const normalized = name.toLowerCase().replace(/[\s._-]/g, '');
+    return KNOWN_AGGREGATORS.some(agg => normalized.includes(agg.replace(/[\s._-]/g, '')));
+}
+
+/**
+ * Tries to extract the real supplier name from the tariff name.
+ * Returns the supplier name if found, or null.
+ */
+function extractSupplierFromTariffName(tariffName: string): string | null {
+    if (!tariffName) return null;
+    const lower = tariffName.toLowerCase();
+    for (const supplier of KNOWN_SUPPLIERS) {
+        if (lower.includes(supplier)) {
+            // Return the supplier with proper casing from the original string
+            const idx = lower.indexOf(supplier);
+            return tariffName.substring(idx, idx + supplier.length);
+        }
+    }
+    return null;
+}
 
 // Valid tariff structures in the Spanish energy market
 const VALID_STRUCTURES = new Set([
@@ -44,8 +84,8 @@ const PERIOD_MAP: Record<string, { energy: number; power: number }> = {
 // Plausible price ranges (post-unit normalization)
 const ENERGY_MIN = 0.001;  // EUR/kWh
 const ENERGY_MAX = 1.5;    // EUR/kWh
-const POWER_MIN  = 0.001;  // EUR/kW/month
-const POWER_MAX  = 500;    // EUR/kW/month (wide range to cover 6.xTD)
+const POWER_MIN = 0.001;  // EUR/kW/month
+const POWER_MAX = 500;    // EUR/kW/month (wide range to cover 6.xTD)
 
 // ============================================================================
 // Post-processing & validation
@@ -186,11 +226,26 @@ function validateAndNormalize(data: ExtractionResult): ExtractionResult {
             tariff.tariff_name = `Tarifa ${tariff.tariff_structure || 'Desconocida'} - ${tariff.supplier_name || 'Sin nombre'}`;
         }
 
-        // Clean supplier_name
+        // Clean supplier_name and detect aggregator portals
         if (tariff.supplier_name) {
             tariff.supplier_name = tariff.supplier_name
                 .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
                 .trim();
+
+            // If the extracted name looks like a comparison portal, try to find the real supplier
+            if (isAggregator(tariff.supplier_name)) {
+                console.warn(`Detected aggregator portal as supplier: "${tariff.supplier_name}". Attempting to extract real supplier from tariff name.`);
+                const realSupplier = extractSupplierFromTariffName(tariff.tariff_name || '')
+                    || extractSupplierFromTariffName(tariff.tariff_structure || '');
+                if (realSupplier) {
+                    console.log(`  → Corrected supplier: "${realSupplier}"`);
+                    // Capitalize properly
+                    tariff.supplier_name = realSupplier.charAt(0).toUpperCase() + realSupplier.slice(1);
+                } else {
+                    // Keep aggregator name but flag it so the user knows
+                    console.warn(`  → Could not determine real supplier. Keeping: "${tariff.supplier_name}"`);
+                }
+            }
         }
 
         // Normalize contract_duration
@@ -281,9 +336,33 @@ function validateAndNormalize(data: ExtractionResult): ExtractionResult {
         // Remove empty price_sets
         tariff.price_sets = tariff.price_sets.filter(
             set => (set.energy_prices && set.energy_prices.length > 0) ||
-                   (set.power_prices && set.power_prices.length > 0) ||
-                   (set.fixed_term_prices && set.fixed_term_prices.length > 0)
+                (set.power_prices && set.power_prices.length > 0) ||
+                (set.fixed_term_prices && set.fixed_term_prices.length > 0)
         );
+
+        // Auto-fill valid_to for consecutive validity periods within the same contract duration.
+        // Rule: valid_to[i] = valid_from[i+1] - 1 day (last period stays open-ended).
+        if (tariff.price_sets.length > 1) {
+            const byDuration = new Map<string, PriceSet[]>();
+            for (const s of tariff.price_sets) {
+                const key = String(s.contract_duration ?? 'null');
+                if (!byDuration.has(key)) byDuration.set(key, []);
+                byDuration.get(key)!.push(s);
+            }
+            for (const group of byDuration.values()) {
+                if (group.length <= 1) continue;
+                const withDate = group
+                    .filter(s => s.valid_from)
+                    .sort((a, b) => (a.valid_from || '').localeCompare(b.valid_from || ''));
+                for (let i = 0; i < withDate.length - 1; i++) {
+                    if (!withDate[i].valid_to) {
+                        const nextDate = new Date(withDate[i + 1].valid_from!);
+                        nextDate.setDate(nextDate.getDate() - 1);
+                        withDate[i].valid_to = nextDate.toISOString().split('T')[0];
+                    }
+                }
+            }
+        }
 
         if (tariff.price_sets.length > 0) {
             cleaned.push(tariff);
@@ -292,10 +371,11 @@ function validateAndNormalize(data: ExtractionResult): ExtractionResult {
         }
     }
 
-    // Deduplicate tariffs: merge price_sets only if same structure+supply+supplier
+    // Deduplicate tariffs: merge price_sets only if same supplier+name+structure+supply_type
+    // Different tariff_names = different commercial products → always separate objects
     const mergedMap = new Map<string, ExtractedTariff>();
     for (const tariff of cleaned) {
-        const key = `${tariff.supplier_name || ''}_${tariff.tariff_structure || ''}_${tariff.supply_type || ''}`;
+        const key = `${(tariff.supplier_name || '').toLowerCase().trim()}_${(tariff.tariff_name || '').toLowerCase().trim()}_${tariff.tariff_structure || ''}_${tariff.supply_type || ''}`;
         if (mergedMap.has(key)) {
             const existing = mergedMap.get(key)!;
             existing.price_sets = [...(existing.price_sets || []), ...(tariff.price_sets || [])];
@@ -318,7 +398,10 @@ const EXTRACTION_PROMPT = `
 Eres un analizador OCR especializado en el mercado energético español. Tu ÚNICA tarea es extraer precios de tarifas de electricidad y gas de documentos PDF.
 
 ANALIZA EL DOCUMENTO ADJUNTO PASO A PASO:
-1. Identifica el nombre de la comercializadora (logo, encabezado, pie de página).
+1. Identifica el nombre de la COMERCIALIZADORA DE ENERGÍA (empresa que vende la energía: Galp, Naturgy, Endesa, Iberdrola, Repsol, etc.).
+   ⚠️ IMPORTANTE: Si el documento proviene de un PORTAL COMPARADOR (informaenergia, tarifasgasluz, comparatarifas, selectra, kelisto, helpmycash, energygo, etc.), ese portal NO es la comercializadora.
+   → Busca el nombre real de la comercializadora EN EL CONTENIDO: en el nombre de la tarifa, en el cuerpo del texto, en tablas o en logotipos de marca de empresa energética.
+   → Ejemplo: documento de informaenergia.es sobre tarifas de Galp → supplier_name: "Galp", NUNCA "InformaEnergia".
 2. Identifica qué peajes aparecen en el documento (2.0TD, 3.0TD, 6.1TD, etc.).
 3. Localiza TODAS las tablas de precios y determina si son:
    a) TABLAS INDIVIDUALES: una tabla por peaje separado (lo más común)
@@ -408,10 +491,50 @@ ESTRUCTURA DE SALIDA (JSON estricto):
 
 REGLAS GENERALES:
 
-AGRUPACIÓN:
-- NUNCA dupliques objetos en "tariffs" con el mismo supplier_name + tariff_structure + supply_type.
-- Diferentes duraciones (12m vs 24m) o diferentes vigencias → price_sets SEPARADOS dentro del MISMO tariff.
+SUPPLIER_NAME (MUY IMPORTANTE):
+- Debe ser el nombre de la COMERCIALIZADORA DE ENERGÍA, no el sitio web ni el portal donde se obtuvo el documento.
+- Portales comparadores que NO son comercializadoras: informaenergia, tarifasgasluz, comparatarifas, selectra, kelisto, helpmycash, lumio, energygo, tarifasgas, comparagasluz, preciogas, tarifasgasyluz.
+- Si el nombre extraído coincide con un portal comparador, busca la comercializadora real dentro del nombre de la tarifa o del cuerpo del documento.
+- Comercializadoras válidas (ejemplos): Galp, Naturgy, Endesa, Iberdrola, Repsol, TotalEnergies, Plenitude, Viesgo, Audax, Axpo, Cepsa, Holaluz, Factor Energía, Som Energia, Feníe Energía, Aldro, Octopus Energy, Wekiwi, Pepe Energy.
+
+AGRUPACIÓN (MUY IMPORTANTE):
+
+⚠️ REGLA CRÍTICA DE AGRUPACIÓN — LEE CON CUIDADO:
+Si el MISMO producto comercial aparece en el documento con:
+  a) Diferentes duraciones de contrato (12 meses, 24 meses, 36 meses...)
+  b) Diferentes periodos de vigencia (1T 2026, 2T 2026, enero-marzo, etc.)
+→ DEBES crear UN ÚNICO objeto en "tariffs" con MÚLTIPLES "price_sets" (uno por duración/vigencia).
+→ NUNCA crees objetos separados en "tariffs" por diferentes duraciones o vigencias del mismo producto.
+→ El "tariff_name" es SIEMPRE el nombre comercial del producto (sin incluir la duración ni la vigencia).
+→ El "contract_duration" de cada opción va DENTRO del "price_set" correspondiente, NO en el nivel raíz.
+
+Ejemplo CORRECTO — misma tarifa con 2 duraciones distintas:
+{
+    "tariff_name": "Tarifa Fija Plus",
+    "tariff_structure": "2.0TD",
+    "contract_duration": null,
+    "price_sets": [
+        { "contract_duration": 12, "valid_from": null, "valid_to": null, "energy_prices": [{"period":"P1","price":0.15},{"period":"P2","price":0.12},{"period":"P3","price":0.09}], "power_prices": [{"period":"P1","price":3.5},{"period":"P2","price":1.2}] },
+        { "contract_duration": 24, "valid_from": null, "valid_to": null, "energy_prices": [{"period":"P1","price":0.14},{"period":"P2","price":0.11},{"period":"P3","price":0.08}], "power_prices": [{"period":"P1","price":3.3},{"period":"P2","price":1.1}] }
+    ]
+}
+
+Ejemplo CORRECTO — misma tarifa con 2 vigencias distintas:
+{
+    "tariff_name": "Tarifa Fija Plus",
+    "tariff_structure": "2.0TD",
+    "contract_duration": null,
+    "price_sets": [
+        { "contract_duration": null, "valid_from": "2026-01-01", "valid_to": "2026-03-31", "energy_prices": [{"period":"P1","price":0.15},{"period":"P2","price":0.12},{"period":"P3","price":0.09}], "power_prices": [{"period":"P1","price":3.5},{"period":"P2","price":1.2}] },
+        { "contract_duration": null, "valid_from": "2026-04-01", "valid_to": "2026-06-30", "energy_prices": [{"period":"P1","price":0.16},{"period":"P2","price":0.13},{"period":"P3","price":0.10}], "power_prices": [{"period":"P1","price":3.6},{"period":"P2","price":1.3}] }
+    ]
+}
+
+OTRAS REGLAS DE AGRUPACIÓN:
+- Cada producto comercial DISTINTO (diferente tariff_name) → SIEMPRE un objeto separado en "tariffs", aunque tengan el mismo supplier_name + tariff_structure + supply_type.
+- NUNCA fusiones precios de productos con nombres distintos en el mismo objeto "tariffs".
 - Diferentes peajes (2.0TD vs 3.0TD) → SIEMPRE objetos separados en "tariffs".
+- Si el documento tiene N productos distintos con el mismo peaje (ej: 4 tarifas 2.0TD con nombres distintos), debes crear N objetos en "tariffs", uno por producto.
 
 CLASIFICACIÓN:
 - Peajes RL.1, RL.2, RL.3, RL.4 → supply_type: "gas"
@@ -440,7 +563,14 @@ CONVERSIÓN DE UNIDADES (IMPORTANTE):
 
 DURACIÓN vs VIGENCIA (NO confundir):
 - contract_duration: Meses del contrato (12, 24, 36). Solo si está explícito.
-- valid_from/valid_to: Fechas en YYYY-MM-DD. Solo si están explícitas.
+- valid_from/valid_to: Fechas en YYYY-MM-DD.
+  ⚠️ REGLA CRÍTICA: Si el documento muestra una fecha de inicio de vigencia, SIEMPRE busca también la fecha de fin.
+  * Ejemplo: "Precios válidos del 01/01/2026 al 31/03/2026" → valid_from: "2026-01-01", valid_to: "2026-03-31"
+  * Ejemplo: "Vigencia: enero-marzo 2026" → valid_from: "2026-01-01", valid_to: "2026-03-31"
+  * Ejemplo: "Tarifas 1T 2026" → valid_from: "2026-01-01", valid_to: "2026-03-31"
+  * Ejemplo: "Tarifas 2T 2026" → valid_from: "2026-04-01", valid_to: "2026-06-30"
+  * NUNCA pongas valid_from sin valid_to si el documento tiene una fecha de fin visible o implícita (trimestre, semestre, mes concreto).
+  * Si hay valid_from pero la fecha de fin NO se puede determinar del documento, pon valid_to: null.
 
 TARIFAS INDEXADAS:
 - OMIE, Pool, Precio Mercado → is_indexed: true, price = FEE/sobreprecio (0 si no hay)
@@ -525,21 +655,28 @@ Deno.serve(async (req: Request) => {
         }
 
         // 3. Call Gemini API with retry logic
-        console.log("Calling Gemini API (gemini-2.5-flash)...");
+        console.log("Calling Gemini API with fallback capabilities...");
 
         let response: Response | undefined;
         let retries = 0;
-        const maxRetries = 3;
-        let delay = 5000;
+        const maxRetries = 1; // 2 total attempts max (120s each fits in Supabase's limit)
+        let model = 'gemini-2.5-flash';
 
         while (retries <= maxRetries) {
             try {
+                // If flash is exhausted, switch to flash-lite as fallback
+                if (retries === 1) {
+                    console.log("Switching to gemini-2.5-flash fallback (retry)...");
+                }
+
+                console.log(`[Attempt ${retries + 1}/${maxRetries + 1}] Using model: ${model}`);
+
                 response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        signal: AbortSignal.timeout(120000),
+                        signal: AbortSignal.timeout(120000), // 120s limit
                         body: JSON.stringify({
                             contents: [{
                                 parts: [
@@ -550,7 +687,77 @@ Deno.serve(async (req: Request) => {
                             generationConfig: {
                                 responseMimeType: 'application/json',
                                 temperature: 0.1,
-                                thinkingConfig: { thinkingBudget: 4096 }
+                                thinkingConfig: { thinkingBudget: 4096 },
+                                responseSchema: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        tariffs: {
+                                            type: "ARRAY",
+                                            items: {
+                                                type: "OBJECT",
+                                                properties: {
+                                                    supplier_name: { type: "STRING" },
+                                                    tariff_structure: { type: "STRING" },
+                                                    supply_type: { type: "STRING" },
+                                                    tariff_name: { type: "STRING" },
+                                                    is_indexed: { type: "BOOLEAN" },
+                                                    contract_duration: { type: "NUMBER", nullable: true },
+                                                    price_sets: {
+                                                        type: "ARRAY",
+                                                        items: {
+                                                            type: "OBJECT",
+                                                            properties: {
+                                                                contract_duration: { type: "NUMBER", nullable: true },
+                                                                valid_from: { type: "STRING", nullable: true },
+                                                                valid_to: { type: "STRING", nullable: true },
+                                                                energy_prices: {
+                                                                    type: "ARRAY",
+                                                                    items: {
+                                                                        type: "OBJECT",
+                                                                        properties: {
+                                                                            period: { type: "STRING" },
+                                                                            price: { type: "NUMBER" },
+                                                                            unit: { type: "STRING", nullable: true }
+                                                                        },
+                                                                        required: ["period", "price"]
+                                                                    }
+                                                                },
+                                                                power_prices: {
+                                                                    type: "ARRAY",
+                                                                    items: {
+                                                                        type: "OBJECT",
+                                                                        properties: {
+                                                                            period: { type: "STRING" },
+                                                                            price: { type: "NUMBER" },
+                                                                            unit: { type: "STRING", nullable: true }
+                                                                        },
+                                                                        required: ["period", "price"]
+                                                                    }
+                                                                },
+                                                                fixed_term_prices: {
+                                                                    type: "ARRAY",
+                                                                    items: {
+                                                                        type: "OBJECT",
+                                                                        properties: {
+                                                                            period: { type: "STRING" },
+                                                                            price: { type: "NUMBER" },
+                                                                            unit: { type: "STRING", nullable: true }
+                                                                        },
+                                                                        required: ["period", "price"]
+                                                                    }
+                                                                }
+                                                            },
+                                                            required: ["energy_prices", "power_prices", "fixed_term_prices"]
+                                                        }
+                                                    }
+                                                },
+                                                required: ["supplier_name", "tariff_structure", "supply_type", "tariff_name", "price_sets"]
+                                            }
+                                        },
+                                        debug_raw_text: { type: "STRING" }
+                                    },
+                                    required: ["tariffs"]
+                                }
                             }
                         })
                     }
@@ -559,21 +766,20 @@ Deno.serve(async (req: Request) => {
                 if (response.ok) break;
 
                 const errorText = await response.text();
-                console.warn(`Gemini attempt ${retries + 1}/${maxRetries}: ${response.status} - ${errorText}`);
+                console.warn(`Gemini attempt ${retries + 1}/${maxRetries + 1}: ${response.status} - ${errorText}`);
 
                 if (response.status === 429 && retries < maxRetries) {
-                    const waitMs = delay + Math.random() * 2000;
-                    console.log(`Rate limited. Retrying in ${Math.round(waitMs)}ms...`);
-                    await new Promise(r => setTimeout(r, waitMs));
+                    const delay = Math.pow(2, retries) * 5000; // 5s, 10s, 20s
+                    console.log(`Rate limited (429). Retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
                     retries++;
-                    delay *= 2;
                     continue;
                 }
 
                 if (response.status === 429) {
                     return new Response(JSON.stringify({
-                        error: 'La IA está saturada temporalmente. Inténtalo de nuevo en unos minutos.',
-                        details: 'Gemini API rate limit after retries'
+                        error: 'Los servidores de IA de Google están saturados en este momento. Hemos intentado cambiar de modelo automáticamente pero no ha sido posible.',
+                        details: 'Gemini API rate limit exhausted all retries and fallback models'
                     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
                 }
 
@@ -583,14 +789,15 @@ Deno.serve(async (req: Request) => {
                 if (retries === maxRetries) throw e;
                 const error = e instanceof Error ? e : new Error(String(e));
                 console.error(`Fetch error attempt ${retries + 1}:`, error.message);
-                retries++;
+
+                const delay = Math.pow(2, retries) * 5000;
                 await new Promise(r => setTimeout(r, delay));
-                delay *= 2;
+                retries++;
             }
         }
 
         if (!response || !response.ok) {
-            throw new Error(`No se obtuvo respuesta válida de Gemini tras ${maxRetries} reintentos`);
+            throw new Error(`No se obtuvo respuesta válida de Gemini tras los reintentos permitidos`);
         }
 
         // 4. Parse Gemini response
@@ -613,7 +820,7 @@ Deno.serve(async (req: Request) => {
             extractedData = JSON.parse(textResponse);
         } catch {
             const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/) ||
-                              textResponse.match(/```\s*([\s\S]*?)\s*```/);
+                textResponse.match(/```\s*([\s\S]*?)\s*```/);
             if (jsonMatch) {
                 try {
                     extractedData = JSON.parse(jsonMatch[1]);

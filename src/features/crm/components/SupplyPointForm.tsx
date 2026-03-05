@@ -129,6 +129,7 @@ export function SupplyPointForm() {
                             <option value="2.0TD">2.0TD</option>
                             <option value="3.0TD">3.0TD</option>
                             <option value="6.1TD">6.1TD</option>
+                            <option value="6.2">6.2</option>
                         </select>
                     </div>
                     <div>

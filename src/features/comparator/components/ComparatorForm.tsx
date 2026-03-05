@@ -266,17 +266,17 @@ export function ComparatorForm() {
                         <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '0.5rem 0' }} />
 
                         {/* UTILITY TOGGLE */}
-                        <div style={{ display: 'flex', background: '#f3f4f6', padding: '0.3rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', background: '#f1f5f9', padding: '0.3rem', borderRadius: '10px', marginBottom: '1rem' }}>
                             <button
                                 type="button"
                                 onClick={() => handleSupplyChange('electricity')}
                                 style={{
                                     flex: 1,
                                     padding: '0.5rem',
-                                    borderRadius: '6px',
+                                    borderRadius: '8px',
                                     border: 'none',
                                     background: state.supplyType === 'electricity' ? 'white' : 'transparent',
-                                    color: state.supplyType === 'electricity' ? '#0070f3' : '#6b7280',
+                                    color: state.supplyType === 'electricity' ? '#ca8a04' : '#64748b',
                                     boxShadow: state.supplyType === 'electricity' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                                     fontWeight: '600',
                                     cursor: 'pointer',
@@ -284,7 +284,7 @@ export function ComparatorForm() {
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                <Zap size={16} /> Electricidad
+                                <Zap size={16} fill={state.supplyType === 'electricity' ? 'currentColor' : 'none'} /> Electricidad
                             </button>
                             <button
                                 type="button"
@@ -292,10 +292,10 @@ export function ComparatorForm() {
                                 style={{
                                     flex: 1,
                                     padding: '0.5rem',
-                                    borderRadius: '6px',
+                                    borderRadius: '8px',
                                     border: 'none',
                                     background: state.supplyType === 'gas' ? 'white' : 'transparent',
-                                    color: state.supplyType === 'gas' ? '#f59e0b' : '#6b7280',
+                                    color: state.supplyType === 'gas' ? '#ea580c' : '#64748b',
                                     boxShadow: state.supplyType === 'gas' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                                     fontWeight: '600',
                                     cursor: 'pointer',
@@ -303,7 +303,7 @@ export function ComparatorForm() {
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                <Flame size={16} /> Gas
+                                <Flame size={16} fill={state.supplyType === 'gas' ? 'currentColor' : 'none'} /> Gas
                             </button>
                         </div>
 
@@ -368,7 +368,9 @@ export function ComparatorForm() {
                                         <select value={state.tariffType} onChange={e => updateState({ tariffType: e.target.value })} style={inputStyleCompact}>
                                             <option value="2.0TD">2.0TD (&lt;15kW)</option>
                                             <option value="3.0TD">3.0TD (&gt;15kW)</option>
+                                            <option value="6.0">6.0</option>
                                             <option value="6.1TD">6.1TD</option>
+                                            <option value="6.2TD">6.2TD</option>
                                         </select>
                                     </div>
                                 </>
@@ -493,18 +495,26 @@ export function ComparatorForm() {
                                 style={{
                                     gridColumn: 'span 12',
                                     padding: '0.7rem',
-                                    background: '#0070f3',
+                                    background: state.supplyType === 'electricity' ? '#0f172a' : '#c2410c',
                                     color: 'white',
                                     border: 'none',
-                                    borderRadius: '6px',
+                                    borderRadius: '8px',
                                     cursor: 'pointer',
-                                    fontWeight: 'bold',
+                                    fontWeight: '600',
                                     marginTop: '0.5rem',
                                     fontSize: '0.9rem',
                                     transition: 'background 0.2s',
-                                    opacity: searching ? 0.7 : 1
+                                    opacity: searching ? 0.7 : 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem'
                                 }}
                             >
+                                {state.supplyType === 'electricity'
+                                    ? <Zap size={16} fill="currentColor" />
+                                    : <Flame size={16} fill="currentColor" />
+                                }
                                 {searching ? 'Calculando...' : 'Obtener Comparativa'}
                             </button>
                         </div>
@@ -549,6 +559,11 @@ export function ComparatorForm() {
                                                 <span style={{ fontSize: '0.8rem', color: '#666', textTransform: 'uppercase' }}>{group.supplier_name || 'Unknown Supplier'}</span>
                                                 <h3 style={{ margin: '0.2rem 0' }}>{group.tariff_name}</h3>
                                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                    {group.tariff_version?.is_indexed && (
+                                                        <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '700', letterSpacing: '0.04em' }}>
+                                                            INDEXADO
+                                                        </span>
+                                                    )}
                                                     {group.tariff_version?.valid_from && (
                                                         <span style={{ fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
                                                             Válida desde {new Date(group.tariff_version.valid_from).toLocaleDateString('es-ES')}
@@ -606,7 +621,7 @@ export function ComparatorForm() {
                                                 )}
                                             </div>
                                             <div style={{ textAlign: 'right' }}>
-                                                <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#0070f3' }}>{Math.round(res.annual_cost_eur)}€</span>
+                                                <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: state.supplyType === 'electricity' ? '#ca8a04' : '#ea580c' }}>{Math.round(res.annual_cost_eur)}€</span>
                                                 <span style={{ display: 'block', fontSize: '0.9rem', color: '#666' }}>al año (IVA inc.)</span>
                                             </div>
                                         </div>

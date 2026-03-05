@@ -15,16 +15,76 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
     const { toast } = useToast();
     const [processing, setProcessing] = useState(false);
 
-    // PDF Viewer State (Local to upload step for previewing BEFORE parsing?)
-    // Actually, user wants preview alongside parsing?
-    // In the previous code, preview was always visible.
-    // Let's keep it simple: Upload -> Process -> Result.
+    // Local Image Compression Utility
+    const compressImage = (file: File, maxSizeMB: number = 2, maxWidthOrHeight: number = 1500): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidthOrHeight || height > maxWidthOrHeight) {
+                        if (width > height) {
+                            height = Math.round((height *= maxWidthOrHeight / width));
+                            width = maxWidthOrHeight;
+                        } else {
+                            width = Math.round((width *= maxWidthOrHeight / height));
+                            height = maxWidthOrHeight;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return resolve(file); // fallback
+
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Attempt compression with 0.8 quality JPEG
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                                type: 'image/jpeg',
+                                lastModified: Date.now(),
+                            });
+                            // If compression made it worse (rare) or failed, return original
+                            if (newFile.size < file.size || file.size > maxSizeMB * 1024 * 1024) {
+                                resolve(newFile);
+                            } else {
+                                resolve(file);
+                            }
+                        } else {
+                            resolve(file); // fallback
+                        }
+                    }, 'image/jpeg', 0.8);
+                };
+                img.onerror = () => resolve(file); // fallback if image is corrupt
+            };
+            reader.onerror = () => resolve(file); // fallback
+        });
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (processing) return;
         if (e.target.files && e.target.files[0]) {
-            const selectedFile = e.target.files[0];
-            processFile(selectedFile);
+            let selectedFile = e.target.files[0];
+
+            // Compress image if it's an image file
+            if (selectedFile.type.startsWith('image/')) {
+                setProcessing(true);
+                try {
+                    selectedFile = await compressImage(selectedFile);
+                } catch (err) {
+                    console.warn("Image compression failed, proceeding with original", err);
+                }
+            }
+
+            await processFile(selectedFile);
         }
     };
 
@@ -33,6 +93,14 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
         try {
             if (!f.type.includes('pdf') && !f.type.includes('image')) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Por favor sube un PDF o una Imagen.' });
+                setProcessing(false);
+                return;
+            }
+
+            // Reject files over 15 MB — larger files cause timeouts in the Edge Function
+            const MAX_SIZE_MB = 15;
+            if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+                toast({ variant: 'destructive', title: 'Archivo demasiado grande', description: `El archivo supera los ${MAX_SIZE_MB} MB. Comprime el PDF o sube solo las páginas con precios.` });
                 setProcessing(false);
                 return;
             }
@@ -56,6 +124,10 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
             );
 
             if (!fnResponse.ok) {
+                // 546 = Supabase Edge Function timeout/crash (infrastructure level, no JSON body)
+                if (fnResponse.status === 546 || fnResponse.status === 524) {
+                    throw new Error('La IA tardó demasiado en responder. Intenta con un archivo más pequeño o vuelve a intentarlo en unos segundos.');
+                }
                 const errData = await fnResponse.json().catch(() => ({ error: `HTTP ${fnResponse.status}` }));
                 throw new Error(errData.error || `Error ${fnResponse.status} al analizar el documento.`);
             }
