@@ -17,7 +17,7 @@ const PREVIEW_CUSTOMER = {
     id: 'preview', company_id: 'preview', cif: 'B12345678',
     name: 'Empresa Ejemplo S.L.', address: 'Calle Mayor 1, 28001 Madrid',
     website: 'contacto@empresa.es', status: 'cliente' as const,
-    customer_type: 'business' as const,
+    customer_type: 'empresa' as const,
     created_at: '', updated_at: '',
 }
 const PREVIEW_TARIFF = {
