@@ -17,7 +17,7 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
 
     // Local Image Compression Utility
     const compressImage = (file: File, maxSizeMB: number = 2, maxWidthOrHeight: number = 1500): Promise<File> => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = (event) => {

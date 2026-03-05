@@ -17,12 +17,14 @@ const PREVIEW_CUSTOMER = {
     id: 'preview', company_id: 'preview', cif: 'B12345678',
     name: 'Empresa Ejemplo S.L.', address: 'Calle Mayor 1, 28001 Madrid',
     website: 'contacto@empresa.es', status: 'cliente' as const,
+    customer_type: 'business' as const,
     created_at: '', updated_at: '',
 }
 const PREVIEW_TARIFF = {
     id: 'preview', company_id: 'preview', supplier_id: 'preview',
     tariff_name: 'Tarifa Plana Plus', tariff_type: '2.0TD',
     valid_from: '', created_at: '', updated_at: '',
+    batch_id: 'preview', supplier_name: 'Iberdrola', is_active: true,
     suppliers: { id: 'prev', name: 'Iberdrola', slug: 'iberdrola', created_at: '', is_active: true },
 }
 const PREVIEW_SUPPLY = {
@@ -446,7 +448,7 @@ export function ContractTemplateEditor() {
                             width="100%"
                             height="100%"
                             showToolbar={false}
-                            style={{ border: 'none', display: 'block' }}
+                            style={{ border: 'none' }}
                         >
                             <ContractDocument
                                 contract={PREVIEW_CONTRACT}
