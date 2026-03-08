@@ -39,14 +39,10 @@ export function MessagingSettingsCard() {
         fetchSettings()
 
         // Listen for OAuth redirects (Supabase handles the URL hash, we just need to detect when session is updated and check if it came from Google)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, _session) => {
-            // Note: In a real app we'd extract the provider_token & provider_refresh_token here
-            // But since Supabase v2 doesn't always return them in onAuthStateChange depending on the config, 
-            // the ideal flow is that a Supabase Edge Function grabs the tokens on signup/login and saves them.
-            // For now, if the user connects, we just show "Conectada".
-
-            // To properly save the tokens into `messaging_settings`, we might need a redirect page or
-            // use a backend function. But for the UI, seeing the google_refresh_token is what we need.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, _session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                await fetchSettings()
+            }
         })
         return () => subscription.unsubscribe()
     }, [])
@@ -87,7 +83,7 @@ export function MessagingSettingsCard() {
                         prompt: 'consent',
                     },
                     scopes: 'https://mail.google.com/ https://www.googleapis.com/auth/userinfo.email',
-                    redirectTo: `${window.location.origin}/admin/settings?oauth=google`
+                    redirectTo: `${window.location.origin}/auth/google/callback?oauth=google`
                 }
             });
             if (error) throw error;
@@ -98,8 +94,16 @@ export function MessagingSettingsCard() {
     };
 
     const handleDisconnectGoogle = async () => {
-        setSettings({ ...settings, google_refresh_token: '', google_access_token: '', email_from: '' });
-        setMessage({ type: 'success', text: 'Cuenta desconectada, recuerda guardar los cambios.' });
+        const cleared = { ...settings, google_refresh_token: '', google_access_token: '', email_from: '' };
+        setSettings(cleared);
+        try {
+            await updateCompanySettings(cleared);
+            setMessage({ type: 'success', text: 'Cuenta de Gmail desconectada correctamente.' });
+            setTimeout(() => setMessage(null), 3000);
+        } catch (e: unknown) {
+            const error = e as Error;
+            setMessage({ type: 'error', text: error.message || 'Error al desconectar la cuenta' });
+        }
     };
 
     if (loading) {

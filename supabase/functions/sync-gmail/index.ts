@@ -1,6 +1,15 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { decode as base64Decode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
+
+/** Decode a base64url-encoded string to UTF-8 text */
+function decodeBase64Url(data: string): string {
+    // Convert base64url to standard base64
+    const base64 = data.replace(/-/g, '+').replace(/_/g, '/')
+    const bytes = base64Decode(base64)
+    return new TextDecoder('utf-8').decode(bytes)
+}
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -20,11 +29,26 @@ serve(async (req: Request) => {
 
         const supabaseClient = createClient(supabaseUrl, supabaseKey)
 
+        // Accept optional companyId to scope sync to a single company
+        let requestCompanyId: string | null = null
+        try {
+            const body = await req.json()
+            requestCompanyId = body.companyId || null
+        } catch {
+            // No body or invalid JSON — sync all companies (cron mode)
+        }
+
         // 1. Fetch companies that have Gmail Connected (google_refresh_token exists)
-        const { data: companies, error: cmpError } = await supabaseClient
+        let query = supabaseClient
             .from('companies')
             .select('id, messaging_settings')
             .not('messaging_settings->google_refresh_token', 'is', null)
+
+        if (requestCompanyId) {
+            query = query.eq('id', requestCompanyId)
+        }
+
+        const { data: companies, error: cmpError } = await query
 
         if (cmpError) throw cmpError;
 
@@ -101,13 +125,10 @@ serve(async (req: Request) => {
                         if (msgDetail.payload.parts) {
                             const part = msgDetail.payload.parts.find((p: any) => p.mimeType === 'text/plain' || p.mimeType === 'text/html');
                             if (part && part.body.data) {
-                                // Google returns base64url encoded strings
-                                const base64 = part.body.data.replace(/-/g, '+').replace(/_/g, '/');
-                                bodyText = atob(base64); // Ideally use a robust decode for UTF8
+                                bodyText = decodeBase64Url(part.body.data);
                             }
                         } else if (msgDetail.payload.body?.data) {
-                            const base64 = msgDetail.payload.body.data.replace(/-/g, '+').replace(/_/g, '/');
-                            bodyText = atob(base64);
+                            bodyText = decodeBase64Url(msgDetail.payload.body.data);
                         }
 
                         // Check if we already have this message (provider_id = gmail message id)

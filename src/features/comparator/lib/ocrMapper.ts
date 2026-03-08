@@ -25,6 +25,8 @@ interface OcrData {
     p6_consumption_pct?: any;
     current_supplier?: any;
     conversion_factor?: any;
+    billing_days?: any;
+    billing_consumption_kwh?: any;
     [key: string]: any;
 }
 
@@ -127,7 +129,33 @@ export function mapOcrData(rawData: any, suppliers: { id: string, name: string }
 
         if (t !== '') updates.tariffType = t;
     }
-    if (data.annual_consumption) updates.consumption = normalizeNumber(data.annual_consumption);
+    // Annual consumption: prefer annual_consumption, but extrapolate from billing period if needed
+    if (data.annual_consumption) {
+        const annualVal = parseFloat(normalizeNumber(data.annual_consumption));
+        const billingDays = parseFloat(normalizeNumber(data.billing_days) || '0');
+        const billingConsumption = parseFloat(normalizeNumber(data.billing_consumption_kwh) || '0');
+
+        if (annualVal > 0) {
+            // If annual_consumption looks like it's just the billing period value (too low),
+            // and we have billing_days to extrapolate, do so
+            if (billingDays > 0 && billingDays < 300 && billingConsumption > 0
+                && Math.abs(annualVal - billingConsumption) < billingConsumption * 0.1) {
+                // The AI returned billing consumption as annual — extrapolate
+                const extrapolated = Math.round(billingConsumption * 365 / billingDays);
+                updates.consumption = String(extrapolated);
+            } else {
+                updates.consumption = normalizeNumber(data.annual_consumption);
+            }
+        }
+    } else if (data.billing_consumption_kwh && data.billing_days) {
+        // No annual given, extrapolate from billing period
+        const billingDays = parseFloat(normalizeNumber(data.billing_days) || '0');
+        const billingConsumption = parseFloat(normalizeNumber(data.billing_consumption_kwh) || '0');
+        if (billingDays > 0 && billingConsumption > 0) {
+            const extrapolated = Math.round(billingConsumption * 365 / billingDays);
+            updates.consumption = String(extrapolated);
+        }
+    }
     if (data.contracted_power) updates.power = normalizeNumber(data.contracted_power);
     if (data.cups) updates.cups = String(data.cups);
     if (data.current_cost) updates.currentCost = normalizeNumber(data.current_cost);

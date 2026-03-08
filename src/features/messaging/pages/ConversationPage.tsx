@@ -70,11 +70,11 @@ export default function ConversationPage() {
         }
     }, [filteredContacts, selectedContactId]);
 
-    // Supabase Realtime Subscription for incoming messages
+    // Supabase Realtime Subscription for incoming messages and status updates
     useEffect(() => {
         if (!customerId || !companyId) return;
 
-        const channelPath = `public:messages:customer_id=eq.${customerId}`;
+        const channelPath = `messages:customer:${customerId}`;
         const channel = supabase.channel(channelPath)
             .on(
                 'postgres_changes',
@@ -85,13 +85,10 @@ export default function ConversationPage() {
                     filter: `customer_id=eq.${customerId}`
                 },
                 (payload) => {
-                    // Check if the new message matches the currently active view
                     const newMessage = payload.new as Message;
                     if (newMessage.channel === activeChannel) {
-                        // Invalidate the query to fetch the newest messages
                         queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
 
-                        // Optional: Show a toast if it's an inbound message
                         if (newMessage.direction === 'inbound') {
                             toast({
                                 title: `Nuevo mensaje de ${activeChannel === 'email' ? 'Correo' : 'WhatsApp'}`,
@@ -101,12 +98,43 @@ export default function ConversationPage() {
                     }
                 }
             )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `customer_id=eq.${customerId}`
+                },
+                () => {
+                    queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+                }
+            )
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [customerId, companyId, activeChannel, queryClient, toast]);
+
+    // Sync Gmail inbox periodically when on email channel (scoped to this company)
+    useEffect(() => {
+        if (activeChannel !== 'email' || !companyId) return;
+
+        const syncGmail = () => {
+            supabase.functions.invoke('sync-gmail', {
+                body: { companyId }
+            }).then(() => {
+                queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+            }).catch(() => {
+                // Sync failures are silent — polling will retry
+            });
+        };
+
+        syncGmail();
+        const interval = setInterval(syncGmail, 60000);
+        return () => clearInterval(interval);
+    }, [activeChannel, companyId, customerId, queryClient]);
 
     const mutation = useMutation({
         mutationFn: async ({ content, subject, attachments }: { content: string, subject?: string, attachments?: Message['attachments'] }) => {

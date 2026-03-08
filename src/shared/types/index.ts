@@ -351,6 +351,12 @@ export interface Commissioner {
     updated_at: string;
 }
 
+export type SwitchingStatus =
+    | 'requested'
+    | 'in_progress'
+    | 'completed'
+    | 'rejected';
+
 export interface Contract {
     id: string;
     company_id: string;
@@ -361,6 +367,7 @@ export interface Contract {
     commercial_id: string; // references commissioners(id)
     tariff_version_id: string;
     contract_number?: string;
+    integration_id?: string;
     status: ContractStatus;
     signed_at?: string;
     activation_date?: string;
@@ -368,12 +375,20 @@ export interface Contract {
     annual_value_eur: number;
     commission_eur?: number;
     notes?: string;
+    switching_status?: SwitchingStatus | null;
+    switching_requested_at?: string | null;
+    switching_from_contract_id?: string | null;
+    switching_notes?: string | null;
+    switching_completed_at?: string | null;
+    estimated_activation_date?: string | null;
+    notification_sent?: boolean;
     created_at: string;
     updated_at: string;
     // Joined data
     customers?: Customer;
     commissioners?: Commissioner;
     tariff_versions?: TariffVersion & { suppliers?: { name: string } };
+    supply_points?: SupplyPoint;
 }
 
 export interface CommissionRule {
@@ -416,6 +431,56 @@ export interface ContractTemplate {
     custom_legal_text?: string;
     created_at: string;
     updated_at: string;
+}
+
+// ============================================================================
+// Integrations Domain
+// ============================================================================
+
+export interface IntegrationProvider {
+    id: string
+    slug: string
+    display_name: string
+    logo_url: string | null
+    auth_type: 'api_key' | 'oauth2' | 'basic_auth'
+    capabilities: Array<'quote' | 'contract_submit' | 'switching' | 'status_check' | 'consumption'>
+    docs_url: string | null
+    is_active: boolean
+    created_at: string
+}
+
+export interface Integration {
+    id: string
+    company_id: string
+    provider_id: string
+    status: 'inactive' | 'connecting' | 'active' | 'error' | 'expired'
+    credentials: Record<string, string> | null
+    agent_config: {
+        agent_code?: string
+        commission_rate?: number
+        default_tariff_ids?: string[]
+    }
+    last_sync_at: string | null
+    last_error: string | null
+    sync_enabled: boolean
+    created_at: string
+    updated_at: string
+    integration_providers?: IntegrationProvider
+}
+
+export interface IntegrationEvent {
+    id: string
+    company_id: string
+    integration_id: string
+    event_type: string
+    payload: Record<string, unknown>
+    contract_id: string | null
+    customer_id: string | null
+    cups: string | null
+    processed: boolean
+    processed_at: string | null
+    error: string | null
+    received_at: string
 }
 
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled';

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer, TariffVersion, Commissioner, SupplyPoint } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
+import { sendContractNotification } from '@/features/contracts/lib/contract-notification'
 
 export function ContractForm() {
     const navigate = useNavigate()
@@ -135,6 +136,9 @@ export function ContractForm() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Usuario no autenticado')
 
+            if (!tariffVersionId) throw new Error('Debes seleccionar una tarifa')
+            if (!customerId) throw new Error('Debes seleccionar un cliente')
+
             // Get Company ID from user profile
             const { data: profile } = await supabase
                 .from('users')
@@ -204,7 +208,7 @@ export function ContractForm() {
                 // Create new contract
                 const contractNumber = `CTR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
 
-                const { error: insertError } = await supabase
+                const { data: newContract, error: insertError } = await supabase
                     .from('contracts')
                     .insert({
                         company_id: profile.company_id,
@@ -218,8 +222,62 @@ export function ContractForm() {
                         annual_value_eur: annualValueEur,
                         notes: notes,
                     })
+                    .select('id')
+                    .single()
 
                 if (insertError) throw insertError
+
+                const selectedTariff = tariffs.find(t => t.id === tariffVersionId)
+                const selectedCustomer = customers.find(c => c.id === customerId)
+                const selectedSupplyPoint = supplyPoints.find(sp => sp.id === finalSupplyPointId)
+
+                // Best-effort: submit contract to provider API if integration exists
+                if (newContract && selectedTariff?.supplier_name) {
+                    supabase.functions
+                        .invoke('integration-sync', {
+                            body: {
+                                action: 'submit_contract',
+                                contractId: newContract.id,
+                                companyId: profile.company_id,
+                            },
+                        })
+                        .then(({ data, error }) => {
+                            if (error || !data?.ok) return
+                            if (data?.ok && data?.external_id) {
+                                toast({
+                                    title: `Contrato enviado a ${selectedTariff.supplier_name}`,
+                                    description: `ID externo: ${data.external_id}`,
+                                })
+                            }
+                        })
+                        .catch((err: unknown) => console.warn('integration-sync submit_contract failed:', err))
+                }
+
+                // Best-effort: auto-send contract notification to customer
+                if (newContract && selectedCustomer) {
+                    sendContractNotification({
+                        contractId: newContract.id,
+                        companyId: profile.company_id,
+                        contractNumber: contractNumber,
+                        customerName: selectedCustomer.name,
+                        customerId: selectedCustomer.id,
+                        supplierName: selectedTariff?.supplier_name || 'Comercializadora',
+                        tariffName: selectedTariff?.tariff_name || 'Tarifa',
+                        monthlyValue: annualValueEur / 12,
+                        signedAt: signedAt,
+                        cups: selectedSupplyPoint?.cups || manualCups || undefined,
+                    })
+                        .then((result) => {
+                            if (result.sent) {
+                                toast({
+                                    title: 'Contrato enviado al cliente',
+                                    description: `Notificacion enviada por ${result.channel === 'email' ? 'email' : 'WhatsApp'}`,
+                                })
+                            }
+                        })
+                        .catch((err: unknown) => console.warn('Contract notification failed:', err))
+                }
+
                 toast({ title: 'Contrato registrado', description: 'El contrato se ha creado correctamente.' })
             }
 

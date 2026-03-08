@@ -6,6 +6,7 @@ import { Loader2, User, Search } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/shared/components/ui/dialog';
@@ -32,6 +33,7 @@ export function NewMessageDialog({ open, onOpenChange }: NewMessageDialogProps) 
             <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden gap-0">
                 <DialogHeader className="px-6 py-5 border-b border-slate-200">
                     <DialogTitle>Nuevo Mensaje</DialogTitle>
+                    <DialogDescription className="sr-only">Busca un cliente para iniciar una conversación</DialogDescription>
                 </DialogHeader>
 
                 <div className="p-6">

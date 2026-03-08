@@ -61,19 +61,27 @@ serve(async (req: Request) => {
             - customer_address: Dirección completa del titular
             - customer_city: Ciudad
             - customer_province: Provincia
-            
+
             DATOS TÉCNICOS:
             - cups: Código CUPS completo (formato: ESxxxxxxxxxxxxxxxxxx)
-            - tariff_type: 
+            - tariff_type:
                 - Electricidad: 2.0TD, 3.0TD, o 6.1TD
                 - Gas: RL.1, RL.2, RL.3, o RL.4
             - current_supplier: Nombre de la comercializadora actual
-            - current_cost: Importe total de la factura estandarizado a MENSUAL.
-            - annual_consumption: Consumo TOTAL ANUAL estimado en kWh.
+            - current_cost: Importe total de la factura estandarizado a MENSUAL en EUR.
             - contracted_power: Potencia contratada (Sólo Electricidad) en kW. "null" para Gas.
-            
+
+            CONSUMO ANUAL - MUY IMPORTANTE, SIGUE ESTOS PASOS:
+            - billing_days: Número de días que cubre el periodo de facturación (busca fechas "desde/hasta" o "periodo de facturación").
+            - billing_consumption_kwh: Consumo TOTAL en kWh que aparece en la factura para el periodo facturado (suma de todos los periodos P1+P2+P3...).
+            - annual_consumption: Consumo ANUAL en kWh. Calcula así:
+                1. Si la factura indica explícitamente un "consumo anual" o "estimación anual", usa ese valor.
+                2. Si NO hay consumo anual explícito, EXTRAPOLA: annual_consumption = billing_consumption_kwh * 365 / billing_days.
+                3. NUNCA devuelvas el consumo del periodo de facturación como consumo anual si el periodo es menor a 300 días.
+                4. Un consumo anual doméstico típico es 2000-5000 kWh. Empresas pequeñas: 5000-50000 kWh. Grandes: 50000+.
+
             PRECIOS Y CONSUMOS (ELECTRICIDAD):
-            - p1_consumption_pct, p2_consumption_pct...: Consumo por periodos en kWh (Valor absoluto).
+            - p1_consumption_pct, p2_consumption_pct...: Consumo por periodos en kWh (Valor absoluto del periodo facturado).
             - power_p1, power_p2...: Potencia contratada por periodos en kW.
             - energy_prices: Array de objetos { "period": "P1", "price": 0.123, "unit": "EUR/kWh" } (Si aparecen precios explícitos).
             - power_prices: Array de objetos { "period": "P1", "price": 30.5, "unit": "EUR/kW/year" }.
@@ -81,7 +89,7 @@ serve(async (req: Request) => {
             PRECIOS Y CONSUMOS (GAS):
             - fixed_term_prices: Array de objetos { "period": "P1", "price": 5.43, "unit": "EUR/month" } (El término fijo mensual).
             - energy_prices: Array de objetos { "period": "P1", "price": 0.054, "unit": "EUR/kWh" } (El término variable).
-            
+
             IMPORTANTE:
             - Normaliza números: Usa PUNTO (.) para decimales. NO miles separators.
             - Si es Gas, "contracted_power" debe ser null o 0.

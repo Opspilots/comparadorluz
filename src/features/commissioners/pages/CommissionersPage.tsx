@@ -27,27 +27,26 @@ export function CommissionersPage() {
     const fetchCommissioners = useCallback(async () => {
         setLoading(true)
 
-        // Fetch commissioners with stats
-        // Note: Relation names must match what PostgREST detects. 
-        // contracts.commercial_id -> commissioners.id
-        // commission_events.commissioner_id -> commissioners.id
-
-        const { data: commissionersData, error } = await supabase
-            .from('commissioners')
-            .select(`
-                id,
-                company_id,
-                user_id,
-                full_name,
-                email,
-                commission_default_pct,
-                created_at,
-                updated_at,
-                contracts:contracts(count),
-                commissions:commission_events(amount_eur, status)
-            `)
-            .eq('is_active', true)
-            .order('full_name')
+        const [{ data: commissionersData, error }, { data: contractCounts }] = await Promise.all([
+            supabase
+                .from('commissioners')
+                .select(`
+                    id,
+                    company_id,
+                    user_id,
+                    full_name,
+                    email,
+                    commission_default_pct,
+                    created_at,
+                    updated_at,
+                    commissions:commission_events(amount_eur, status)
+                `)
+                .eq('is_active', true)
+                .order('full_name'),
+            supabase
+                .from('contracts')
+                .select('commercial_id')
+        ])
 
         if (error) {
             console.error('Error fetching commissioners:', error)
@@ -55,16 +54,19 @@ export function CommissionersPage() {
             return
         }
 
+        const contractCountMap: Record<string, number> = {}
+        for (const row of contractCounts || []) {
+            const id = row.commercial_id as string
+            contractCountMap[id] = (contractCountMap[id] || 0) + 1
+        }
+
         const stats = (commissionersData || []).map((comm) => {
             const commissions = (comm.commissions as unknown as { amount_eur: number, status: string }[]) || []
-            const contracts = (comm.contracts as unknown as { count: number }[]) || []
 
             const totalCommission = commissions.reduce((sum: number, c) => sum + (c.amount_eur || 0), 0) || 0
             const pendingCommission = commissions
                 .filter((c) => c.status === 'pending')
                 .reduce((sum: number, c) => sum + (c.amount_eur || 0), 0) || 0
-
-            const totalContracts = contracts[0]?.count || 0
 
             return {
                 id: comm.id,
@@ -78,7 +80,7 @@ export function CommissionersPage() {
                 updated_at: comm.updated_at,
 
                 stats: {
-                    total_contracts: totalContracts,
+                    total_contracts: contractCountMap[comm.id] || 0,
                     total_commission_eur: totalCommission,
                     pending_commission_eur: pendingCommission
                 }

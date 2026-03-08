@@ -26,19 +26,42 @@ const sanitizeDate = (d: unknown) => {
     return isNaN(dateObj.getTime()) ? null : d as string;
 };
 
+/**
+ * Compute the overall valid_from (earliest) and valid_to (latest) across all price_sets.
+ * Falls back to today if no dates are found.
+ */
+function computeVersionDateRange(candidate: DetectedTariff): { validFrom: string; validTo: string | null } {
+    const today = new Date().toISOString().split('T')[0];
+    const sets = candidate.price_sets || [];
+
+    let earliest: string | null = null;
+    let latest: string | null = null;
+
+    for (const s of sets) {
+        const from = sanitizeDate(s.valid_from);
+        const to = sanitizeDate(s.valid_to);
+        if (from && (!earliest || from < earliest)) earliest = from;
+        if (to && (!latest || to > latest)) latest = to;
+    }
+
+    // Fallback to candidate-level dates
+    if (!earliest) earliest = sanitizeDate(candidate.valid_from) || today;
+    if (!latest) latest = sanitizeDate(candidate.valid_to) || null;
+
+    return { validFrom: earliest, validTo: latest };
+}
+
 function buildRatesFromCandidate(
     candidate: DetectedTariff,
     versionId: string,
-    fallbackValidFrom: string
 ): TariffRateInsert[] {
-    const parsedDuration = candidate.contract_duration ?? null;
     const ratesToInsert: TariffRateInsert[] = [];
 
     const addRate = (
         p: RateInput,
         type: string,
         defaultUnit: string,
-        set: { valid_from?: string | null; valid_to?: string | null; contract_duration?: number | null }
+        setMeta: { contract_duration?: number | null; valid_from?: string | null; valid_to?: string | null },
     ) => {
         ratesToInsert.push({
             tariff_version_id: versionId,
@@ -46,9 +69,9 @@ function buildRatesFromCandidate(
             period: p.period || 'P1',
             price: p.price,
             unit: p.unit || defaultUnit,
-            contract_duration: set.contract_duration !== undefined ? (set.contract_duration ?? null) : (parsedDuration ?? null),
-            valid_from: sanitizeDate(set.valid_from !== undefined ? (set.valid_from ?? null) : (fallbackValidFrom ?? null)),
-            valid_to: sanitizeDate(set.valid_to !== undefined ? (set.valid_to ?? null) : null)
+            contract_duration: setMeta.contract_duration ?? null,
+            valid_from: sanitizeDate(setMeta.valid_from) || null,
+            valid_to: sanitizeDate(setMeta.valid_to) || null,
         });
     };
 
@@ -59,14 +82,19 @@ function buildRatesFromCandidate(
             power_prices: candidate.power_prices,
             fixed_term_prices: candidate.fixed_term_prices,
             contract_duration: candidate.contract_duration,
-            valid_from: fallbackValidFrom,
-            valid_to: null
+            valid_from: candidate.valid_from,
+            valid_to: candidate.valid_to,
         }];
 
     sets.forEach(set => {
-        (set.energy_prices || []).forEach(p => addRate(p, 'energy', 'EUR/kWh', set));
-        (set.power_prices || []).forEach(p => addRate(p, 'power', (p as RateInput).unit || 'EUR/kW/month', set));
-        (set.fixed_term_prices || []).forEach(p => addRate(p, 'fixed_fee', 'EUR/month', set));
+        const meta = {
+            contract_duration: set.contract_duration ?? candidate.contract_duration ?? null,
+            valid_from: set.valid_from || null,
+            valid_to: set.valid_to || null,
+        };
+        (set.energy_prices || []).forEach(p => addRate(p, 'energy', 'EUR/kWh', meta));
+        (set.power_prices || []).forEach(p => addRate(p, 'power', (p as RateInput).unit || 'EUR/kW/month', meta));
+        (set.fixed_term_prices || []).forEach(p => addRate(p, 'fixed_fee', 'EUR/month', meta));
     });
 
     return ratesToInsert;
@@ -112,24 +140,31 @@ export function useTariffCandidates(
 
             for (const item of selected) {
                 let struct = structures.find(s => s.code === item.tariff_structure || s.name.includes(item.tariff_structure || ''));
-                let supplier = suppliers.find(s => s.name.toLowerCase().includes((item.supplier_name || '').toLowerCase()));
+                let supplier = suppliers.find(s => s.name.toLowerCase() === (item.supplier_name || '').toLowerCase())
+                    || suppliers.find(s => s.name.toLowerCase().includes((item.supplier_name || '').toLowerCase()));
 
                 if (!struct && structures.length > 0) struct = structures[0];
-                if (!supplier && suppliers.length > 0) supplier = suppliers[0];
+
+                // Auto-create supplier if not found
+                if (!supplier && item.supplier_name) {
+                    const slug = item.supplier_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    const { data: newSupplier, error: sError } = await supabase
+                        .from('suppliers')
+                        .insert({ company_id: companyId, name: item.supplier_name, slug, is_active: true })
+                        .select()
+                        .single();
+                    if (!sError && newSupplier) {
+                        supplier = newSupplier;
+                        suppliers.push(newSupplier);
+                    }
+                }
 
                 if (!supplier || !struct) {
                     console.warn(`Skipping save for ${item.fileName} - no structures or suppliers exist in the database.`);
                     continue;
                 }
 
-                const parsedDuration = item.contract_duration ?? null;
-                const firstSet = item.price_sets?.[0];
-
-                const rootValidFrom = item.valid_from !== undefined ? item.valid_from : firstSet?.valid_from;
-                const rootValidTo = item.valid_to !== undefined ? item.valid_to : firstSet?.valid_to;
-
-                const validFrom = rootValidFrom || new Date().toISOString().split('T')[0];
-                const validTo = rootValidTo || null;
+                const { validFrom, validTo } = computeVersionDateRange(item);
 
                 const payload = {
                     company_id: companyId,
@@ -138,14 +173,13 @@ export function useTariffCandidates(
                     tariff_name: item.tariff_name || 'Tarifa Importada',
                     tariff_type: struct.code || '2.0TD',
                     is_indexed: item.is_indexed || false,
-                    contract_duration: parsedDuration,
                     valid_from: sanitizeDate(validFrom),
                     valid_to: sanitizeDate(validTo),
                     completion_status: 'draft',
                     is_active: false
                 };
 
-                let versionCheckQuery = supabase
+                const versionCheckQuery = supabase
                     .from('tariff_versions')
                     .select('id')
                     .eq('company_id', companyId)
@@ -153,12 +187,6 @@ export function useTariffCandidates(
                     .eq('tariff_structure_id', struct.id)
                     .ilike('tariff_name', payload.tariff_name)
                     .eq('valid_from', validFrom);
-
-                if (parsedDuration === null) {
-                    versionCheckQuery = versionCheckQuery.is('contract_duration', null);
-                } else {
-                    versionCheckQuery = versionCheckQuery.eq('contract_duration', parsedDuration);
-                }
 
                 const { data: existingVersion, error: existingError } = await versionCheckQuery.maybeSingle();
 
@@ -192,7 +220,7 @@ export function useTariffCandidates(
 
                 await supabase.from('tariff_rates').delete().eq('tariff_version_id', version.id);
 
-                const ratesToInsert = buildRatesFromCandidate(item, version.id, validFrom);
+                const ratesToInsert = buildRatesFromCandidate(item, version.id);
 
                 if (ratesToInsert.length > 0) {
                     const { error: rError } = await supabase.from('tariff_rates').insert(ratesToInsert);
@@ -224,28 +252,25 @@ export function useTariffCandidates(
         }
     };
 
-    // Updates an existing tariff version with the candidate's prices and publishes it
     const quickUpdate = async (candidate: DetectedTariff, existingVersionId: string): Promise<void> => {
         setProcessing(true);
         try {
-            const firstSet = candidate.price_sets?.[0];
-            const validFrom = firstSet?.valid_from || candidate.valid_from || new Date().toISOString().split('T')[0];
+            const { validFrom, validTo } = computeVersionDateRange(candidate);
 
-            // Replace rates
             await supabase.from('tariff_rates').delete().eq('tariff_version_id', existingVersionId);
 
-            const ratesToInsert = buildRatesFromCandidate(candidate, existingVersionId, validFrom);
+            const ratesToInsert = buildRatesFromCandidate(candidate, existingVersionId);
 
             if (ratesToInsert.length > 0) {
                 const { error: rError } = await supabase.from('tariff_rates').insert(ratesToInsert);
                 if (rError) throw rError;
             }
 
-            // Update version: new valid_from, mark active and complete
             const { error: vError } = await supabase
                 .from('tariff_versions')
                 .update({
                     valid_from: sanitizeDate(validFrom),
+                    valid_to: sanitizeDate(validTo),
                     is_active: true,
                     completion_status: 'complete'
                 })
@@ -268,7 +293,6 @@ export function useTariffCandidates(
         }
     };
 
-    // Bulk-updates multiple matched candidates and publishes them
     const bulkUpdate = async (pairs: Array<{ candidate: DetectedTariff; existingVersionId: string }>) => {
         if (pairs.length === 0) return;
         setProcessing(true);
@@ -277,12 +301,11 @@ export function useTariffCandidates(
 
         try {
             for (const { candidate, existingVersionId } of pairs) {
-                const firstSet = candidate.price_sets?.[0];
-                const validFrom = firstSet?.valid_from || candidate.valid_from || new Date().toISOString().split('T')[0];
+                const { validFrom, validTo } = computeVersionDateRange(candidate);
 
                 await supabase.from('tariff_rates').delete().eq('tariff_version_id', existingVersionId);
 
-                const ratesToInsert = buildRatesFromCandidate(candidate, existingVersionId, validFrom);
+                const ratesToInsert = buildRatesFromCandidate(candidate, existingVersionId);
 
                 if (ratesToInsert.length > 0) {
                     const { error: rError } = await supabase.from('tariff_rates').insert(ratesToInsert);
@@ -291,7 +314,12 @@ export function useTariffCandidates(
 
                 const { error: vError } = await supabase
                     .from('tariff_versions')
-                    .update({ valid_from: sanitizeDate(validFrom), is_active: true, completion_status: 'complete' })
+                    .update({
+                        valid_from: sanitizeDate(validFrom),
+                        valid_to: sanitizeDate(validTo),
+                        is_active: true,
+                        completion_status: 'complete'
+                    })
                     .eq('id', existingVersionId);
 
                 if (vError) throw vError;

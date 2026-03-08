@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
-import { Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, Loader2, CheckCircle, AlertCircle, Cpu, Sparkles } from 'lucide-react'
+import { parseInvoiceLocally } from '../lib/invoiceParser'
 
 interface InvoiceUploaderProps {
     onDataExtracted: (data: unknown) => void;
@@ -10,31 +11,46 @@ interface InvoiceUploaderProps {
 export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }: InvoiceUploaderProps) {
     const [status, setStatus] = useState<'idle' | 'extracting' | 'success' | 'error'>('idle')
     const [errorMessage, setErrorMessage] = useState('')
+    const [extractionMethod, setExtractionMethod] = useState<'local' | 'ai' | ''>('')
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        // ... (rest of logic same)
         const file = event.target.files?.[0]
         if (!file) return
 
         setStatus('extracting')
         setErrorMessage('')
+        setExtractionMethod('')
 
         try {
-            // ... (auth and form data prep same)
             const { data: { session } } = await supabase.auth.getSession()
-            if (!session) throw new Error('No hay sesión activa')
+            if (!session) throw new Error('No hay sesion activa')
+
+            // Step 1: Try local PDF text extraction first (fast, no API cost)
+            let localResult = null
+            if (file.type === 'application/pdf') {
+                try {
+                    localResult = await parseInvoiceLocally(file)
+                } catch (e) {
+                    console.warn('Local parser failed, will use AI:', e)
+                }
+            }
+
+            if (localResult && localResult._confidence >= 40) {
+                // Local parsing was good enough
+                console.log(`Using local parser result (confidence: ${localResult._confidence}%)`)
+                setExtractionMethod('local')
+                setStatus('success')
+                onDataExtracted(localResult)
+                return
+            }
+
+            // Step 2: Fallback to Gemini AI
+            console.log('Falling back to AI extraction...')
+            setExtractionMethod('ai')
 
             const formData = new FormData()
             formData.append('file', file)
             if (supplyType) formData.append('supply_type', supplyType)
-            // Pass supplyType to edge function if needed, or just use it for UI
-            if (supplyType) formData.append('supply_type', supplyType);
-
-            const user = session.user
-            const companyId = user.user_metadata?.company_id || user.app_metadata?.company_id
-
-            if (!companyId) throw new Error('No se pudo identificar la empresa del usuario')
-            formData.append('company_id', companyId)
 
             const { data, error } = await supabase.functions.invoke('extract-invoice-data', {
                 body: formData,
@@ -42,7 +58,7 @@ export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }:
                     Authorization: `Bearer ${session.access_token}`
                 }
             })
-            // ... (rest of error handling same)
+
             if (error) {
                 console.error('Edge Function error:', error)
                 if (error.context && error.context instanceof Response) {
@@ -60,7 +76,6 @@ export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }:
             setStatus('success')
             onDataExtracted(data)
         } catch (error: unknown) {
-            // ... error handling
             console.error('Error uploading/extracting:', error)
             setStatus('error')
             setErrorMessage(error instanceof Error ? error.message : 'Error al procesar la factura')
@@ -114,18 +129,25 @@ export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }:
                 </div>
             )}
 
-            {/* Success and Error states remain similar but could also use activeColor if needed, handling success generally green/red is fine */}
             {status === 'success' && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{ color: '#10b981' }}>
                         <CheckCircle size={32} />
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                        <span style={{ fontWeight: '600', color: '#065f46', display: 'block' }}>¡Datos Extraídos!</span>
+                        <span style={{ fontWeight: '600', color: '#065f46', display: 'block' }}>Datos Extraidos</span>
                         <span style={{ fontSize: '0.85rem', color: '#065f46' }}>El formulario se ha autocompletado</span>
                     </div>
+                    {extractionMethod && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.2rem' }}>
+                            {extractionMethod === 'local'
+                                ? <><Cpu size={12} /> Lectura directa del PDF</>
+                                : <><Sparkles size={12} /> Procesado con IA</>
+                            }
+                        </div>
+                    )}
                     <button
-                        onClick={() => setStatus('idle')}
+                        onClick={() => { setStatus('idle'); setExtractionMethod('') }}
                         style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: activeColor, background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
                     >
                         Subir otra factura
@@ -143,7 +165,7 @@ export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }:
                         <span style={{ fontSize: '0.85rem', color: '#991b1b' }}>{errorMessage}</span>
                     </div>
                     <button
-                        onClick={() => setStatus('idle')}
+                        onClick={() => { setStatus('idle'); setExtractionMethod('') }}
                         style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: activeColor, background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
                     >
                         Reintentar

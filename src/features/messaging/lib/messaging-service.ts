@@ -68,7 +68,33 @@ interface ConversationMessage {
     } | { id: string; name: string }[] | null;
 }
 
-export async function getConversations(companyId: string, channel?: 'email' | 'whatsapp'): Promise<Conversation[]> {
+export async function getConversations(companyId: string, channel?: 'email' | 'whatsapp', page = 0, pageSize = 50): Promise<Conversation[]> {
+    // Step 1: Get distinct customer_ids with message counts (lightweight query)
+    let countQuery = supabase
+        .from('messages')
+        .select('customer_id', { count: 'exact', head: false })
+        .eq('company_id', companyId);
+
+    if (channel) {
+        countQuery = countQuery.eq('channel', channel);
+    }
+
+    const { data: allMessages, error: countError } = await countQuery;
+    if (countError) throw countError;
+
+    // Group by customer_id in JS to get counts and determine page
+    const customerCounts = new Map<string, number>();
+    allMessages?.forEach((msg: { customer_id: string }) => {
+        if (!msg.customer_id) return;
+        customerCounts.set(msg.customer_id, (customerCounts.get(msg.customer_id) || 0) + 1);
+    });
+
+    const customerIds = Array.from(customerCounts.keys());
+    const pagedIds = customerIds.slice(page * pageSize, (page + 1) * pageSize);
+
+    if (pagedIds.length === 0) return [];
+
+    // Step 2: Get the last message per customer for this page
     let query = supabase
         .from('messages')
         .select(`
@@ -83,8 +109,8 @@ export async function getConversations(companyId: string, channel?: 'email' | 'w
             )
         `)
         .eq('company_id', companyId)
-        .order('created_at', { ascending: false })
-        .limit(500);
+        .in('customer_id', pagedIds)
+        .order('created_at', { ascending: false });
 
     if (channel) {
         query = query.eq('channel', channel);
@@ -108,15 +134,14 @@ export async function getConversations(companyId: string, channel?: 'email' | 'w
                     content: msg.content,
                     recipient_contact: msg.recipient_contact || ''
                 },
-                count: 1
+                count: customerCounts.get(msg.customer_id) || 1
             });
-        } else {
-            const conv = conversationsMap.get(msg.customer_id);
-            if (conv) conv.count++;
         }
     });
 
-    return Array.from(conversationsMap.values());
+    // Sort by last message date descending
+    return Array.from(conversationsMap.values())
+        .sort((a, b) => new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime());
 }
 
 export async function getMessages(customerId: string, companyId: string, channel?: 'email' | 'whatsapp'): Promise<Message[]> {
@@ -209,24 +234,17 @@ export async function sendMessage(payload: {
     });
 
     if (invokeError) {
-        // Mark message as failed in DB
-        await supabase
-            .from('messages')
-            .update({ status: 'failed' })
-            .eq('id', data.id);
-
+        // The edge function already marks the message as 'failed' in its catch block,
+        // so we only extract the error message here for the UI toast.
         let actualError = 'Error desconocido en Edge Function';
 
-        // The invoke API returns FunctionsHttpError with a context containing the response
         if (invokeError.context) {
             try {
-                // Read the JSON body { error: "message" } returned by our Deno catch block
                 const edgeBody = await invokeError.context.json();
                 if (edgeBody.error) {
                     actualError = edgeBody.error;
                 }
             } catch (e) {
-                // fallback if body is not JSON or cannot be read
                 console.error("Failed to parse edge response:", e);
             }
         }

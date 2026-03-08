@@ -3,7 +3,47 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
+}
+
+/** Verify Resend/Svix webhook signature using HMAC-SHA256 */
+async function verifyWebhookSignature(
+    payload: string,
+    headers: Headers,
+    secret: string
+): Promise<boolean> {
+    const svixId = headers.get('svix-id')
+    const svixTimestamp = headers.get('svix-timestamp')
+    const svixSignature = headers.get('svix-signature')
+
+    if (!svixId || !svixTimestamp || !svixSignature) return false
+
+    // Reject timestamps older than 5 minutes to prevent replay attacks
+    const timestampSeconds = parseInt(svixTimestamp, 10)
+    const now = Math.floor(Date.now() / 1000)
+    if (Math.abs(now - timestampSeconds) > 300) return false
+
+    // Decode the secret (Resend uses whsec_ prefix with base64 payload)
+    const secretBytes = Uint8Array.from(
+        atob(secret.startsWith('whsec_') ? secret.slice(6) : secret),
+        c => c.charCodeAt(0)
+    )
+
+    const signedContent = `${svixId}.${svixTimestamp}.${payload}`
+    const key = await crypto.subtle.importKey(
+        'raw', secretBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    )
+    const signatureBytes = new Uint8Array(
+        await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent))
+    )
+    const expectedSig = btoa(String.fromCharCode(...signatureBytes))
+
+    // Svix sends multiple signatures separated by spaces, each prefixed with "v1,"
+    const signatures = svixSignature.split(' ')
+    return signatures.some(sig => {
+        const sigValue = sig.startsWith('v1,') ? sig.slice(3) : sig
+        return sigValue === expectedSig
+    })
 }
 
 serve(async (req: Request) => {
@@ -12,13 +52,28 @@ serve(async (req: Request) => {
     }
 
     try {
+        // Verify webhook signature if secret is configured
+        const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET')
+        const rawBody = await req.text()
+
+        if (webhookSecret) {
+            const isValid = await verifyWebhookSignature(rawBody, req.headers, webhookSecret)
+            if (!isValid) {
+                console.error('Invalid webhook signature — rejecting request')
+                return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 401,
+                })
+            }
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
         // 1. Parse Resend Webhook Payload
-        const payload = await req.json()
+        const payload = JSON.parse(rawBody)
         console.log('Received email payload:', JSON.stringify(payload))
 
         // Basic validation of Resend payload structure
@@ -40,59 +95,42 @@ serve(async (req: Request) => {
         const emailMatch = fromEmail.match(/<(.+)>/)
         const cleanFromEmail = emailMatch ? emailMatch[1] : fromEmail
 
-        // 2. Find Customer by Email
-        // Search in 'contacts' table first, then 'companies' (if B2B), or maybe 'customers' directly if they have email field (they do on contacts)
-        // We will search in `contacts` table
-        const { data: contact } = await supabaseClient
+        // 2. Find ALL contacts matching this email across tenants
+        const { data: contacts } = await supabaseClient
             .from('contacts')
             .select('id, customer_id, company_id')
             .eq('email', cleanFromEmail)
-            .maybeSingle()
 
-        let customerId: string | null = null
-        let companyId: string | null = null
-        let contactId: string | null = null
-
-        if (contact) {
-            customerId = contact.customer_id
-            companyId = contact.company_id
-            contactId = contact.id
-            console.log(`Found contact: ${contact.id} for customer: ${contact.customer_id}`)
-        } else {
-            // Fallback: Check if there is a company user or just log it as unknown
+        if (!contacts || contacts.length === 0) {
             console.log(`No contact found for email: ${cleanFromEmail}`)
-            // Ideally we should create a lead or store it as 'unknown', but for now we might fail or store with null customer?
-            // The 'messages' table likely requires customer_id.
-            // Let's try to find a customer by company email if applicable, or just generic search
-            // For now, if no customer found, we cannot attach it to a thread cleanly.
-            // We will return 200 but log error.
-
-            // OPTIONAL: Create a "Lead" or "Unknown" customer?
-            // For this MVP, we will only process messages from known contacts.
             return new Response(JSON.stringify({ received: true, status: 'ignored_unknown_sender' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200,
             })
         }
 
-        // 3. Insert Message
-        const { error: insertError } = await supabaseClient
-            .from('messages')
-            .insert({
-                company_id: companyId,
-                customer_id: customerId,
-                contact_id: contactId,
-                channel: 'email',
-                direction: 'inbound',
-                recipient_contact: cleanFromEmail, // The sender
-                content: textBody || 'HTML Content only', // Prefer text, fallback to placeholder
-                subject: subject,
-                status: 'delivered', // It reached us
-                created_at: new Date().toISOString()
-            })
+        // 3. Insert a message for EACH matching tenant (multi-tenant safe)
+        for (const contact of contacts) {
+            const { error: insertError } = await supabaseClient
+                .from('messages')
+                .insert({
+                    company_id: contact.company_id,
+                    customer_id: contact.customer_id,
+                    contact_id: contact.id,
+                    channel: 'email',
+                    direction: 'inbound',
+                    recipient_contact: cleanFromEmail,
+                    content: textBody || 'HTML Content only',
+                    subject: subject,
+                    status: 'delivered',
+                    created_at: new Date().toISOString()
+                })
 
-        if (insertError) {
-            throw new Error(`Failed to insert message: ${insertError.message}`)
+            if (insertError) {
+                console.error(`Failed to insert message for company ${contact.company_id}: ${insertError.message}`)
+            } else {
+                console.log(`Inserted inbound email for contact ${contact.id} in company ${contact.company_id}`)
+            }
         }
 
         return new Response(JSON.stringify({ success: true }), {

@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import {
     LayoutDashboard, Users, FileText, Scale, FileSignature,
-    HelpCircle, Zap, Settings, Wallet, MessageSquare, Building2
+    HelpCircle, Zap, Settings, Wallet, MessageSquare, Building2, Plug
 } from 'lucide-react'
 import { useTour } from '@/features/guide/useTour'
 
@@ -14,6 +14,7 @@ const navItems = [
     { id: 'contracts', label: 'Contratos', path: '/contracts', icon: FileSignature },
     { id: 'messaging', label: 'Mensajería', path: '/admin/messages', icon: MessageSquare },
     { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: Wallet },
+    { id: 'integrations', label: 'Integraciones', path: '/admin/integrations', icon: Plug },
 ]
 
 export function Sidebar() {

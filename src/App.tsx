@@ -14,6 +14,7 @@ import MessagingPage from '@/features/messaging/pages/MessagingPage'
 import ConversationPage from '@/features/messaging/pages/ConversationPage'
 import { Login } from '@/features/auth/components/Login'
 import { SettingsPage } from '@/features/auth/pages/SettingsPage'
+import { GoogleOAuthCallbackPage } from '@/features/auth/pages/GoogleOAuthCallbackPage'
 import { CustomerList } from '@/features/crm/components/CustomerList'
 import { CustomerDetails } from '@/features/crm/components/CustomerDetails'
 import { ComparatorForm } from '@/features/comparator/components/ComparatorForm'
@@ -32,6 +33,7 @@ import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { CommissionersPage } from '@/features/commissioners/pages/CommissionersPage'
 import { CommissionerDetailPage } from '@/features/commissioners/pages/CommissionerDetailPage'
 import SuppliersPage from '@/features/tariffs/pages/SuppliersPage'
+import { IntegrationsPage } from '@/features/integrations/pages/IntegrationsPage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
     const [session, setSession] = useState<Session | null>(null)
@@ -75,6 +77,7 @@ function App() {
                                     <Route path="/comparator" element={<ComparatorForm />} />
                                     <Route path="/comparator/history" element={<ComparisonHistory />} />
                                     <Route path="/settings" element={<SettingsPage />} />
+                                    <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
                                     <Route path="/crm" element={<CustomerList />} />
                                     <Route path="/crm/new" element={<CustomerForm />} />
                                     <Route path="/crm/:id" element={<CustomerDetails />} />
@@ -93,6 +96,7 @@ function App() {
                                     <Route path="/admin/tariffs/new" element={<TariffEditorPage />} />
                                     <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
                                     <Route path="/admin/suppliers" element={<SuppliersPage />} />
+                                    <Route path="/admin/integrations" element={<IntegrationsPage />} />
 
                                     {/* Messaging */}
                                     <Route path="/admin/messages" element={<MessagingLayout />}>

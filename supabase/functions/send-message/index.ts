@@ -1,10 +1,94 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { encode as base64Encode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+/** Encode a UTF-8 string to base64url (RFC 4648 §5) */
+function toBase64Url(str: string): string {
+    const bytes = new TextEncoder().encode(str)
+    return base64Encode(bytes)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '')
+}
+
+/** Encode raw bytes to base64url */
+function bytesToBase64Url(bytes: Uint8Array): string {
+    return base64Encode(bytes)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '')
+}
+
+/** Build a RFC 2045 multipart/mixed MIME message with optional attachments */
+async function buildMimeEmail(
+    from: string,
+    to: string,
+    subject: string,
+    htmlBody: string,
+    attachments?: { name: string; url: string; type: string; size: number }[]
+): Promise<string> {
+    const boundary = `boundary_${crypto.randomUUID().replace(/-/g, '')}`
+    const encodedSubject = `=?utf-8?B?${toBase64Url(subject).replace(/-/g, '+').replace(/_/g, '/')}?=`
+
+    const headers = [
+        `MIME-Version: 1.0`,
+        `To: ${to}`,
+        `From: ${from}`,
+        `Subject: ${encodedSubject}`,
+    ]
+
+    const hasAttachments = attachments && attachments.length > 0
+
+    if (!hasAttachments) {
+        // Simple email without attachments
+        headers.push(`Content-Type: text/html; charset=utf-8`)
+        headers.push(`Content-Transfer-Encoding: base64`)
+        headers.push('')
+        headers.push(toBase64Url(htmlBody).replace(/-/g, '+').replace(/_/g, '/'))
+        return headers.join('\r\n')
+    }
+
+    // Multipart email with attachments
+    headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`)
+    headers.push('')
+    headers.push(`--${boundary}`)
+    headers.push(`Content-Type: text/html; charset=utf-8`)
+    headers.push(`Content-Transfer-Encoding: base64`)
+    headers.push('')
+    headers.push(toBase64Url(htmlBody).replace(/-/g, '+').replace(/_/g, '/'))
+
+    for (const att of attachments) {
+        try {
+            const response = await fetch(att.url)
+            if (!response.ok) {
+                console.error(`Failed to fetch attachment ${att.name}: ${response.status}`)
+                continue
+            }
+            const fileBytes = new Uint8Array(await response.arrayBuffer())
+            const fileBase64 = bytesToBase64Url(fileBytes).replace(/-/g, '+').replace(/_/g, '/')
+
+            // Sanitize filename for Content-Disposition
+            const safeName = att.name.replace(/["\r\n]/g, '_')
+
+            headers.push(`--${boundary}`)
+            headers.push(`Content-Type: ${att.type}; name="${safeName}"`)
+            headers.push(`Content-Disposition: attachment; filename="${safeName}"`)
+            headers.push(`Content-Transfer-Encoding: base64`)
+            headers.push('')
+            headers.push(fileBase64)
+        } catch (err) {
+            console.error(`Error processing attachment ${att.name}:`, err)
+        }
+    }
+
+    headers.push(`--${boundary}--`)
+    return headers.join('\r\n')
 }
 
 serve(async (req: Request) => {
@@ -56,25 +140,19 @@ serve(async (req: Request) => {
 
             const accessToken = tokenData.access_token;
 
-            // 2. Construct MIME email (simplified)
-            // Note: For attachments we'd need a multipart/mixed MIME generator
-            // This is a simple html text version for now
-            const emailStr = [
-                `To: ${message.recipient_contact}`,
-                `From: ${emailFrom}`,
-                `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(message.subject || 'Sin asunto')))}?=`,
-                "Content-Type: text/html; charset=utf-8",
-                "",
-                message.content
-            ].join("\n");
+            // 2. Build MIME email with attachment support
+            const mimeEmail = await buildMimeEmail(
+                emailFrom,
+                message.recipient_contact,
+                message.subject || 'Sin asunto',
+                message.content,
+                message.attachments
+            );
 
-            // Encode to base64url
-            const encodedEmail = btoa(unescape(encodeURIComponent(emailStr)))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/, '');
+            // 3. Encode full MIME to base64url for Gmail API
+            const encodedEmail = toBase64Url(mimeEmail);
 
-            // 3. Send via Gmail API
+            // 4. Send via Gmail API
             const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
                 method: 'POST',
                 headers: {

@@ -2,8 +2,10 @@ import { supabase } from '@/shared/lib/supabase'
 
 /**
  * Audit Log Helper
- * 
- * Logic to record critical actions in the database for compliance.
+ *
+ * Uses the SECURITY DEFINER RPC function `create_audit_log` which resolves
+ * company_id internally via auth.uid(), bypassing the RLS restriction on
+ * direct inserts into the audit_log table.
  */
 export async function recordAuditLog(params: {
     action: string
@@ -13,17 +15,11 @@ export async function recordAuditLog(params: {
 }) {
     const { action, entity_type, entity_id, metadata } = params
 
-    const { data: { user } } = await supabase.auth.getUser()
-
-    const { error } = await supabase.from('audit_log').insert({
-        action,
-        entity_type,
-        entity_id,
-        metadata,
-        user_id: user?.id,
-        // Note: company_id is handled via RLS/Triggers usually, 
-        // but we'll include it explicitly if needed.
-        // In our schema, it's NOT NULL, so we should get it from the user's profile.
+    const { error } = await supabase.rpc('create_audit_log', {
+        p_action: action,
+        p_entity_type: entity_type,
+        p_entity_id: entity_id ?? null,
+        p_metadata: metadata ?? null,
     })
 
     if (error) {

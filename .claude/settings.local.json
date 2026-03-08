@@ -6,7 +6,27 @@
       "Bash(npm run lint)",
       "Bash(npx eslint src/features/tariffs/hooks/useTariffCandidates.ts src/features/tariffs/components/wizard/Step2Candidates.tsx --ext ts,tsx)",
       "Bash(npx eslint src/features/tariffs/components/wizard/Step2Candidates.tsx --ext ts,tsx)",
-      "Bash(npx supabase functions deploy parse-tariff-document --no-verify-jwt)"
+      "Bash(npx supabase functions deploy parse-tariff-document --no-verify-jwt)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__get_logs",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__list_edge_functions",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "Bash(npx eslint src/features/auth/pages/GoogleOAuthCallbackPage.tsx src/App.tsx src/features/auth/components/MessagingSettingsCard.tsx)",
+      "Bash(npx supabase functions deploy send-message --no-verify-jwt)",
+      "Bash(npx supabase secrets list)",
+      "Bash(ls \"c:\\\\Users\\\\pelay\\\\OneDrive\\\\Escritorio\\\\comparadorluz\"/.env*)",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "Bash(npx skills:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(npm test:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn",
+    "supabase"
+  ]
 }

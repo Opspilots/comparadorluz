@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
-import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye, Loader2 } from 'lucide-react'
+import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye, Loader2, ArrowRightLeft } from 'lucide-react'
+import { SwitchingDialog } from './SwitchingDialog'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { removeEmojis } from '@/shared/lib/utils'
@@ -13,6 +14,7 @@ export function ContractList() {
     const [filter, setFilter] = useState('all')
     const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+    const [switchingContract, setSwitchingContract] = useState<Contract | null>(null)
     const { toast } = useToast()
 
     useEffect(() => {
@@ -215,6 +217,20 @@ export function ContractList() {
                                                 <span style={badgeStyle(contract.status)}>
                                                     {statusLabels[contract.status] || contract.status}
                                                 </span>
+                                                {contract.switching_status && (
+                                                    <span style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                                                        marginLeft: 4, padding: '2px 6px', borderRadius: 9999,
+                                                        fontSize: '0.65rem', fontWeight: 600,
+                                                        background: contract.switching_status === 'completed' ? '#dcfce7' :
+                                                            contract.switching_status === 'rejected' ? '#fee2e2' : '#dbeafe',
+                                                        color: contract.switching_status === 'completed' ? '#15803d' :
+                                                            contract.switching_status === 'rejected' ? '#b91c1c' : '#1d4ed8',
+                                                    }} title={`Switching: ${contract.switching_status}`}>
+                                                        <ArrowRightLeft size={10} />
+                                                        SW
+                                                    </span>
+                                                )}
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 600 }}>
                                                 {contract.annual_value_eur ? (contract.annual_value_eur / 12).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : '—'}
@@ -243,6 +259,16 @@ export function ContractList() {
                                                     >
                                                         <Pencil size={14} />
                                                     </Link>
+                                                    {(contract.status === 'active' || contract.status === 'signed') && !contract.switching_status && (
+                                                        <button
+                                                            onClick={() => setSwitchingContract(contract)}
+                                                            className="btn btn-secondary"
+                                                            style={{ padding: '0.4rem', fontSize: '0.8rem', color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                            title="Iniciar Traspaso"
+                                                        >
+                                                            <ArrowRightLeft size={14} />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => setDeleteTarget(contract.id)}
                                                         className="btn btn-secondary"
@@ -278,6 +304,15 @@ export function ContractList() {
                                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{contract.customers?.cif}</p>
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                            {(contract.status === 'active' || contract.status === 'signed') && !contract.switching_status && (
+                                                <button
+                                                    onClick={() => setSwitchingContract(contract)}
+                                                    style={{ padding: '0.3rem', fontSize: '0.8rem', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                                    title="Iniciar Traspaso"
+                                                >
+                                                    <ArrowRightLeft size={16} color="#2563eb" />
+                                                </button>
+                                            )}
                                             <Link
                                                 to={`/contracts/${contract.id}/view`}
                                                 className="btn btn-secondary"
@@ -338,6 +373,15 @@ export function ContractList() {
                 onConfirm={handleDelete}
                 onCancel={() => setDeleteTarget(null)}
             />
+
+            {switchingContract && (
+                <SwitchingDialog
+                    contract={switchingContract}
+                    open={!!switchingContract}
+                    onOpenChange={(open) => { if (!open) setSwitchingContract(null) }}
+                    onSuccess={fetchContracts}
+                />
+            )}
         </div>
     )
 }
