@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract, SwitchingStatus } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
+import {
+    checkSwitchingCapability,
+    submitSwitchingViaApi,
+} from '@/features/integrations/lib/integrations-service'
 import {
     ArrowRightLeft,
     Clock,
@@ -11,9 +14,12 @@ import {
     XCircle,
     ChevronRight,
     Loader2,
-    ExternalLink,
     Building2,
-    FileText,
+    Wifi,
+    WifiOff,
+    AlertTriangle,
+    Send,
+    Check,
 } from 'lucide-react'
 
 interface SwitchingTrackerProps {
@@ -22,14 +28,23 @@ interface SwitchingTrackerProps {
         switching_notes?: string | null
         switching_completed_at?: string | null
         estimated_activation_date?: string | null
+        switching_deadline_at?: string | null
+        switching_deadline_warning_sent?: boolean
+        integration_id?: string | null
+        origin_supplier_name?: string | null
+        origin_tariff_name?: string | null
+        origin_annual_cost_eur?: number | null
     }
     onStatusChange?: () => void
 }
 
+/** Max 21 calendar days for switching (RD 1011/2009) */
+const SWITCHING_MAX_DAYS = 21
+
 const STEPS: { key: SwitchingStatus; label: string; description: string }[] = [
-    { key: 'requested', label: 'Solicitado', description: 'Traspaso solicitado a la distribuidora' },
+    { key: 'requested', label: 'Solicitado', description: 'Traspaso solicitado' },
     { key: 'in_progress', label: 'En Proceso', description: 'ATR en tramite con la distribuidora' },
-    { key: 'completed', label: 'Completado', description: 'Suministro activado con nueva comercializadora' },
+    { key: 'completed', label: 'Completado', description: 'Suministro activado' },
 ]
 
 const STATUS_ICON: Record<string, typeof Clock> = {
@@ -49,17 +64,37 @@ const STATUS_COLORS: Record<string, { text: string; bg: string; border: string; 
 export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerProps) {
     const { toast } = useToast()
     const [updating, setUpdating] = useState(false)
-    const [linkedContract, setLinkedContract] = useState<Contract | null>(null)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [showRejectConfirm, setShowRejectConfirm] = useState(false)
+    const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
+    const [executingApi, setExecutingApi] = useState(false)
+
+    // API capability
+    const [isApiAvailable, setIsApiAvailable] = useState(false)
+    const [apiIntegrationId, setApiIntegrationId] = useState<string | null>(null)
+    const [apiSent, setApiSent] = useState(false)
+
+    // Bono Social warning
+    const [hasBonaSocial, setHasBonaSocial] = useState(false)
 
     const status = contract.switching_status
-    if (!status) return null
 
-    const statusIndex = STEPS.findIndex(s => s.key === status)
-    const isRejected = status === 'rejected'
-    const colors = STATUS_COLORS[status] || STATUS_COLORS.requested
+    // Calculate 21-day deadline (RD 1011/2009)
+    const deadlineAt = contract.switching_deadline_at
+        ? new Date(contract.switching_deadline_at)
+        : contract.switching_requested_at
+            ? new Date(new Date(contract.switching_requested_at).getTime() + SWITCHING_MAX_DAYS * 24 * 60 * 60 * 1000)
+            : null
+    const now = new Date()
+    const daysRemaining = deadlineAt ? Math.ceil((deadlineAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
+    const isDeadlineClose = daysRemaining !== null && daysRemaining <= 5 && daysRemaining > 0
+    const isDeadlineExpired = daysRemaining !== null && daysRemaining <= 0
 
-    // Check admin role and fetch linked contract
+    const destinationSupplier = contract.tariff_versions?.suppliers?.name || contract.tariff_versions?.supplier_name || '—'
+    const destinationTariff = contract.tariff_versions?.tariff_name || '—'
+    const originSupplier = contract.origin_supplier_name || contract.supply_points?.current_supplier || '—'
+
+    // Check admin role + API capability
     useEffect(() => {
         const init = async () => {
             const { data: { user } } = await supabase.auth.getUser()
@@ -74,20 +109,38 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                 }
             }
 
-            // Find the new contract that was created from this one
-            const { data: newContract } = await supabase
-                .from('contracts')
-                .select(`
-                    *,
-                    tariff_versions (*, suppliers (*))
-                `)
-                .eq('switching_from_contract_id', contract.id)
-                .maybeSingle()
+            // Check Bono Social on supply point (RD 897/2017)
+            if (contract.supply_point_id) {
+                const { data: sp } = await supabase
+                    .from('supply_points')
+                    .select('has_bono_social')
+                    .eq('id', contract.supply_point_id)
+                    .single()
+                if (sp?.has_bono_social) setHasBonaSocial(true)
+            }
 
-            if (newContract) setLinkedContract(newContract)
+            // Check API capability for destination supplier
+            if (contract.company_id && destinationSupplier !== '—') {
+                try {
+                    const cap = await checkSwitchingCapability(contract.company_id, destinationSupplier)
+                    if (cap.available && cap.integration) {
+                        setIsApiAvailable(true)
+                        setApiIntegrationId(cap.integration.id)
+                    }
+                } catch {
+                    // ignore
+                }
+            }
         }
         init()
-    }, [contract.id])
+    }, [contract.id, contract.company_id, destinationSupplier])
+
+    if (!status) return null
+
+    const statusIndex = STEPS.findIndex(s => s.key === status)
+    const isRejected = status === 'rejected'
+    const isCompleted = status === 'completed'
+    const colors = STATUS_COLORS[status] || STATUS_COLORS.requested
 
     const advanceStatus = async (newStatus: SwitchingStatus) => {
         setUpdating(true)
@@ -95,8 +148,19 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
             const updateData: Record<string, unknown> = {
                 switching_status: newStatus,
             }
+            // Set 21-day deadline when moving to in_progress (RD 1011/2009)
+            if (newStatus === 'in_progress' && !contract.switching_deadline_at) {
+                const deadline = new Date()
+                deadline.setDate(deadline.getDate() + SWITCHING_MAX_DAYS)
+                updateData.switching_deadline_at = deadline.toISOString()
+            }
             if (newStatus === 'completed') {
                 updateData.switching_completed_at = new Date().toISOString()
+                updateData.activation_date = new Date().toISOString().split('T')[0]
+                updateData.status = 'active'
+            }
+            if (newStatus === 'rejected') {
+                updateData.status = 'cancelled'
             }
 
             const { error } = await supabase
@@ -106,32 +170,62 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
 
             if (error) throw error
 
-            // If completed, also activate the new contract
-            if (newStatus === 'completed' && linkedContract) {
-                await supabase
-                    .from('contracts')
-                    .update({ status: 'active' })
-                    .eq('id', linkedContract.id)
-            }
-
-            // If rejected, cancel the new contract
-            if (newStatus === 'rejected' && linkedContract) {
-                await supabase
-                    .from('contracts')
-                    .update({ status: 'cancelled' })
-                    .eq('id', linkedContract.id)
-            }
-
             toast({
                 title: 'Estado actualizado',
-                description: `Traspaso marcado como: ${STEPS.find(s => s.key === newStatus)?.label || newStatus}`,
+                description: newStatus === 'completed'
+                    ? 'Traspaso completado. El contrato ha sido activado.'
+                    : newStatus === 'rejected'
+                        ? 'Traspaso rechazado. El contrato ha sido cancelado.'
+                        : `Traspaso marcado como: ${STEPS.find(s => s.key === newStatus)?.label || newStatus}`,
             })
+            setShowRejectConfirm(false)
+            setShowCompleteConfirm(false)
             onStatusChange?.()
         } catch (err) {
             const e = err as Error
             toast({ title: 'Error', description: e.message, variant: 'destructive' })
         } finally {
             setUpdating(false)
+        }
+    }
+
+    const handleExecuteApi = async () => {
+        if (!apiIntegrationId) return
+        setExecutingApi(true)
+        try {
+            const result = await submitSwitchingViaApi(
+                contract.company_id,
+                contract.id,
+                apiIntegrationId,
+                contract.tariff_version_id,
+                contract.supply_points?.cups || '',
+            )
+
+            if (result.ok) {
+                setApiSent(true)
+                // Advance to in_progress
+                await supabase
+                    .from('contracts')
+                    .update({ switching_status: 'in_progress' })
+                    .eq('id', contract.id)
+
+                toast({
+                    title: 'Traspaso enviado via API',
+                    description: `Referencia: ${result.switchingRef || 'pendiente'}`,
+                })
+                onStatusChange?.()
+            } else {
+                toast({
+                    title: 'Error al enviar via API',
+                    description: result.error || 'Error desconocido',
+                    variant: 'destructive',
+                })
+            }
+        } catch (err) {
+            const e = err as Error
+            toast({ title: 'Error', description: e.message, variant: 'destructive' })
+        } finally {
+            setExecutingApi(false)
         }
     }
 
@@ -163,8 +257,19 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                         <ArrowRightLeft size={15} color="#fff" />
                     </div>
                     <div>
-                        <div className="text-sm font-semibold" style={{ color: '#0f172a' }}>
+                        <div className="text-sm font-semibold flex items-center gap-2" style={{ color: '#0f172a' }}>
                             Traspaso de Comercializadora
+                            <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                style={{
+                                    background: isApiAvailable ? '#dbeafe' : '#fef9c3',
+                                    color: isApiAvailable ? '#1e40af' : '#854d0e',
+                                    border: `1px solid ${isApiAvailable ? '#bfdbfe' : '#fef08a'}`,
+                                }}
+                            >
+                                {isApiAvailable ? <Wifi size={9} /> : <WifiOff size={9} />}
+                                {isApiAvailable ? 'API' : 'Manual'}
+                            </span>
                         </div>
                         <div className="text-xs" style={{ color: '#64748b' }}>
                             {contract.switching_requested_at
@@ -174,7 +279,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                     </div>
                 </div>
 
-                {/* Current status badge */}
                 <div
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                     style={{ background: '#fff', border: `1px solid ${colors.border}`, color: colors.text }}
@@ -184,8 +288,80 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                 </div>
             </div>
 
+            {/* Bono Social Warning (RD 897/2017) */}
+            {hasBonaSocial && !isCompleted && !isRejected && (
+                <div
+                    className="mx-5 mt-4 rounded-lg p-3 flex items-start gap-2.5"
+                    style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+                >
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" color="#dc2626" />
+                    <div className="text-xs" style={{ color: '#991b1b' }}>
+                        <span className="font-semibold">Bono Social detectado (RD 897/2017):</span> Este punto de suministro
+                        tiene Bono Social activo. El cambio de comercializador puede provocar la perdida del bono.
+                        Verifica con el cliente antes de continuar.
+                    </div>
+                </div>
+            )}
+
+            {/* 21-Day Deadline Alert (RD 1011/2009) */}
+            {!isCompleted && !isRejected && deadlineAt && (
+                <div
+                    className="mx-5 mt-4 rounded-lg p-3 flex items-center justify-between"
+                    style={{
+                        background: isDeadlineExpired ? '#fef2f2' : isDeadlineClose ? '#fffbeb' : '#f0fdf4',
+                        border: `1px solid ${isDeadlineExpired ? '#fecaca' : isDeadlineClose ? '#fef08a' : '#bbf7d0'}`,
+                    }}
+                >
+                    <div className="flex items-center gap-2">
+                        <Clock
+                            size={14}
+                            color={isDeadlineExpired ? '#dc2626' : isDeadlineClose ? '#d97706' : '#15803d'}
+                        />
+                        <div className="text-xs" style={{
+                            color: isDeadlineExpired ? '#991b1b' : isDeadlineClose ? '#92400e' : '#14532d'
+                        }}>
+                            <span className="font-semibold">Plazo legal (RD 1011/2009): </span>
+                            {isDeadlineExpired
+                                ? `Vencido hace ${Math.abs(daysRemaining!)} dias — el traspaso excede el plazo maximo de ${SWITCHING_MAX_DAYS} dias`
+                                : `${daysRemaining} dias restantes de ${SWITCHING_MAX_DAYS} — Limite: ${deadlineAt.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                            }
+                        </div>
+                    </div>
+                    {isDeadlineExpired && (
+                        <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded"
+                            style={{ background: '#dc2626', color: '#fff' }}
+                        >
+                            VENCIDO
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {/* Switching summary: FROM → TO */}
+            <div className="px-5 py-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Building2 size={14} className="shrink-0" style={{ color: '#991b1b' }} />
+                        <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase" style={{ color: '#991b1b' }}>Desde</div>
+                            <div className="text-sm font-medium truncate" style={{ color: '#0f172a' }}>{originSupplier}</div>
+                        </div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: '#2563eb' }} className="shrink-0" />
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Building2 size={14} className="shrink-0" style={{ color: '#15803d' }} />
+                        <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase" style={{ color: '#15803d' }}>Hacia</div>
+                            <div className="text-sm font-medium truncate" style={{ color: '#0f172a' }}>{destinationSupplier}</div>
+                            <div className="text-xs truncate" style={{ color: '#64748b' }}>{destinationTariff}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Timeline */}
-            <div className="px-5 py-5">
+            <div className="px-5 pb-4">
                 <div className="flex items-start gap-0">
                     {STEPS.map((step, i) => {
                         const isActive = step.key === status
@@ -196,7 +372,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
 
                         return (
                             <div key={step.key} className="flex items-start flex-1 min-w-0">
-                                {/* Step node */}
                                 <div className="flex flex-col items-center" style={{ width: 40 }}>
                                     <div
                                         className="flex items-center justify-center rounded-full transition-all"
@@ -241,7 +416,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                                     </div>
                                 </div>
 
-                                {/* Connector line */}
                                 {i < STEPS.length - 1 && (
                                     <div
                                         className="flex-1 mt-3.5"
@@ -250,8 +424,8 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                                             background: isPast
                                                 ? 'linear-gradient(90deg, #10b981, #10b981)'
                                                 : isActive
-                                                ? `linear-gradient(90deg, ${stepColors.dot}, #e2e8f0)`
-                                                : '#e2e8f0',
+                                                    ? `linear-gradient(90deg, ${stepColors.dot}, #e2e8f0)`
+                                                    : '#e2e8f0',
                                             borderRadius: 1,
                                             minWidth: 20,
                                         }}
@@ -261,16 +435,13 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                         )
                     })}
 
-                    {/* Rejected overlay */}
                     {isRejected && (
                         <div className="flex flex-col items-center ml-2" style={{ width: 40 }}>
                             <div
                                 className="flex items-center justify-center rounded-full"
                                 style={{
-                                    width: 36,
-                                    height: 36,
-                                    background: '#fee2e2',
-                                    border: '2px solid #ef4444',
+                                    width: 36, height: 36,
+                                    background: '#fee2e2', border: '2px solid #ef4444',
                                     boxShadow: '0 0 0 4px rgba(239,68,68,0.08)',
                                 }}
                             >
@@ -285,52 +456,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                 </div>
             </div>
 
-            {/* Linked contract info */}
-            {linkedContract && (
-                <div
-                    className="mx-5 mb-4 rounded-xl p-3.5 flex items-center justify-between"
-                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <Building2 size={14} style={{ color: '#64748b' }} />
-                            <div>
-                                <div className="text-xs" style={{ color: '#94a3b8' }}>Nuevo contrato</div>
-                                <div className="text-sm font-semibold" style={{ color: '#0f172a' }}>
-                                    {linkedContract.tariff_versions?.suppliers?.name || linkedContract.tariff_versions?.supplier_name || '—'}
-                                </div>
-                            </div>
-                        </div>
-                        <ChevronRight size={14} style={{ color: '#cbd5e1' }} />
-                        <div className="flex items-center gap-2">
-                            <FileText size={14} style={{ color: '#64748b' }} />
-                            <div>
-                                <div className="text-xs" style={{ color: '#94a3b8' }}>Tarifa</div>
-                                <div className="text-sm font-medium" style={{ color: '#0f172a' }}>
-                                    {linkedContract.tariff_versions?.tariff_name || '—'}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <Link
-                        to={`/contracts/${linkedContract.id}/view`}
-                        className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors"
-                        style={{ color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe' }}
-                    >
-                        <ExternalLink size={12} />
-                        Ver contrato
-                    </Link>
-                </div>
-            )}
-
-            {/* Estimated activation date */}
-            {contract.estimated_activation_date && (
-                <div className="mx-5 mb-4 flex items-center gap-2 text-xs" style={{ color: '#64748b' }}>
-                    <Clock size={12} />
-                    Activacion estimada: {new Date(contract.estimated_activation_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </div>
-            )}
-
             {/* Switching notes */}
             {contract.switching_notes && (
                 <div
@@ -341,17 +466,161 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                 </div>
             )}
 
+            {/* Completed info */}
+            {isCompleted && contract.switching_completed_at && (
+                <div className="mx-5 mb-4 flex items-center gap-2 text-xs" style={{ color: '#15803d' }}>
+                    <CheckCircle2 size={12} />
+                    Completado el {new Date(contract.switching_completed_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+            )}
+
+            {/* Manual switching reminder */}
+            {!isApiAvailable && !isRejected && !isCompleted && (
+                <div
+                    className="mx-5 mb-4 rounded-lg p-3 flex items-start gap-2.5"
+                    style={{ background: '#fefce8', border: '1px solid #fef08a' }}
+                >
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" color="#a16207" />
+                    <div className="text-xs" style={{ color: '#854d0e' }}>
+                        <span className="font-semibold">Traspaso manual:</span> Contacta con {destinationSupplier} y
+                        envia la documentacion. Cuando el cambio este confirmado, marca como completado.
+                    </div>
+                </div>
+            )}
+
+            {/* API: Execute button (only when requested, not yet sent) */}
+            {isApiAvailable && status === 'requested' && !apiSent && isAdmin && (
+                <div
+                    className="mx-5 mb-4 rounded-lg p-3.5 flex items-center justify-between"
+                    style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}
+                >
+                    <div className="flex items-center gap-2">
+                        <Wifi size={14} color="#2563eb" />
+                        <div>
+                            <div className="text-xs font-semibold" style={{ color: '#1e40af' }}>
+                                Traspaso via API listo
+                            </div>
+                            <div className="text-[11px]" style={{ color: '#3b82f6' }}>
+                                Pulsa para enviar la solicitud a {destinationSupplier}
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleExecuteApi}
+                        disabled={executingApi}
+                        className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{
+                            background: '#2563eb',
+                            color: '#fff',
+                            cursor: executingApi ? 'not-allowed' : 'pointer',
+                            opacity: executingApi ? 0.7 : 1,
+                            boxShadow: '0 1px 4px rgba(37,99,235,0.25)',
+                        }}
+                    >
+                        {executingApi ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                        Ejecutar Traspaso
+                    </button>
+                </div>
+            )}
+
+            {/* Complete confirmation */}
+            {showCompleteConfirm && (
+                <div
+                    className="mx-5 mb-4 rounded-lg p-4 space-y-3"
+                    style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
+                >
+                    <div className="flex items-start gap-2">
+                        <CheckCircle2 size={16} color="#15803d" className="shrink-0 mt-0.5" />
+                        <div>
+                            <div className="text-sm font-semibold" style={{ color: '#14532d' }}>
+                                Confirmar traspaso completado
+                            </div>
+                            <div className="text-xs mt-1" style={{ color: '#166534' }}>
+                                El contrato se activara con fecha de hoy.
+                                Confirma que el suministro esta activo con {destinationSupplier}.
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                        <button
+                            onClick={() => setShowCompleteConfirm(false)}
+                            className="h-7 px-3 rounded-md text-xs font-medium"
+                            style={{ border: '1px solid #e2e8f0', color: '#64748b', background: '#fff' }}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={() => advanceStatus('completed')}
+                            disabled={updating}
+                            className="h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5"
+                            style={{
+                                background: '#15803d',
+                                color: '#fff',
+                                cursor: updating ? 'not-allowed' : 'pointer',
+                                opacity: updating ? 0.7 : 1,
+                            }}
+                        >
+                            {updating ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                            Confirmar Completado
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Reject confirmation */}
+            {showRejectConfirm && (
+                <div
+                    className="mx-5 mb-4 rounded-lg p-4 space-y-3"
+                    style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+                >
+                    <div className="flex items-start gap-2">
+                        <XCircle size={16} color="#dc2626" className="shrink-0 mt-0.5" />
+                        <div>
+                            <div className="text-sm font-semibold" style={{ color: '#991b1b' }}>
+                                Confirmar rechazo del traspaso
+                            </div>
+                            <div className="text-xs mt-1" style={{ color: '#b91c1c' }}>
+                                El contrato se cancelara. Esta accion no se puede deshacer.
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                        <button
+                            onClick={() => setShowRejectConfirm(false)}
+                            className="h-7 px-3 rounded-md text-xs font-medium"
+                            style={{ border: '1px solid #e2e8f0', color: '#64748b', background: '#fff' }}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={() => advanceStatus('rejected')}
+                            disabled={updating}
+                            className="h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5"
+                            style={{
+                                background: '#dc2626',
+                                color: '#fff',
+                                cursor: updating ? 'not-allowed' : 'pointer',
+                                opacity: updating ? 0.7 : 1,
+                            }}
+                        >
+                            {updating ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                            Confirmar Rechazo
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Admin actions */}
-            {isAdmin && !isRejected && status !== 'completed' && (
+            {isAdmin && !isRejected && !isCompleted && !showRejectConfirm && !showCompleteConfirm && (
                 <div
                     className="px-5 py-3.5 flex items-center justify-between"
                     style={{ borderTop: '1px solid #f1f5f9', background: '#fafbfc' }}
                 >
                     <span className="text-xs" style={{ color: '#94a3b8' }}>
-                        Acciones de administracion
+                        Acciones
                     </span>
                     <div className="flex items-center gap-2">
-                        {nextStatus() && (
+                        {nextStatus() && nextStatus() !== 'completed' && (
                             <button
                                 onClick={() => advanceStatus(nextStatus()!)}
                                 disabled={updating}
@@ -368,8 +637,24 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                                 Avanzar a {STEPS.find(s => s.key === nextStatus())?.label}
                             </button>
                         )}
+                        {nextStatus() === 'completed' && (
+                            <button
+                                onClick={() => setShowCompleteConfirm(true)}
+                                disabled={updating}
+                                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-all"
+                                style={{
+                                    background: '#15803d',
+                                    color: '#fff',
+                                    cursor: updating ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 1px 4px rgba(21,128,61,0.25)',
+                                }}
+                            >
+                                <CheckCircle2 size={13} />
+                                Confirmar Completado
+                            </button>
+                        )}
                         <button
-                            onClick={() => advanceStatus('rejected')}
+                            onClick={() => setShowRejectConfirm(true)}
                             disabled={updating}
                             className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all"
                             style={{

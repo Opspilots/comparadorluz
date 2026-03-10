@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Plug } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plug, Database, Zap } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import type { IntegrationProvider } from '@/shared/types'
-import { useAvailableProviders, useMyIntegrations } from '../lib/useIntegrations'
+import { useAvailableProviders, useMyIntegrations, useMarketPrices } from '../lib/useIntegrations'
 import { IntegrationCard } from '../components/IntegrationCard'
 import { IntegrationSetupModal } from '../components/IntegrationSetupModal'
 import { IntegrationEventLog } from '../components/IntegrationEventLog'
+import { MarketPriceWidget } from '../components/MarketPriceWidget'
 
 function CardSkeleton() {
     return (
@@ -23,16 +24,35 @@ function CardSkeleton() {
     )
 }
 
+interface SectionProps {
+    title: string
+    subtitle: string
+    icon: React.ReactNode
+    children: React.ReactNode
+}
+
+function Section({ title, subtitle, icon, children }: SectionProps) {
+    return (
+        <section className="mb-10">
+            <div className="flex items-center gap-2 mb-1">
+                {icon}
+                <h2 className="text-base font-semibold text-slate-800">{title}</h2>
+            </div>
+            <p className="text-slate-500 text-sm mb-4">{subtitle}</p>
+            {children}
+        </section>
+    )
+}
+
 export function IntegrationsPage() {
     const [companyId, setCompanyId] = useState<string>('')
     const [selectedProvider, setSelectedProvider] = useState<IntegrationProvider | null>(null)
 
     const { data: providers, isLoading: providersLoading } = useAvailableProviders()
     const { data: myIntegrations, isLoading: integrationsLoading } = useMyIntegrations(companyId)
+    const { data: marketPrices } = useMarketPrices('pvpc')
 
     useEffect(() => {
-        // Use the existing SECURITY DEFINER RPC function to avoid RLS issues
-        // on the users table when fetching company_id
         supabase.rpc('get_auth_company_id').then(({ data, error }) => {
             if (!error && data) setCompanyId(data as string)
         })
@@ -40,10 +60,19 @@ export function IntegrationsPage() {
 
     const isLoading = providersLoading || integrationsLoading || !companyId
 
-    // Build a lookup: provider_id → Integration
+    // Build a lookup: provider_id -> Integration
     const integrationByProvider = Object.fromEntries(
         (myIntegrations ?? []).map((i) => [i.provider_id, i])
     )
+
+    // Group providers by integration_mode
+    const grouped = useMemo(() => {
+        const all = providers ?? []
+        return {
+            api: all.filter((p) => p.integration_mode === 'api'),
+            data_platform: all.filter((p) => p.integration_mode === 'data_platform'),
+        }
+    }, [providers])
 
     const connectedCount = (myIntegrations ?? []).filter(
         (i) => i.status === 'active' || i.status === 'connecting'
@@ -60,30 +89,73 @@ export function IntegrationsPage() {
                     </h1>
                 </div>
                 <p className="text-slate-500 text-sm">
-                    Conecta tu CRM con las comercializadoras con las que trabajas
+                    Conecta tu CRM con APIs de energia, plataformas de datos y comercializadoras
                 </p>
 
                 {!isLoading && connectedCount > 0 && (
                     <p className="mt-2 text-xs text-emerald-600 font-medium">
-                        {connectedCount} integración{connectedCount !== 1 ? 'es' : ''} activa{connectedCount !== 1 ? 's' : ''}
+                        {connectedCount} integracion{connectedCount !== 1 ? 'es' : ''} activa{connectedCount !== 1 ? 's' : ''}
                     </p>
                 )}
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-                {isLoading
-                    ? [...Array(6)].map((_, i) => <CardSkeleton key={i} />)
-                    : (providers ?? []).map((provider) => (
-                        <IntegrationCard
-                            key={provider.id}
-                            provider={provider}
-                            integration={integrationByProvider[provider.id]}
-                            companyId={companyId}
-                            onConnect={setSelectedProvider}
-                        />
-                    ))}
-            </div>
+            {/* Market prices widget */}
+            {marketPrices && marketPrices.length > 0 && (
+                <div className="mb-10">
+                    <MarketPriceWidget prices={marketPrices} />
+                </div>
+            )}
+
+            {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+                    {[...Array(6)].map((_, i) => <CardSkeleton key={i} />)}
+                </div>
+            ) : (
+                <>
+                    {/* APIs section */}
+                    {grouped.api.length > 0 && (
+                        <Section
+                            title="APIs de energia"
+                            subtitle="Proveedores con API real para sincronizar tarifas y datos"
+                            icon={<Zap size={16} className="text-blue-600" />}
+                        >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {grouped.api.map((provider) => (
+                                    <IntegrationCard
+                                        key={provider.id}
+                                        provider={provider}
+                                        integration={integrationByProvider[provider.id]}
+                                        companyId={companyId}
+                                        onConnect={setSelectedProvider}
+                                    />
+                                ))}
+                            </div>
+                        </Section>
+                    )}
+
+                    {/* Data platforms section */}
+                    {grouped.data_platform.length > 0 && (
+                        <Section
+                            title="Plataformas de datos"
+                            subtitle="Fuentes de datos oficiales: consumos, precios PVPC y mercado electrico"
+                            icon={<Database size={16} className="text-violet-600" />}
+                        >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {grouped.data_platform.map((provider) => (
+                                    <IntegrationCard
+                                        key={provider.id}
+                                        provider={provider}
+                                        integration={integrationByProvider[provider.id]}
+                                        companyId={companyId}
+                                        onConnect={setSelectedProvider}
+                                    />
+                                ))}
+                            </div>
+                        </Section>
+                    )}
+
+                </>
+            )}
 
             {/* Event log section */}
             <section>
@@ -92,7 +164,7 @@ export function IntegrationsPage() {
                         Historial de eventos
                     </h2>
                     <p className="text-slate-500 text-sm">
-                        Últimos webhooks recibidos de las comercializadoras. Se actualiza cada 30 segundos.
+                        Ultimos webhooks y sincronizaciones. Se actualiza cada 30 segundos.
                     </p>
                 </div>
                 {companyId && <IntegrationEventLog companyId={companyId} />}

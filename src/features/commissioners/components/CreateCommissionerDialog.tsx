@@ -35,7 +35,7 @@ export function CreateCommissionerDialog({ isOpen, onClose, onSuccess }: CreateC
             setCommissionPct('')
             resetStates()
         }
-    }, [isOpen])
+    }, [isOpen, resetStates])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

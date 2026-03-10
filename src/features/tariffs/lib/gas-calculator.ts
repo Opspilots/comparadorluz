@@ -22,12 +22,12 @@ export function calculateGasAnnualCost(input: CalculationInput): CalculationResu
     const today = new Date().toISOString().split('T')[0];
 
     // 1. Fixed Term (Término Fijo)
-    const fixedFeeRate = findActiveRate(rates as any, 'fixed_fee', undefined, today, tariff_version.contract_duration);
+    const fixedFeeRate = findActiveRate(rates, 'fixed_fee', undefined, today, tariff_version.contract_duration);
     const fixedFeeMonthly = fixedFeeRate?.price || 0;
     const fixedFeeAnnual = round(fixedFeeMonthly * 12);
 
     // 2. Variable Term (Término Variable)
-    const energyRate = findActiveRate(rates as any, 'energy', undefined, today, tariff_version.contract_duration);
+    const energyRate = findActiveRate(rates, 'energy', undefined, today, tariff_version.contract_duration);
     const energyPrice = energyRate?.price || 0;
     const energyCostAnnual = round(annual_consumption_kwh * energyPrice);
 

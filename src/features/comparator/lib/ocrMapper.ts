@@ -1,33 +1,35 @@
 import { normalizeNumber } from '@/shared/lib/utils';
 
 
+type OcrValue = string | number | null | undefined;
+
 interface OcrData {
-    customer_name?: any;
-    cif?: any;
-    supply_type?: any;
-    atrr?: any;
-    tariff_type?: any;
-    annual_consumption?: any;
-    contracted_power?: any;
-    cups?: any;
-    current_cost?: any;
-    power_p1?: any;
-    power_p2?: any;
-    power_p3?: any;
-    power_p4?: any;
-    power_p5?: any;
-    power_p6?: any;
-    p1_consumption_pct?: any;
-    p2_consumption_pct?: any;
-    p3_consumption_pct?: any;
-    p4_consumption_pct?: any;
-    p5_consumption_pct?: any;
-    p6_consumption_pct?: any;
-    current_supplier?: any;
-    conversion_factor?: any;
-    billing_days?: any;
-    billing_consumption_kwh?: any;
-    [key: string]: any;
+    customer_name?: OcrValue;
+    cif?: OcrValue;
+    supply_type?: OcrValue;
+    atrr?: OcrValue;
+    tariff_type?: OcrValue;
+    annual_consumption?: OcrValue;
+    contracted_power?: OcrValue;
+    cups?: OcrValue;
+    current_cost?: OcrValue;
+    power_p1?: OcrValue;
+    power_p2?: OcrValue;
+    power_p3?: OcrValue;
+    power_p4?: OcrValue;
+    power_p5?: OcrValue;
+    power_p6?: OcrValue;
+    p1_consumption_pct?: OcrValue;
+    p2_consumption_pct?: OcrValue;
+    p3_consumption_pct?: OcrValue;
+    p4_consumption_pct?: OcrValue;
+    p5_consumption_pct?: OcrValue;
+    p6_consumption_pct?: OcrValue;
+    current_supplier?: OcrValue;
+    conversion_factor?: OcrValue;
+    billing_days?: OcrValue;
+    billing_consumption_kwh?: OcrValue;
+    [key: string]: OcrValue;
 }
 
 export interface MappedOcrData {
@@ -55,14 +57,14 @@ export interface MappedOcrData {
     currentSupplier?: string;
 }
 
-function flattenObject(ob: any): any {
-    var toReturn: any = {};
-    for (var i in ob) {
-        if (!ob.hasOwnProperty(i)) continue;
+function flattenObject(ob: Record<string, OcrValue | Record<string, OcrValue>>): Record<string, OcrValue> {
+    const toReturn: Record<string, OcrValue> = {};
+    for (const i in ob) {
+        if (!Object.prototype.hasOwnProperty.call(ob, i)) continue;
         if ((typeof ob[i]) == 'object' && ob[i] !== null) {
-            var flatObject = flattenObject(ob[i]);
-            for (var x in flatObject) {
-                if (!flatObject.hasOwnProperty(x)) continue;
+            const flatObject = flattenObject(ob[i] as Record<string, OcrValue>);
+            for (const x in flatObject) {
+                if (!Object.prototype.hasOwnProperty.call(flatObject, x)) continue;
                 toReturn[x] = flatObject[x];
             }
         } else {
@@ -72,7 +74,7 @@ function flattenObject(ob: any): any {
     return toReturn;
 }
 
-function processRawData(rawData: any): OcrData {
+function processRawData(rawData: unknown): OcrData {
     if (!rawData) return {};
 
     let parsedData = rawData;
@@ -86,12 +88,12 @@ function processRawData(rawData: any): OcrData {
 
     let data = Array.isArray(parsedData) ? parsedData[0] : parsedData;
     if (data && typeof data === 'object') {
-        data = flattenObject(data);
+        data = flattenObject(data as Record<string, OcrValue>);
     }
-    return data || {};
+    return (data as OcrData) || {};
 }
 
-export function mapOcrData(rawData: any, suppliers: { id: string, name: string }[]): MappedOcrData {
+export function mapOcrData(rawData: unknown, suppliers: { id: string, name: string }[]): MappedOcrData {
     const data = processRawData(rawData);
     const updates: MappedOcrData = {};
 

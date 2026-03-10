@@ -19,8 +19,8 @@ export function GasTariffTable({ tariffs, selectedIds, onSelectionChange, viewDa
         const rates = tariff.tariff_rates || [];
         const itemType = type === 'fixed' ? 'fixed_fee' : 'energy';
         // For gas tariffs, we always check P1 if no specific period is found
-        const active = findActiveRate(rates as any, itemType, 'P1', viewDate, tariff.contract_duration) ||
-            findActiveRate(rates as any, itemType, undefined, viewDate, tariff.contract_duration);
+        const active = findActiveRate(rates, itemType, 'P1', viewDate, tariff.contract_duration) ||
+            findActiveRate(rates, itemType, undefined, viewDate, tariff.contract_duration);
 
         if (active && active.price != null) {
             return type === 'fixed' ? `${active.price.toFixed(2)} €` : `${active.price.toFixed(6)} €`;
@@ -117,7 +117,7 @@ export function GasTariffTable({ tariffs, selectedIds, onSelectionChange, viewDa
                                     <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111827' }}>
                                         {getFormattedPrice(tariff, 'fixed')}
                                     </span>
-                                    {hasRateHistory(tariff.tariff_rates || [] as any, 'fixed_fee', undefined, tariff.contract_duration) && (
+                                    {hasRateHistory(tariff.tariff_rates || [], 'fixed_fee', undefined, tariff.contract_duration) && (
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -136,7 +136,7 @@ export function GasTariffTable({ tariffs, selectedIds, onSelectionChange, viewDa
                                     <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111827' }}>
                                         {getFormattedPrice(tariff, 'variable')}
                                     </span>
-                                    {hasRateHistory(tariff.tariff_rates || [] as any, 'energy', undefined, tariff.contract_duration) && (
+                                    {hasRateHistory(tariff.tariff_rates || [], 'energy', undefined, tariff.contract_duration) && (
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();

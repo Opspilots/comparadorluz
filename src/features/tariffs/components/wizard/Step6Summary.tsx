@@ -46,7 +46,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
         setSaving(true);
         try {
             // Helper to prevent e.g '2026-02-29' crashing Supabase inserts
-            const sanitizeDate = (d: any) => {
+            const sanitizeDate = (d: string | null | undefined) => {
                 if (!d) return null;
                 const dateObj = new Date(d);
                 return isNaN(dateObj.getTime()) ? null : d;
@@ -71,7 +71,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 tariff_type: selectedStructure?.code || '2.0TD',
                 is_indexed: data.metadata.is_indexed,
                 valid_from: sanitizeDate(data.metadata.valid_from),
-                valid_to: sanitizeDate((data.metadata as any).valid_to),
+                valid_to: sanitizeDate((data.metadata as Record<string, unknown>).valid_to as string | null | undefined),
                 contract_duration: data.metadata.contract_duration,
                 is_active: activate,
                 completion_status: isComplete ? 'complete' : 'draft'

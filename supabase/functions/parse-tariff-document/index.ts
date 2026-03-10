@@ -1,5 +1,5 @@
-// @ts-ignore
-declare const Deno: any;
+// @ts-expect-error Deno global not available in TS context
+declare const Deno: { serve: (handler: (req: Request) => Promise<Response>) => void; env: { get: (key: string) => string | undefined } };
 
 import { encode } from "std/encoding/base64.ts";
 
@@ -59,11 +59,6 @@ function extractSupplierFromTariffName(tariffName: string): string | null {
     return null;
 }
 
-// Valid tariff structures in the Spanish energy market
-const VALID_STRUCTURES = new Set([
-    '2.0TD', '3.0TD', '6.1TD', '6.2TD', '6.3TD', '6.4TD',
-    'RL.1', 'RL.2', 'RL.3', 'RL.4',
-]);
 
 const SUPPLY_TYPES = new Set(['electricity', 'gas']);
 
@@ -660,7 +655,7 @@ Deno.serve(async (req: Request) => {
         let response: Response | undefined;
         let retries = 0;
         const maxRetries = 1; // 2 total attempts max (120s each fits in Supabase's limit)
-        let model = 'gemini-2.5-flash';
+        const model = 'gemini-2.5-flash';
 
         while (retries <= maxRetries) {
             try {

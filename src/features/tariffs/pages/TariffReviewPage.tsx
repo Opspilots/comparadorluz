@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
-import { TariffBatch } from '@/shared/types';
+import { TariffBatch, TariffVersion, TariffRate } from '@/shared/types';
 import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TariffComponentsEditor } from '../components/TariffComponentsEditor';
@@ -37,7 +37,7 @@ export default function TariffReviewPage() {
                 .select('*, tariff_rates(*)')
                 .eq('batch_id', batchId);
             if (error) throw error;
-            return data as any[];
+            return data as (TariffVersion & { tariff_rates: TariffRate[] })[];
         },
         enabled: !!batchId
     });

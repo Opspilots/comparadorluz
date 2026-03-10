@@ -7,9 +7,10 @@ import { CommissionRulesTab } from '../components/CommissionRulesTab'
 import { CommissionerPerformanceTab } from '../components/CommissionerPerformanceTab'
 import { CommissionerContractsTab } from '../components/CommissionerContractsTab'
 import { CommissionerPayoutsTab } from '../components/CommissionerPayoutsTab'
-import { ArrowLeft, Settings, FileText, Wallet, Mail, TrendingUp } from 'lucide-react'
+import { AgentTrainingTab } from '../components/AgentTrainingTab'
+import { ArrowLeft, Settings, FileText, Wallet, Mail, TrendingUp, GraduationCap } from 'lucide-react'
 
-type Tab = 'performance' | 'rules' | 'contracts' | 'payouts'
+type Tab = 'performance' | 'rules' | 'contracts' | 'payouts' | 'training'
 
 export function CommissionerDetailPage() {
     const { id } = useParams<{ id: string }>()
@@ -45,6 +46,7 @@ export function CommissionerDetailPage() {
         { id: 'rules', label: 'Reglas de Comisión', icon: Settings },
         { id: 'contracts', label: 'Contratos', icon: FileText },
         { id: 'payouts', label: 'Liquidaciones', icon: Wallet },
+        { id: 'training', label: 'Formacion', icon: GraduationCap },
     ]
 
     if (loading) {
@@ -179,6 +181,10 @@ export function CommissionerDetailPage() {
 
                 {activeTab === 'payouts' && (
                     <CommissionerPayoutsTab commissionerId={commissioner.id} />
+                )}
+
+                {activeTab === 'training' && (
+                    <AgentTrainingTab commissionerId={commissioner.id} />
                 )}
             </div>
         </div>

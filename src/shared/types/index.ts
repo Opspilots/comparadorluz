@@ -93,8 +93,59 @@ export interface SupplyPoint {
     current_supplier?: string;
     current_tariff_name?: string;
     tariff_type?: string;
+    supply_type?: 'electricity' | 'gas';
+    distributor?: string;
+    point_type?: number;
+    max_demand_kw?: number;
+    has_bono_social?: boolean;
+    bono_social_verified_at?: string;
+    sips_imported_at?: string;
+    sips_data?: Record<string, unknown>;
+    contracted_power_p1_kw?: number;
+    contracted_power_p2_kw?: number;
+    contracted_power_p3_kw?: number;
+    contracted_power_p4_kw?: number;
+    contracted_power_p5_kw?: number;
+    contracted_power_p6_kw?: number;
+    last_meter_reading_date?: string;
+    meter_type?: string;
+    voltage_level?: string;
+    connection_date?: string;
     created_at: string;
     updated_at: string;
+}
+
+// ============================================================================
+// Agent Certifications (CNMC Jan 2025)
+// ============================================================================
+
+export type CertificationType =
+    | 'cnmc_commercial_practices'
+    | 'data_protection'
+    | 'energy_market'
+    | 'switching_procedures'
+    | 'consumer_rights'
+    | 'product_knowledge'
+    | 'custom';
+
+export interface AgentCertification {
+    id: string;
+    company_id: string;
+    commissioner_id: string;
+    certification_type: CertificationType;
+    title: string;
+    description?: string;
+    issued_at: string;
+    expires_at?: string;
+    status: 'active' | 'expired' | 'revoked';
+    issuer?: string;
+    evidence_url?: string;
+    score?: number;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined
+    commissioners?: Commissioner;
 }
 
 // ============================================================================
@@ -347,6 +398,8 @@ export interface Commissioner {
     address?: string;
     commission_default_pct?: number;
     is_active: boolean;
+    training_compliant?: boolean;
+    training_checked_at?: string;
     created_at: string;
     updated_at: string;
 }
@@ -381,7 +434,13 @@ export interface Contract {
     switching_notes?: string | null;
     switching_completed_at?: string | null;
     estimated_activation_date?: string | null;
+    switching_deadline_at?: string | null;
+    switching_deadline_warning_sent?: boolean;
     notification_sent?: boolean;
+    // Origin tariff (client's current tariff when contract was created from comparison)
+    origin_supplier_name?: string | null;
+    origin_tariff_name?: string | null;
+    origin_annual_cost_eur?: number | null;
     created_at: string;
     updated_at: string;
     // Joined data
@@ -437,14 +496,19 @@ export interface ContractTemplate {
 // Integrations Domain
 // ============================================================================
 
+export type IntegrationMode = 'api' | 'data_platform'
+
 export interface IntegrationProvider {
     id: string
     slug: string
     display_name: string
     logo_url: string | null
-    auth_type: 'api_key' | 'oauth2' | 'basic_auth'
+    auth_type: 'api_key' | 'oauth2' | 'basic_auth' | 'none'
     capabilities: Array<'quote' | 'contract_submit' | 'switching' | 'status_check' | 'consumption'>
+    integration_mode: IntegrationMode
     docs_url: string | null
+    portal_url: string | null
+    description: string | null
     is_active: boolean
     created_at: string
 }
@@ -481,6 +545,155 @@ export interface IntegrationEvent {
     processed_at: string | null
     error: string | null
     received_at: string
+}
+
+// ============================================================================
+// Consumption & Market Data
+// ============================================================================
+
+export interface ConsumptionData {
+    id: string
+    company_id: string
+    cups: string
+    date: string
+    hour: number | null
+    consumption_kwh: number
+    source: string
+    period: string | null
+    method: string | null
+    created_at: string
+}
+
+export interface MarketPrice {
+    id: string
+    price_date: string
+    hour: number
+    price_type: string
+    price_eur_mwh: number
+    geo_id: string
+    source: string
+    indicator_id: number | null
+    created_at: string
+}
+
+// ============================================================================
+// Regulatory Compliance (RGPD, LOPD-GDD, RD 88/2026)
+// ============================================================================
+
+export type ConsentType =
+    | 'data_processing'
+    | 'commercial_contact'
+    | 'switching_authorization'
+    | 'data_sharing'
+    | 'marketing';
+
+export type ConsentMethod = 'written' | 'digital' | 'verbal_recorded' | 'checkbox';
+
+export interface CustomerConsent {
+    id: string;
+    company_id: string;
+    customer_id: string;
+    consent_type: ConsentType;
+    granted: boolean;
+    granted_at?: string;
+    revoked_at?: string;
+    granted_by?: string;
+    method?: ConsentMethod;
+    evidence_url?: string;
+    ip_address?: string;
+    notes?: string;
+    expires_at?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export type DataSubjectRequestType =
+    | 'access'
+    | 'rectification'
+    | 'erasure'
+    | 'restriction'
+    | 'portability'
+    | 'objection';
+
+export type DataSubjectRequestStatus =
+    | 'pending'
+    | 'in_progress'
+    | 'completed'
+    | 'rejected'
+    | 'extended';
+
+export interface DataSubjectRequest {
+    id: string;
+    company_id: string;
+    customer_id?: string;
+    request_type: DataSubjectRequestType;
+    requester_name: string;
+    requester_email?: string;
+    requester_nif?: string;
+    status: DataSubjectRequestStatus;
+    description?: string;
+    response_notes?: string;
+    deadline_at: string;
+    extended_deadline_at?: string;
+    completed_at?: string;
+    handled_by?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined
+    customers?: Customer;
+}
+
+export type DataCategory =
+    | 'customer_data'
+    | 'consumption_data'
+    | 'contract_data'
+    | 'comparison_data'
+    | 'message_data'
+    | 'audit_logs';
+
+export interface DataRetentionPolicy {
+    id: string;
+    company_id: string;
+    data_category: DataCategory;
+    retention_months: number;
+    legal_basis?: string;
+    auto_delete: boolean;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+// Consent Requests (digital signing flow)
+export type ConsentRequestStatus = 'sent' | 'viewed' | 'signed' | 'expired' | 'rejected';
+
+export interface ConsentRequest {
+    id: string;
+    company_id: string;
+    customer_id: string;
+    contact_id?: string;
+    consent_types: ConsentType[];
+    legal_text: string;
+    channel: 'email' | 'whatsapp';
+    recipient_contact: string;
+    message_id?: string;
+    token: string;
+    status: ConsentRequestStatus;
+    sent_at?: string;
+    viewed_at?: string;
+    signed_at?: string;
+    expired_at?: string;
+    expires_at: string;
+    signer_name?: string;
+    signer_nif?: string;
+    signer_ip?: string;
+    signature_data?: string;
+    notes?: string;
+    created_by?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined
+    customers?: Customer;
+    contacts?: { id: string; first_name: string; last_name: string; email?: string; phone?: string };
 }
 
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled';

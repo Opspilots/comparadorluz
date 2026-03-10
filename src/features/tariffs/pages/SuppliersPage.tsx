@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, ToggleLeft, ToggleRight, X, Check, Building2 } from 'lucide-react';
@@ -44,7 +44,7 @@ export default function SuppliersPage() {
     const [saving, setSaving] = useState(false);
     const { toast } = useToast();
 
-    const fetchSuppliers = async () => {
+    const fetchSuppliers = useCallback(async () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('suppliers')
@@ -56,9 +56,9 @@ export default function SuppliersPage() {
             setSuppliers(data || []);
         }
         setLoading(false);
-    };
+    }, [toast]);
 
-    useEffect(() => { fetchSuppliers(); }, []);
+    useEffect(() => { fetchSuppliers(); }, [fetchSuppliers]);
 
     const openCreate = () => {
         setEditing(null);

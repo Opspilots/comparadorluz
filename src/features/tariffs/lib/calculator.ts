@@ -110,7 +110,7 @@ function getEnergyPrices(
         rates.filter((r: TariffRate) => r.item_type === 'energy').forEach((r: TariffRate) => {
             if (r.period) {
                 // Check if this specific rate version is active for today
-                const activeRate = findActiveRate(rates as any, 'energy', r.period, today, tariff_version.contract_duration);
+                const activeRate = findActiveRate(rates, 'energy', r.period, today, tariff_version.contract_duration);
                 if (activeRate?.id !== r.id) return;
 
                 // Simplified indicator mapping for P1-P3
@@ -130,7 +130,7 @@ function getEnergyPrices(
     if (tariff_version.is_indexed) {
         rates.filter((r: TariffRate) => r.item_type === 'energy').forEach((r: TariffRate) => {
             if (r.period) {
-                const activeRate = findActiveRate(rates as any, 'energy', r.period, today, tariff_version.contract_duration);
+                const activeRate = findActiveRate(rates, 'energy', r.period, today, tariff_version.contract_duration);
                 if (!activeRate || activeRate.id !== r.id) return;
                 // Effective price = reference base price (or 0) + margin
                 // Use r.* (typed as TariffRate from @/shared/types which includes margin)
@@ -150,7 +150,7 @@ function getEnergyPrices(
     const periods = Array.from(new Set(energyRateEntries.map(r => r.period).filter(Boolean))) as string[];
 
     periods.forEach(period => {
-        const activeRate = findActiveRate(rates as any, 'energy', period, today, tariff_version.contract_duration);
+        const activeRate = findActiveRate(rates, 'energy', period, today, tariff_version.contract_duration);
         if (activeRate && activeRate.price !== null) {
             prices.set(period, activeRate.price);
         }
@@ -170,7 +170,7 @@ function getPowerPrices(rates: TariffRate[], contractDuration: number | null): M
     const periods = Array.from(new Set(powerRateEntries.map(r => r.period).filter(Boolean))) as string[];
 
     periods.forEach(period => {
-        const activeRate = findActiveRate(rates as any, 'power', period, today, contractDuration);
+        const activeRate = findActiveRate(rates, 'power', period, today, contractDuration);
         if (activeRate && activeRate.price !== null) {
             // Normalize to annual for calculation regardless of stored unit
             let annualPrice = activeRate.price;
@@ -266,7 +266,7 @@ export function calculatePowerComponent(
  */
 export function calculateFixedFee(rates: TariffRate[], contractDuration: number | null): number {
     const today = new Date().toISOString().split('T')[0];
-    const activeRate = findActiveRate(rates as any, 'fixed_fee', undefined, today, contractDuration);
+    const activeRate = findActiveRate(rates, 'fixed_fee', undefined, today, contractDuration);
 
     if (!activeRate || !activeRate.price) {
         return 0;

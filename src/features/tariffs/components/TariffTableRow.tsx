@@ -15,7 +15,7 @@ export const TariffTableRow = ({ tariff }: TariffTableRowProps) => {
 
     // Get energy prices P1, P2, P3
     const getEnergyPrice = (period: string) => {
-        const activeRate = findActiveRate(rates as any, 'energy', period, undefined, tariff.contract_duration);
+        const activeRate = findActiveRate(rates, 'energy', period, undefined, tariff.contract_duration);
         if (activeRate && activeRate.price !== null) return activeRate.price.toFixed(4);
 
         // Fallback to tariff_components (deprecated)
@@ -23,10 +23,10 @@ export const TariffTableRow = ({ tariff }: TariffTableRowProps) => {
         return comp?.price_eur_kwh ? comp.price_eur_kwh.toFixed(4) : '-';
     };
 
-    const hasHistory = hasRateHistory(rates as any, 'energy', 'P1', tariff.contract_duration) ||
-        hasRateHistory(rates as any, 'energy', 'P2', tariff.contract_duration) ||
-        hasRateHistory(rates as any, 'energy', 'P3', tariff.contract_duration) ||
-        hasRateHistory(rates as any, 'fixed_fee', undefined, tariff.contract_duration);
+    const hasHistory = hasRateHistory(rates, 'energy', 'P1', tariff.contract_duration) ||
+        hasRateHistory(rates, 'energy', 'P2', tariff.contract_duration) ||
+        hasRateHistory(rates, 'energy', 'P3', tariff.contract_duration) ||
+        hasRateHistory(rates, 'fixed_fee', undefined, tariff.contract_duration);
 
     const statusStyle = tariff.is_active
         ? { background: '#ecfdf5', color: '#059669', border: '1px solid #d1fae5' }

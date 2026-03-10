@@ -18,24 +18,20 @@ describe('Gas Calculator', () => {
         company_id: 'test-company',
         batch_id: 'test-batch',
         supplier_name: 'Test Supplier',
-        tariff_components: [
+        tariff_rates: [
             {
-                id: 'comp-fixed',
+                id: 'rate-fixed',
                 tariff_version_id: 'test-gas-tariff',
-                company_id: 'test-company',
-                created_at: '',
-                component_type: 'fixed_fee',
-                fixed_price_eur_month: 5.0, // 5 EUR/month
-                period: 'P1',
+                item_type: 'fixed_fee',
+                price: 5.0, // 5 EUR/month
+                unit: 'EUR/month',
             },
             {
-                id: 'comp-energy',
+                id: 'rate-energy',
                 tariff_version_id: 'test-gas-tariff',
-                company_id: 'test-company',
-                created_at: '',
-                component_type: 'energy_price',
-                price_eur_kwh: 0.10, // 0.10 EUR/kWh
-                period: 'P1',
+                item_type: 'energy',
+                price: 0.10, // 0.10 EUR/kWh
+                unit: 'EUR/kWh',
             }
         ]
     };
@@ -44,7 +40,6 @@ describe('Gas Calculator', () => {
         tariff_version: mockGasTariff,
         annual_consumption_kwh: 4000, // 4000 kWh/year (RL.1 range)
         contracted_power_kw: 0, // Irrelevant for gas
-        // tariff_type: 'RL.1', // Removed per type definition
     };
 
     it('calculates fixed term correctly', () => {
@@ -63,7 +58,7 @@ describe('Gas Calculator', () => {
         const result = calculateGasAnnualCost(mockInput);
         // Tax: 4000 kWh * 0.00234 EUR/kWh = 9.36 EUR
         const expectedTax = 4000 * GAS_CONSTANTS.TAXES.HYDROCARBON;
-        expect(result.breakdown.tax_breakdown?.electricity_tax).toBeCloseTo(expectedTax, 2);
+        expect(result.breakdown.tax_breakdown?.hydrocarbon_tax).toBeCloseTo(expectedTax, 2);
     });
 
     it('calculates annual total correctly', () => {

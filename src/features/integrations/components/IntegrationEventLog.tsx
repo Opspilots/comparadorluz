@@ -5,9 +5,20 @@ import { useIntegrationEvents } from '../lib/useIntegrations'
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
     'contract.activated': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'contract.submitted': 'bg-blue-50 text-blue-700 border-blue-200',
     'contract.rejected': 'bg-red-50 text-red-700 border-red-200',
+    'contract.submit_failed': 'bg-red-50 text-red-700 border-red-200',
     'contract.pending': 'bg-amber-50 text-amber-700 border-amber-200',
     'consumption.updated': 'bg-blue-50 text-blue-700 border-blue-200',
+    'consumption.imported': 'bg-violet-50 text-violet-700 border-violet-200',
+    'supplies.fetched': 'bg-violet-50 text-violet-700 border-violet-200',
+    'max_power.fetched': 'bg-violet-50 text-violet-700 border-violet-200',
+    'tariffs.imported': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'market_prices.imported': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    'switching.requested': 'bg-amber-50 text-amber-700 border-amber-200',
+    'switching.in_progress': 'bg-blue-50 text-blue-700 border-blue-200',
+    'switching.completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'switching.rejected': 'bg-red-50 text-red-700 border-red-200',
     'status.changed': 'bg-purple-50 text-purple-700 border-purple-200',
 }
 

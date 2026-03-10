@@ -98,8 +98,8 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                         {energyPeriods.length > 0 ? energyPeriods.map(p => {
-                                            const active = findActiveRate(rates as any, 'energy', p, viewDate, tariff.contract_duration);
-                                            const history = hasRateHistory(rates as any, 'energy', p, tariff.contract_duration);
+                                            const active = findActiveRate(rates, 'energy', p, viewDate, tariff.contract_duration);
+                                            const history = hasRateHistory(rates, 'energy', p, tariff.contract_duration);
                                             return (
                                                 <div key={p} style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -130,8 +130,8 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                         {powerPeriods.length > 0 ? powerPeriods.map(p => {
-                                            const active = findActiveRate(rates as any, 'power', p, viewDate, tariff.contract_duration);
-                                            const history = hasRateHistory(rates as any, 'power', p, tariff.contract_duration);
+                                            const active = findActiveRate(rates, 'power', p, viewDate, tariff.contract_duration);
+                                            const history = hasRateHistory(rates, 'power', p, tariff.contract_duration);
                                             return (
                                                 <div key={p} style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>

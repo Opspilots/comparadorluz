@@ -1,4 +1,4 @@
-import { TariffRate } from '@/types/tariff';
+import type { TariffRate } from '@/shared/types';
 
 /**
  * Finds the active rate for a given period and date.

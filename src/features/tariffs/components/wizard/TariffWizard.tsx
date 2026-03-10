@@ -597,8 +597,8 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                                     updateMetadata('supplier_id', newSupplier.id);
                                     setUnknownSupplier(null);
                                     toast({ title: 'Comercializadora creada', description: `Se ha registrado "${unknownSupplier}" correctamente.` });
-                                } catch (err: any) {
-                                    toast({ variant: 'destructive', title: 'Error', description: err.message });
+                                } catch (err: unknown) {
+                                    toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'Error desconocido' });
                                 }
                             }}
                             style={{

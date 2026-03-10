@@ -1,8 +1,152 @@
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '@/shared/lib/supabase';
-import { Mail, Phone, MessageSquare } from 'lucide-react';
-import type { Customer, Contact, SupplyPoint, Contract } from '@/shared/types'
+import { Mail, Phone, MessageSquare, BarChart3, Download, Loader2, Database } from 'lucide-react';
+import { SipsImportDialog } from './SipsImportDialog'
+import type { Customer, Contact, SupplyPoint, Contract, Integration } from '@/shared/types'
 import { useState, useEffect } from 'react'
+import { useConsumptionData, useFetchDatadisConsumption, useMyIntegrations } from '@/features/integrations/lib/useIntegrations'
+import { ConsumptionChart } from '@/features/integrations/components/ConsumptionChart'
+
+function SupplyPointWithConsumption({ sp, companyId, datadisIntegration, onRefresh }: {
+    sp: SupplyPoint
+    companyId: string
+    datadisIntegration: Integration | undefined
+    onRefresh: () => void
+}) {
+    const [showConsumption, setShowConsumption] = useState(false)
+    const [showSips, setShowSips] = useState(false)
+    const { data: consumption, isLoading: loadingConsumption } = useConsumptionData(
+        companyId,
+        showConsumption ? sp.cups : undefined
+    )
+    const fetchConsumption = useFetchDatadisConsumption(companyId)
+
+    const handleImport = async () => {
+        if (!datadisIntegration || !sp.cups) return
+        await fetchConsumption.mutateAsync({
+            integrationId: datadisIntegration.id,
+            cups: sp.cups,
+        })
+        setShowConsumption(true)
+    }
+
+    const hasConsumption = consumption && consumption.length > 0
+
+    return (
+        <div style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)' }}>
+            <p style={{ fontWeight: 600, margin: '0 0 0.5rem 0', fontFamily: 'monospace', fontSize: '1.1rem' }}>{sp.cups || 'Sin CUPS'}</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>{sp.address}</p>
+            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-main)', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span><strong>Potencia:</strong> {sp.contracted_power_kw || '?'} kW</span>
+                <span><strong>Consumo:</strong> {sp.annual_consumption_kwh || '?'} kWh</span>
+                {sp.cups && (
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+                        {datadisIntegration?.status === 'active' && (
+                            <button
+                                onClick={handleImport}
+                                disabled={fetchConsumption.isPending}
+                                style={{
+                                    padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600,
+                                    background: '#f5f3ff', color: '#7c3aed', border: '1px solid #e9d5ff',
+                                    borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                                }}
+                            >
+                                {fetchConsumption.isPending
+                                    ? <><Loader2 size={11} className="animate-spin" /> Importando...</>
+                                    : <><Download size={11} /> Importar Datadis</>
+                                }
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setShowSips(true)}
+                            style={{
+                                padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600,
+                                background: sp.sips_imported_at ? '#dcfce7' : '#eff6ff',
+                                color: sp.sips_imported_at ? '#15803d' : '#2563eb',
+                                border: '1px solid',
+                                borderColor: sp.sips_imported_at ? '#bbf7d0' : '#bfdbfe',
+                                borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                            }}
+                        >
+                            <Database size={11} />
+                            {sp.sips_imported_at ? 'SIPS' : 'Importar SIPS'}
+                        </button>
+                        <button
+                            onClick={() => setShowConsumption(!showConsumption)}
+                            style={{
+                                padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600,
+                                background: showConsumption ? '#dbeafe' : '#f1f5f9', color: showConsumption ? '#1d4ed8' : '#475569',
+                                border: '1px solid', borderColor: showConsumption ? '#bfdbfe' : '#e2e8f0',
+                                borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
+                            }}
+                        >
+                            <BarChart3 size={11} />
+                            {showConsumption ? 'Ocultar consumos' : 'Ver consumos'}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Consumption chart */}
+            {showConsumption && sp.cups && (
+                <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                    {loadingConsumption ? (
+                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            <Loader2 size={16} className="animate-spin inline-block mr-1" /> Cargando consumos...
+                        </div>
+                    ) : hasConsumption ? (
+                        <ConsumptionChart data={consumption} cups={sp.cups} />
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            No hay datos de consumo.
+                            {datadisIntegration?.status === 'active' && ' Pulsa "Importar Datadis" para obtener datos reales.'}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Import success message */}
+            {fetchConsumption.isSuccess && (
+                <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#059669', fontWeight: 500 }}>
+                    Consumos importados correctamente
+                </p>
+            )}
+
+            {/* SIPS data summary */}
+            {sp.sips_imported_at && (
+                <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                        <Database size={12} color="#2563eb" />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2563eb' }}>Datos SIPS</span>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                            Importado: {new Date(sp.sips_imported_at).toLocaleDateString('es-ES')}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                        {sp.contracted_power_p1_kw && <span><strong>P1:</strong> {sp.contracted_power_p1_kw} kW</span>}
+                        {sp.contracted_power_p2_kw && <span><strong>P2:</strong> {sp.contracted_power_p2_kw} kW</span>}
+                        {sp.contracted_power_p3_kw && <span><strong>P3:</strong> {sp.contracted_power_p3_kw} kW</span>}
+                        {sp.contracted_power_p4_kw && <span><strong>P4:</strong> {sp.contracted_power_p4_kw} kW</span>}
+                        {sp.contracted_power_p5_kw && <span><strong>P5:</strong> {sp.contracted_power_p5_kw} kW</span>}
+                        {sp.contracted_power_p6_kw && <span><strong>P6:</strong> {sp.contracted_power_p6_kw} kW</span>}
+                        {sp.meter_type && <span><strong>Contador:</strong> {sp.meter_type}</span>}
+                        {sp.voltage_level && <span><strong>Tensión:</strong> {sp.voltage_level}</span>}
+                    </div>
+                </div>
+            )}
+
+            {/* SIPS Import Dialog */}
+            {showSips && sp.cups && (
+                <SipsImportDialog
+                    supplyPointId={sp.id}
+                    cups={sp.cups}
+                    onClose={() => setShowSips(false)}
+                    onSuccess={onRefresh}
+                />
+            )}
+        </div>
+    )
+}
 
 export function CustomerDetails() {
     const { id } = useParams<{ id: string }>()
@@ -12,10 +156,27 @@ export function CustomerDetails() {
     const [contacts, setContacts] = useState<Contact[]>([])
     const [supplyPoints, setSupplyPoints] = useState<SupplyPoint[]>([])
     const [contracts, setContracts] = useState<Contract[]>([])
+    const [companyId, setCompanyId] = useState<string | null>(null)
+
+    // Fetch company_id for integration lookups
+    useEffect(() => {
+        supabase.rpc('get_auth_company_id').then(({ data }) => {
+            if (data) setCompanyId(data as string)
+        })
+    }, [])
+
+    const { data: integrations } = useMyIntegrations(companyId || '')
+    const datadisIntegration = integrations?.find(
+        (i) => {
+            const provider = (i as unknown as Record<string, unknown>).integration_providers as { slug?: string } | undefined
+            return provider?.slug === 'datadis' && i.status === 'active'
+        }
+    )
 
     useEffect(() => {
         if (id) fetchCustomerData(id)
     }, [id])
+
 
     const fetchCustomerData = async (customerId: string) => {
         setLoading(true)
@@ -93,7 +254,7 @@ export function CustomerDetails() {
                     <div style={{ margin: 0 }}>{customer.name}</div>
                     <p style={{ color: '#666', margin: '0.5rem 0' }}>CIF: {customer.cif} | {customer.province || 'Sin provincia'}</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Link
                         to={`/admin/messages/${id}`}
                         className="btn btn-primary"
@@ -153,14 +314,13 @@ export function CustomerDetails() {
                         ) : (
                             <div style={{ display: 'grid', gap: '1rem' }}>
                                 {supplyPoints.map(sp => (
-                                    <div key={sp.id} style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)' }}>
-                                        <p style={{ fontWeight: 600, margin: '0 0 0.5rem 0', fontFamily: 'monospace', fontSize: '1.1rem' }}>{sp.cups || 'Sin CUPS'}</p>
-                                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>{sp.address}</p>
-                                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-main)' }}>
-                                            <span><strong>Potencia:</strong> {sp.contracted_power_kw || '?'} kW</span>
-                                            <span><strong>Consumo:</strong> {sp.annual_consumption_kwh || '?'} kWh</span>
-                                        </div>
-                                    </div>
+                                    <SupplyPointWithConsumption
+                                        key={sp.id}
+                                        sp={sp}
+                                        companyId={companyId || ''}
+                                        datadisIntegration={datadisIntegration}
+                                        onRefresh={() => id && fetchCustomerData(id)}
+                                    />
                                 ))}
                             </div>
                         )}

@@ -2,15 +2,52 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { rankTariffs, groupResultsByTariff } from '../lib/rankTariffs'
 import { useNavigate } from 'react-router-dom'
-import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput, GroupedComparisonResult } from '@/shared/types'
+import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput, GroupedComparisonResult, MarketPrice } from '@/shared/types'
 import { useComparatorState } from '../hooks/useComparatorState'
 import { InvoiceUploader } from './InvoiceUploader'
 import { SaveComparisonDialog } from './SaveComparisonDialog'
 import { useToast } from '@/hooks/use-toast'
 import { GAS_CONSTANTS } from '@/shared/constants'
-import { Zap, Flame } from 'lucide-react'
+import { Zap, Flame, TrendingUp, Database } from 'lucide-react'
+import { getMarketPrices, getConsumptionData } from '@/features/integrations/lib/integrations-service'
 
 import { mapOcrData } from '../lib/ocrMapper'
+
+/**
+ * Convert PVPC hourly market prices to period-averaged prices
+ * with indicator IDs matching calculator expectations (1013=P1, 1014=P2, 1015=P3)
+ */
+function marketPricesToPeriodAverages(
+    prices: MarketPrice[]
+): Array<{ indicator_id: number; price: number }> {
+    if (prices.length === 0) return []
+
+    // Group by period based on hour (2.0TD schedule)
+    const periodHours: Record<string, number[]> = {
+        P1: [], // Punta: 10-14, 18-22
+        P2: [], // Llano: 8-10, 14-18, 22-24
+        P3: [], // Valle: 0-8
+    }
+
+    for (const p of prices) {
+        const h = p.hour
+        if ((h >= 10 && h < 14) || (h >= 18 && h < 22)) {
+            periodHours.P1.push(p.price_eur_mwh)
+        } else if ((h >= 8 && h < 10) || (h >= 14 && h < 18) || (h >= 22 && h < 24)) {
+            periodHours.P2.push(p.price_eur_mwh)
+        } else {
+            periodHours.P3.push(p.price_eur_mwh)
+        }
+    }
+
+    const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
+
+    return [
+        { indicator_id: 1013, price: avg(periodHours.P1) },
+        { indicator_id: 1014, price: avg(periodHours.P2) },
+        { indicator_id: 1015, price: avg(periodHours.P3) },
+    ]
+}
 
 export function ComparatorForm() {
     const navigate = useNavigate()
@@ -24,7 +61,51 @@ export function ComparatorForm() {
     const [selectedDurations, setSelectedDurations] = useState<Record<string, number>>({})
     const [showSaveDialog, setShowSaveDialog] = useState(false)
     const [suppliers, setSuppliers] = useState<{ id: string, name: string }[]>([])
+    const [usedMarketPrices, setUsedMarketPrices] = useState(false)
+    const [consumptionFromDatadis, setConsumptionFromDatadis] = useState(false)
     const { toast } = useToast()
+
+    // Auto-fill consumption from Datadis when CUPS is entered
+    useEffect(() => {
+        const cups = state.cups?.trim()
+        if (!cups || cups.length < 20) {
+            setConsumptionFromDatadis(false)
+            return
+        }
+
+        let cancelled = false
+        const timer = setTimeout(async () => {
+            try {
+                const { data: companyData } = await supabase.rpc('get_auth_company_id')
+                if (cancelled || !companyData) return
+
+                const consumption = await getConsumptionData(companyData as string, cups, 720)
+                if (cancelled || consumption.length === 0) return
+
+                // Calculate annual estimate: daily avg * 365
+                const dailyTotals: Record<string, number> = {}
+                for (const row of consumption) {
+                    const key = row.date
+                    dailyTotals[key] = (dailyTotals[key] || 0) + row.consumption_kwh
+                }
+                const days = Object.keys(dailyTotals)
+                if (days.length === 0) return
+
+                const totalKwh = Object.values(dailyTotals).reduce((a, b) => a + b, 0)
+                const avgDaily = totalKwh / days.length
+                const annualEstimate = Math.round(avgDaily * 365)
+
+                if (!cancelled && annualEstimate > 0 && !state.consumption) {
+                    updateState({ consumption: String(annualEstimate) })
+                    setConsumptionFromDatadis(true)
+                }
+            } catch {
+                // Silently ignore — no Datadis data available
+            }
+        }, 800)
+
+        return () => { cancelled = true; clearTimeout(timer) }
+    }, [state.cups]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchSuppliers = useCallback(async () => {
         const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
@@ -185,16 +266,33 @@ export function ComparatorForm() {
 
             if (error) throw error
 
+            // Fetch current market prices for indexed tariff calculations
+            let marketPrices: Array<{ indicator_id: number; price: number }> | undefined
+            const hasIndexedTariffs = (tariffs as TariffVersion[]).some(t => t.is_indexed)
+            if (hasIndexedTariffs && inputState.supplyType === 'electricity') {
+                try {
+                    const today = new Date().toISOString().split('T')[0]
+                    const pvpcPrices = await getMarketPrices('pvpc', today, today, 24)
+                    if (pvpcPrices.length > 0) {
+                        marketPrices = marketPricesToPeriodAverages(pvpcPrices)
+                    }
+                } catch (mpErr) {
+                    console.warn('No se pudieron obtener precios de mercado, usando estimaciones:', mpErr)
+                }
+            }
+
             const results = rankTariffs(
                 tariffs as TariffVersion[],
                 inputData,
                 {
                     mode: inputState.mode,
-                    currentAnnualCostEur: inputState.currentCost ? parseFloat(inputState.currentCost) * 12 : undefined
+                    currentAnnualCostEur: inputState.currentCost ? parseFloat(inputState.currentCost) * 12 : undefined,
+                    marketPrices,
                 }
             )
 
             setResults(results)
+            setUsedMarketPrices(!!marketPrices && marketPrices.length > 0)
 
             // Group results by tariff for UI rendering
             const grouped = groupResultsByTariff(results)
@@ -353,8 +451,16 @@ export function ComparatorForm() {
 
                             {/* Row 1: Main Inputs */}
                             <div style={{ gridColumn: 'span 4' }}>
-                                <label style={labelStyleCompact}>Consumo Anual (kWh)</label>
-                                <input type="number" value={state.consumption} onChange={e => updateState({ consumption: e.target.value })} required style={inputStyleCompact} />
+                                <label style={labelStyleCompact}>
+                                    Consumo Anual (kWh)
+                                    {consumptionFromDatadis && (
+                                        <span style={{ marginLeft: 6, fontSize: '0.7rem', color: '#10b981', fontWeight: 500 }} title="Estimado desde datos reales de Datadis">
+                                            <Database size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />
+                                            Datadis
+                                        </span>
+                                    )}
+                                </label>
+                                <input type="number" value={state.consumption} onChange={e => { updateState({ consumption: e.target.value }); setConsumptionFromDatadis(false) }} required style={inputStyleCompact} />
                             </div>
 
                             {state.supplyType === 'electricity' ? (
@@ -560,9 +666,16 @@ export function ComparatorForm() {
                                                 <h3 style={{ margin: '0.2rem 0' }}>{group.tariff_name}</h3>
                                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                                                     {group.tariff_version?.is_indexed && (
-                                                        <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '700', letterSpacing: '0.04em' }}>
-                                                            INDEXADO
-                                                        </span>
+                                                        <>
+                                                            <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '700', letterSpacing: '0.04em' }}>
+                                                                INDEXADO
+                                                            </span>
+                                                            {usedMarketPrices && (
+                                                                <span style={{ fontSize: '0.7rem', background: '#ecfdf5', color: '#065f46', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                                    <TrendingUp size={10} /> Precio pool real
+                                                                </span>
+                                                            )}
+                                                        </>
                                                     )}
                                                     {group.tariff_version?.valid_from && (
                                                         <span style={{ fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
@@ -649,10 +762,16 @@ export function ComparatorForm() {
                                                 onClick={() => navigate('/contracts/new', {
                                                     state: {
                                                         prefillData: {
-                                                            customerId: state.selectedCustomer,
+                                                            customerId: state.selectedCustomer || undefined,
+                                                            customerName: state.customerName || undefined,
+                                                            customerCif: state.cif || undefined,
                                                             tariffVersionId: res.tariff_version?.id,
                                                             cups: state.cups,
-                                                            annualValue: Math.round(res.annual_cost_eur)
+                                                            annualValue: Math.round(res.annual_cost_eur),
+                                                            // Origin tariff: the client's CURRENT supplier/cost/tariff type
+                                                            originSupplierName: state.currentSupplier || undefined,
+                                                            originTariffName: state.tariffType || undefined,
+                                                            originAnnualCost: state.currentCost ? Math.round(parseFloat(state.currentCost) * 12) : undefined,
                                                         }
                                                     }
                                                 })}

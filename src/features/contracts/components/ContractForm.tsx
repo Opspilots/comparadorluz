@@ -25,43 +25,43 @@ export function ContractForm() {
     const [commercialId, setCommercialId] = useState('')
     const [tariffVersionId, setTariffVersionId] = useState('')
     const [supplyPointId, setSupplyPointId] = useState('')
-    const [manualCups, setManualCups] = useState('') // CUPS from comparator or manual input
+    const [manualCups, setManualCups] = useState('')
     const [monthlyValue, setMonthlyValue] = useState('')
     const [signedAt, setSignedAt] = useState(new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState('')
     const [status, setStatus] = useState('signed')
 
+    // Origin tariff (from comparator: client's current tariff)
+    const [originSupplierName, setOriginSupplierName] = useState('')
+    const [originTariffName, setOriginTariffName] = useState('')
+    const [originAnnualCost, setOriginAnnualCost] = useState<number | null>(null)
+
+    // Auto-register customer from OCR (when CIF not found)
+    const [pendingCustomerName, setPendingCustomerName] = useState('')
+    const [pendingCustomerCif, setPendingCustomerCif] = useState('')
+    const [showAutoRegister, setShowAutoRegister] = useState(false)
+    const [registeringCustomer, setRegisteringCustomer] = useState(false)
+
+    // Regulatory compliance
+    const [missingConsent, setMissingConsent] = useState(false)
+    const [hasBonaSocial, setHasBonaSocial] = useState(false)
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch Customers
-                const { data: custData, error: custError } = await supabase
-                    .from('customers')
-                    .select('*')
-                    .order('name')
+                const [custRes, tariffRes, commRes] = await Promise.all([
+                    supabase.from('customers').select('*').order('name'),
+                    supabase.from('tariff_versions').select('*').eq('is_active', true),
+                    supabase.from('commissioners').select('*').eq('is_active', true).order('full_name'),
+                ])
 
-                if (custError) throw custError
+                if (custRes.error) throw custRes.error
+                if (tariffRes.error) throw tariffRes.error
+                if (commRes.error) throw commRes.error
 
-                // Fetch Active Tariffs
-                const { data: tariffData, error: tariffError } = await supabase
-                    .from('tariff_versions')
-                    .select('*')
-                    .eq('is_active', true)
-
-                if (tariffError) throw tariffError
-
-                // Fetch Active Commissioners
-                const { data: commData, error: commError } = await supabase
-                    .from('commissioners')
-                    .select('*')
-                    .eq('is_active', true)
-                    .order('full_name')
-
-                if (commError) throw commError
-
-                setCustomers(custData || [])
-                setTariffs(tariffData || [])
-                setCommissioners(commData || [])
+                setCustomers(custRes.data || [])
+                setTariffs(tariffRes.data || [])
+                setCommissioners(commRes.data || [])
 
                 // Handle Edit Mode or Prefill
                 if (id) {
@@ -77,7 +77,6 @@ export function ContractForm() {
                         setCommercialId(contract.commercial_id || '')
                         setTariffVersionId(contract.tariff_version_id)
                         setSupplyPointId(contract.supply_point_id || '')
-                        // Convert stored annual to monthly for display
                         const monthly = contract.annual_value_eur ? (contract.annual_value_eur / 12).toFixed(2) : ''
                         setMonthlyValue(monthly)
                         setSignedAt(contract.signed_at || new Date().toISOString().split('T')[0])
@@ -85,11 +84,40 @@ export function ContractForm() {
                         setStatus(contract.status || 'signed')
                     }
                 } else if (location.state?.prefillData) {
-                    const { customerId, tariffVersionId, annualValue, cups } = location.state.prefillData
-                    if (customerId) setCustomerId(customerId)
-                    if (tariffVersionId) setTariffVersionId(tariffVersionId)
+                    const {
+                        customerId: prefillCustomerId,
+                        customerName: prefillName,
+                        customerCif: prefillCif,
+                        tariffVersionId: prefillTariff,
+                        annualValue,
+                        cups,
+                        originSupplierName: prefillOriginSupplier,
+                        originTariffName: prefillOriginTariff,
+                        originAnnualCost: prefillOriginCost,
+                    } = location.state.prefillData
+
+                    if (prefillTariff) setTariffVersionId(prefillTariff)
                     if (annualValue) setMonthlyValue((annualValue / 12).toFixed(2))
                     if (cups) setManualCups(cups)
+                    if (prefillOriginSupplier) setOriginSupplierName(prefillOriginSupplier)
+                    if (prefillOriginTariff) setOriginTariffName(prefillOriginTariff)
+                    if (prefillOriginCost) setOriginAnnualCost(prefillOriginCost)
+
+                    if (prefillCustomerId) {
+                        setCustomerId(prefillCustomerId)
+                    } else if (prefillCif && prefillName) {
+                        // Customer from OCR not found in DB — offer auto-registration
+                        const existingCustomer = (custRes.data || []).find(
+                            (c: Customer) => c.cif === prefillCif
+                        )
+                        if (existingCustomer) {
+                            setCustomerId(existingCustomer.id)
+                        } else {
+                            setPendingCustomerName(prefillName)
+                            setPendingCustomerCif(prefillCif)
+                            setShowAutoRegister(true)
+                        }
+                    }
                 }
 
             } catch (err) {
@@ -101,11 +129,13 @@ export function ContractForm() {
         fetchData()
     }, [location.state, id])
 
-    // Load supply points when customer changes, auto-select if CUPS matches
+    // Load supply points when customer changes
     const loadSupplyPoints = useCallback(async (custId: string) => {
         if (!custId) {
             setSupplyPoints([])
             setSupplyPointId('')
+            setMissingConsent(false)
+            setHasBonaSocial(false)
             return
         }
         const { data, error } = await supabase
@@ -115,17 +145,89 @@ export function ContractForm() {
             .order('created_at')
         if (!error) {
             setSupplyPoints(data || [])
-            // If we have a manual CUPS, try to auto-select the matching supply point
             if (manualCups && data) {
                 const match = data.find(sp => sp.cups === manualCups)
                 if (match) setSupplyPointId(match.id)
             }
+            // Check Bono Social (RD 897/2017)
+            const bonaSocial = (data || []).some(sp => sp.has_bono_social)
+            setHasBonaSocial(bonaSocial)
         }
+
+        // Check consent (RGPD Art.7 + RD 88/2026)
+        const { data: consents } = await supabase
+            .from('customer_consents')
+            .select('consent_type, granted')
+            .eq('customer_id', custId)
+            .eq('granted', true)
+            .is('revoked_at', null)
+        const hasDataProcessing = (consents || []).some(c => c.consent_type === 'data_processing')
+        setMissingConsent(!hasDataProcessing)
     }, [manualCups])
 
     useEffect(() => {
         if (customerId) loadSupplyPoints(customerId)
     }, [customerId, loadSupplyPoints])
+
+    const handleAutoRegisterCustomer = async () => {
+        if (!pendingCustomerCif || !pendingCustomerName) return
+        setRegisteringCustomer(true)
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No autenticado')
+
+            const { data: profile } = await supabase
+                .from('users')
+                .select('company_id')
+                .eq('id', user.id)
+                .single()
+            if (!profile) throw new Error('Perfil no encontrado')
+
+            // Check duplicate CIF one more time
+            const { data: existing } = await supabase
+                .from('customers')
+                .select('id')
+                .eq('cif', pendingCustomerCif)
+                .eq('company_id', profile.company_id)
+                .maybeSingle()
+
+            if (existing) {
+                setCustomerId(existing.id)
+                setShowAutoRegister(false)
+                toast({ title: 'Cliente encontrado', description: `El cliente con CIF ${pendingCustomerCif} ya existe.` })
+                return
+            }
+
+            const { data: newCustomer, error: insertErr } = await supabase
+                .from('customers')
+                .insert({
+                    company_id: profile.company_id,
+                    cif: pendingCustomerCif,
+                    name: pendingCustomerName,
+                    status: 'prospecto',
+                })
+                .select('*')
+                .single()
+
+            if (insertErr) throw insertErr
+
+            // Add to local list and select
+            setCustomers(prev => [...prev, newCustomer as Customer])
+            setCustomerId(newCustomer.id)
+            setShowAutoRegister(false)
+
+            toast({
+                title: 'Cliente registrado',
+                description: `${pendingCustomerName} (${pendingCustomerCif}) se ha dado de alta automaticamente.`,
+            })
+        } catch (err) {
+            const e = err as Error
+            toast({ title: 'Error al registrar cliente', description: e.message, variant: 'destructive' })
+        } finally {
+            setRegisteringCustomer(false)
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -139,7 +241,6 @@ export function ContractForm() {
             if (!tariffVersionId) throw new Error('Debes seleccionar una tarifa')
             if (!customerId) throw new Error('Debes seleccionar un cliente')
 
-            // Get Company ID from user profile
             const { data: profile } = await supabase
                 .from('users')
                 .select('company_id')
@@ -148,13 +249,11 @@ export function ContractForm() {
 
             if (!profile) throw new Error('Perfil no encontrado')
 
-            // Convert monthly to annual for storage
             const annualValueEur = parseFloat(monthlyValue) * 12
 
-            // If we have a CUPS but no supply point selected, auto-create it
+            // Auto-create supply point if CUPS provided but no supply point selected
             let finalSupplyPointId = supplyPointId || null
             if (!finalSupplyPointId && manualCups && customerId) {
-                // Check if a supply point with this CUPS already exists for this customer
                 const { data: existingSp } = await supabase
                     .from('supply_points')
                     .select('id')
@@ -165,21 +264,19 @@ export function ContractForm() {
                 if (existingSp) {
                     finalSupplyPointId = existingSp.id
                 } else {
-                    // Create new supply point
                     const { data: newSp, error: spError } = await supabase
                         .from('supply_points')
                         .insert({
                             company_id: profile.company_id,
                             customer_id: customerId,
                             cups: manualCups,
-                            address: customers.find(c => c.id === customerId)?.address || 'Dirección pendiente',
+                            address: customers.find(c => c.id === customerId)?.address || 'Direccion pendiente',
                         })
                         .select('id')
                         .single()
 
                     if (spError) {
                         console.error('Error creating supply point:', spError)
-                        // Non-blocking: continue without supply point
                     } else {
                         finalSupplyPointId = newSp.id
                     }
@@ -188,18 +285,20 @@ export function ContractForm() {
 
             if (id) {
                 // Update existing contract
+                const updatePayload: Record<string, unknown> = {
+                    customer_id: customerId,
+                    tariff_version_id: tariffVersionId,
+                    supply_point_id: finalSupplyPointId,
+                    signed_at: signedAt,
+                    annual_value_eur: annualValueEur,
+                    notes: notes,
+                    status: status,
+                }
+                if (commercialId) updatePayload.commercial_id = commercialId
+
                 const { error: updateError } = await supabase
                     .from('contracts')
-                    .update({
-                        customer_id: customerId,
-                        commercial_id: commercialId || null,
-                        tariff_version_id: tariffVersionId,
-                        supply_point_id: finalSupplyPointId,
-                        signed_at: signedAt,
-                        annual_value_eur: annualValueEur,
-                        notes: notes,
-                        status: status,
-                    })
+                    .update(updatePayload)
                     .eq('id', id)
 
                 if (updateError) throw updateError
@@ -208,20 +307,38 @@ export function ContractForm() {
                 // Create new contract
                 const contractNumber = `CTR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
 
+                const insertPayload: Record<string, unknown> = {
+                    company_id: profile.company_id,
+                    customer_id: customerId,
+                    tariff_version_id: tariffVersionId,
+                    supply_point_id: finalSupplyPointId,
+                    contract_number: contractNumber,
+                    status: status,
+                    signed_at: signedAt,
+                    annual_value_eur: annualValueEur,
+                    notes: notes,
+                }
+
+                // Only include commercial_id if selected (column is now nullable)
+                if (commercialId) insertPayload.commercial_id = commercialId
+
+                // Origin tariff data from comparator
+                if (originSupplierName) insertPayload.origin_supplier_name = originSupplierName
+                if (originTariffName) insertPayload.origin_tariff_name = originTariffName
+                if (originAnnualCost) insertPayload.origin_annual_cost_eur = originAnnualCost
+
+                // Update supply point with current supplier info
+                if (finalSupplyPointId && originSupplierName) {
+                    await supabase
+                        .from('supply_points')
+                        .update({ current_supplier: originSupplierName })
+                        .eq('id', finalSupplyPointId)
+                        .then(() => { /* best-effort */ })
+                }
+
                 const { data: newContract, error: insertError } = await supabase
                     .from('contracts')
-                    .insert({
-                        company_id: profile.company_id,
-                        customer_id: customerId,
-                        commercial_id: commercialId || null,
-                        tariff_version_id: tariffVersionId,
-                        supply_point_id: finalSupplyPointId,
-                        contract_number: contractNumber,
-                        status: status,
-                        signed_at: signedAt,
-                        annual_value_eur: annualValueEur,
-                        notes: notes,
-                    })
+                    .insert(insertPayload)
                     .select('id')
                     .single()
 
@@ -253,7 +370,7 @@ export function ContractForm() {
                         .catch((err: unknown) => console.warn('integration-sync submit_contract failed:', err))
                 }
 
-                // Best-effort: auto-send contract notification to customer
+                // Best-effort: auto-send contract notification
                 if (newContract && selectedCustomer) {
                     sendContractNotification({
                         contractId: newContract.id,
@@ -296,10 +413,212 @@ export function ContractForm() {
     return (
         <div className="card" style={{ maxWidth: '800px', margin: '2rem auto', background: 'var(--surface)', border: '1px solid var(--border)' }}>
 
-
             {error && (
                 <div style={{ padding: '1rem', background: '#fef2f2', color: '#991b1b', marginBottom: '1.5rem', borderRadius: '8px', border: '1px solid #fee2e2' }}>
                     {error}
+                </div>
+            )}
+
+            {/* Auto-register customer banner (OCR detected, not in DB) */}
+            {showAutoRegister && (
+                <div style={{
+                    padding: '1rem 1.25rem',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '10px',
+                    marginBottom: '1rem',
+                }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1e40af', marginBottom: '0.5rem' }}>
+                        Cliente no registrado
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: '#1e3a5f', marginBottom: '0.75rem' }}>
+                        El cliente detectado en la factura no esta dado de alta en el sistema.
+                        Puedes registrarlo automaticamente para continuar.
+                    </div>
+                    <div style={{
+                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+                        padding: '0.75rem', background: '#fff', borderRadius: 8, border: '1px solid #dbeafe',
+                        marginBottom: '0.75rem',
+                    }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                                Nombre / Razon Social
+                            </label>
+                            <input
+                                type="text"
+                                value={pendingCustomerName}
+                                onChange={(e) => setPendingCustomerName(e.target.value)}
+                                style={{ width: '100%', padding: '0.5rem 0.625rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                                CIF / NIF
+                            </label>
+                            <input
+                                type="text"
+                                value={pendingCustomerCif}
+                                onChange={(e) => setPendingCustomerCif(e.target.value.toUpperCase())}
+                                style={{ width: '100%', padding: '0.5rem 0.625rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem', fontFamily: 'monospace' }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button
+                            type="button"
+                            onClick={() => setShowAutoRegister(false)}
+                            style={{
+                                padding: '0.4rem 0.75rem', borderRadius: 6,
+                                border: '1px solid #e2e8f0', background: '#fff',
+                                fontSize: '0.8125rem', color: '#64748b', cursor: 'pointer',
+                            }}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleAutoRegisterCustomer}
+                            disabled={registeringCustomer || !pendingCustomerCif || !pendingCustomerName}
+                            style={{
+                                padding: '0.4rem 0.75rem', borderRadius: 6,
+                                border: 'none', background: '#2563eb',
+                                fontSize: '0.8125rem', color: '#fff', fontWeight: 600,
+                                cursor: registeringCustomer ? 'not-allowed' : 'pointer',
+                                opacity: registeringCustomer ? 0.7 : 1,
+                            }}
+                        >
+                            {registeringCustomer ? 'Registrando...' : 'Registrar y Seleccionar'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Origin tariff banner (from comparator) */}
+            {originSupplierName && (
+                <div style={{
+                    padding: '1rem 1.25rem',
+                    background: 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)',
+                    border: '1px solid #fde68a',
+                    borderRadius: '10px',
+                    marginBottom: '0.5rem',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <div style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            background: '#fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '14px',
+                        }}>
+                            ⚡
+                        </div>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
+                            Traspaso desde Comparador
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{
+                            flex: 1, padding: '0.625rem 0.75rem', background: '#fff',
+                            borderRadius: 8, border: '1px solid #fde68a',
+                        }}>
+                            <div style={{ fontSize: '0.6875rem', color: '#a16207', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Comercializadora Actual
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#78350f', marginTop: 2 }}>
+                                {originSupplierName}
+                            </div>
+                            {originTariffName && (
+                                <div style={{ fontSize: '0.75rem', color: '#92400e', marginTop: 2 }}>
+                                    {originTariffName}
+                                </div>
+                            )}
+                            {originAnnualCost && (
+                                <div style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2 }}>
+                                    {Math.round(originAnnualCost)} €/año ({Math.round(originAnnualCost / 12)} €/mes)
+                                </div>
+                            )}
+                        </div>
+                        <div style={{
+                            width: 28, height: 28, borderRadius: '50%',
+                            background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0,
+                        }}>
+                            <span style={{ color: '#fff', fontSize: 14 }}>→</span>
+                        </div>
+                        <div style={{
+                            flex: 1, padding: '0.625rem 0.75rem', background: '#fff',
+                            borderRadius: 8, border: '1px solid #bfdbfe',
+                        }}>
+                            <div style={{ fontSize: '0.6875rem', color: '#2563eb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Nueva Tarifa Propuesta
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e3a5f', marginTop: 2 }}>
+                                {tariffs.find(t => t.id === tariffVersionId)?.supplier_name || 'Seleccionar tarifa...'}
+                            </div>
+                            {tariffs.find(t => t.id === tariffVersionId)?.tariff_name && (
+                                <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: 2 }}>
+                                    {tariffs.find(t => t.id === tariffVersionId)?.tariff_name}
+                                </div>
+                            )}
+                            {monthlyValue && (
+                                <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: 2 }}>
+                                    {Math.round(parseFloat(monthlyValue) * 12)} €/año ({Math.round(parseFloat(monthlyValue))} €/mes)
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {originAnnualCost && monthlyValue && (
+                        <div style={{
+                            marginTop: '0.75rem', textAlign: 'center',
+                            fontSize: '0.8125rem', fontWeight: 600,
+                            color: (originAnnualCost - parseFloat(monthlyValue) * 12) > 0 ? '#059669' : '#dc2626',
+                        }}>
+                            {(originAnnualCost - parseFloat(monthlyValue) * 12) > 0
+                                ? `Ahorro estimado: ${Math.round(originAnnualCost - parseFloat(monthlyValue) * 12)} €/año`
+                                : `Incremento: ${Math.round(parseFloat(monthlyValue) * 12 - originAnnualCost)} €/año`
+                            }
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Bono Social Warning (RD 897/2017) */}
+            {hasBonaSocial && customerId && (
+                <div style={{
+                    padding: '0.875rem 1rem', marginBottom: '0.5rem',
+                    background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px',
+                    display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+                }}>
+                    <span style={{ fontSize: '1.125rem', lineHeight: 1 }}>⚠️</span>
+                    <div>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#991b1b' }}>
+                            Bono Social detectado (RD 897/2017)
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#b91c1c', marginTop: 2 }}>
+                            Este cliente tiene un punto de suministro con Bono Social activo.
+                            Un cambio de comercializador puede provocar la perdida del bono social.
+                            Asegurate de informar al cliente antes de proceder.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Missing Consent Warning (RGPD Art.7) */}
+            {missingConsent && customerId && (
+                <div style={{
+                    padding: '0.875rem 1rem', marginBottom: '0.5rem',
+                    background: '#fffbeb', border: '1px solid #fef08a', borderRadius: '10px',
+                    display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+                }}>
+                    <span style={{ fontSize: '1.125rem', lineHeight: 1 }}>🔒</span>
+                    <div>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
+                            Consentimiento de tratamiento de datos no registrado (RGPD Art. 6)
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2 }}>
+                            No se ha registrado el consentimiento de tratamiento de datos para este cliente.
+                            Es obligatorio antes de procesar datos personales. Puedes registrarlo en{' '}
+                            <a href="/admin/compliance" style={{ color: '#d97706', fontWeight: 600 }}>Cumplimiento Normativo</a>.
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -312,7 +631,7 @@ export function ContractForm() {
                             value={customerId}
                             onChange={(e) => {
                                 setCustomerId(e.target.value)
-                                setSupplyPointId('') // reset CUPS on customer change
+                                setSupplyPointId('')
                             }}
                             style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
                         >
@@ -329,7 +648,6 @@ export function ContractForm() {
                             value={manualCups}
                             onChange={(e) => {
                                 setManualCups(e.target.value)
-                                // If typed CUPS matches an existing supply point, auto-select it
                                 const match = supplyPoints.find(sp => sp.cups === e.target.value)
                                 if (match) setSupplyPointId(match.id)
                                 else setSupplyPointId('')
@@ -339,18 +657,18 @@ export function ContractForm() {
                         />
                         {manualCups && !supplyPointId && customerId && (
                             <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.25rem' }}>
-                                ⚡ CUPS nuevo — se creará automáticamente al guardar
+                                CUPS nuevo — se creara automaticamente al guardar
                             </div>
                         )}
                         {supplyPointId && (
                             <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.25rem' }}>
-                                ✓ CUPS existente vinculado
+                                CUPS existente vinculado
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Existing supply points selector (if any) */}
+                {/* Existing supply points selector */}
                 {supplyPoints.length > 0 && (
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-muted)' }}>O seleccionar punto de suministro existente</label>
@@ -358,7 +676,6 @@ export function ContractForm() {
                             value={supplyPointId}
                             onChange={(e) => {
                                 setSupplyPointId(e.target.value)
-                                // Sync the CUPS text field with the selected supply point
                                 const sp = supplyPoints.find(s => s.id === e.target.value)
                                 if (sp?.cups) setManualCups(sp.cups)
                             }}
@@ -380,7 +697,7 @@ export function ContractForm() {
                             onChange={(e) => setCommercialId(e.target.value)}
                             style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
                         >
-                            <option value="">Seleccionar Comisionado...</option>
+                            <option value="">Sin comisionado</option>
                             {commissioners.map(c => (
                                 <option key={c.id} value={c.id}>{c.full_name}</option>
                             ))}

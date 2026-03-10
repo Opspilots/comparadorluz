@@ -1,13 +1,13 @@
 /**
  * Comprehensive Test Suite for Tariff Calculator
- * 
+ *
  * Tests cover:
  * - Standard calculations for 2.0TD and 3.0TD tariffs
  * - Edge cases (zero consumption, high values, fractional power)
  * - Tax calculations
  * - Reproducibility (snapshot testing)
  * - Error handling
- * 
+ *
  * CRITICAL: These tests validate the core business logic.
  * All tests must pass before deploying to production.
  */
@@ -25,14 +25,14 @@ import {
 import type { TariffVersion, TariffRate } from '@/shared/types';
 
 // ============================================================================
-// Test Fixtures
+// Test Fixtures — Using tariff_rates (new schema)
 // ============================================================================
 
 /**
  * Mock 2.0TD tariff (residential simplified)
- * - 2 periods (P1, P2)
- * - Energy: P1=0.15 EUR/kWh, P2=0.12 EUR/kWh
- * - Power: P1=40 EUR/kW/year, P2=20 EUR/kW/year
+ * - 3 energy periods (P1, P2, P3) — 2.0TD has 3 energy + 2 power
+ * - Energy: P1=0.15, P2=0.12, P3=0.08 EUR/kWh
+ * - Power: P1=40, P2=20 EUR/kW/year
  * - Fixed fee: 5 EUR/month
  */
 const mockTariff2_0TD: TariffVersion = {
@@ -46,62 +46,56 @@ const mockTariff2_0TD: TariffVersion = {
     is_active: true,
     created_at: '2026-02-03T12:00:00Z',
     updated_at: '2026-02-03T12:00:00Z',
-    tariff_components: [
+    tariff_rates: [
         // Energy prices
         {
-            id: 'comp-1',
-            company_id: 'company-1',
+            id: 'rate-e1',
             tariff_version_id: 'tariff-2-0-td',
-            component_type: 'energy_price',
+            item_type: 'energy',
             period: 'P1',
-            price_eur_kwh: 0.15,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 0.15,
+            unit: 'EUR/kWh',
         },
         {
-            id: 'comp-2',
-            company_id: 'company-1',
+            id: 'rate-e2',
             tariff_version_id: 'tariff-2-0-td',
-            component_type: 'energy_price',
+            item_type: 'energy',
             period: 'P2',
-            price_eur_kwh: 0.12,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 0.12,
+            unit: 'EUR/kWh',
         },
         {
-            id: 'comp-2b',
-            company_id: 'company-1',
+            id: 'rate-e3',
             tariff_version_id: 'tariff-2-0-td',
-            component_type: 'energy_price',
+            item_type: 'energy',
             period: 'P3',
-            price_eur_kwh: 0.08,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 0.08,
+            unit: 'EUR/kWh',
         },
         // Power prices
         {
-            id: 'comp-3',
-            company_id: 'company-1',
+            id: 'rate-p1',
             tariff_version_id: 'tariff-2-0-td',
-            component_type: 'power_price',
+            item_type: 'power',
             period: 'P1',
-            price_eur_kw_year: 40,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 40,
+            unit: 'EUR/kW/year',
         },
         {
-            id: 'comp-4',
-            company_id: 'company-1',
+            id: 'rate-p2',
             tariff_version_id: 'tariff-2-0-td',
-            component_type: 'power_price',
+            item_type: 'power',
             period: 'P2',
-            price_eur_kw_year: 20,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 20,
+            unit: 'EUR/kW/year',
         },
         // Fixed fee
         {
-            id: 'comp-5',
-            company_id: 'company-1',
+            id: 'rate-f1',
             tariff_version_id: 'tariff-2-0-td',
-            component_type: 'fixed_fee',
-            fixed_price_eur_month: 5,
-            created_at: '2026-02-03T12:00:00Z',
+            item_type: 'fixed_fee',
+            price: 5,
+            unit: 'EUR/month',
         },
     ],
 };
@@ -109,8 +103,8 @@ const mockTariff2_0TD: TariffVersion = {
 /**
  * Mock 3.0TD tariff (business)
  * - 3 periods (P1, P2, P3)
- * - Energy: P1=0.18 EUR/kWh, P2=0.14 EUR/kWh, P3=0.10 EUR/kWh
- * - Power: P1=50 EUR/kW/year, P2=30 EUR/kW/year, P3=15 EUR/kW/year
+ * - Energy: P1=0.18, P2=0.14, P3=0.10 EUR/kWh
+ * - Power: P1=50, P2=30, P3=15 EUR/kW/year
  * - No fixed fee
  */
 const mockTariff3_0TD: TariffVersion = {
@@ -124,62 +118,56 @@ const mockTariff3_0TD: TariffVersion = {
     is_active: true,
     created_at: '2026-02-03T12:00:00Z',
     updated_at: '2026-02-03T12:00:00Z',
-    tariff_components: [
+    tariff_rates: [
         // Energy prices
         {
-            id: 'comp-6',
-            company_id: 'company-1',
+            id: 'rate-e1',
             tariff_version_id: 'tariff-3-0-td',
-            component_type: 'energy_price',
+            item_type: 'energy',
             period: 'P1',
-            price_eur_kwh: 0.18,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 0.18,
+            unit: 'EUR/kWh',
         },
         {
-            id: 'comp-7',
-            company_id: 'company-1',
+            id: 'rate-e2',
             tariff_version_id: 'tariff-3-0-td',
-            component_type: 'energy_price',
+            item_type: 'energy',
             period: 'P2',
-            price_eur_kwh: 0.14,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 0.14,
+            unit: 'EUR/kWh',
         },
         {
-            id: 'comp-8',
-            company_id: 'company-1',
+            id: 'rate-e3',
             tariff_version_id: 'tariff-3-0-td',
-            component_type: 'energy_price',
+            item_type: 'energy',
             period: 'P3',
-            price_eur_kwh: 0.10,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 0.10,
+            unit: 'EUR/kWh',
         },
         // Power prices
         {
-            id: 'comp-9',
-            company_id: 'company-1',
+            id: 'rate-p1',
             tariff_version_id: 'tariff-3-0-td',
-            component_type: 'power_price',
+            item_type: 'power',
             period: 'P1',
-            price_eur_kw_year: 50,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 50,
+            unit: 'EUR/kW/year',
         },
         {
-            id: 'comp-10',
-            company_id: 'company-1',
+            id: 'rate-p2',
             tariff_version_id: 'tariff-3-0-td',
-            component_type: 'power_price',
+            item_type: 'power',
             period: 'P2',
-            price_eur_kw_year: 30,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 30,
+            unit: 'EUR/kW/year',
         },
         {
-            id: 'comp-11',
-            company_id: 'company-1',
+            id: 'rate-p3',
             tariff_version_id: 'tariff-3-0-td',
-            component_type: 'power_price',
+            item_type: 'power',
             period: 'P3',
-            price_eur_kw_year: 15,
-            created_at: '2026-02-03T12:00:00Z',
+            price: 15,
+            unit: 'EUR/kW/year',
         },
     ],
 };
@@ -258,7 +246,7 @@ describe('calculatePowerComponent', () => {
             ['P1', 40],
             ['P2', 20],
         ]);
-        const contractedPowers = { P1: 10, P2: 10 }; // Corrected input
+        const contractedPowers = { P1: 10, P2: 10 };
 
         const result = calculatePowerComponent(powerPrices, contractedPowers);
 
@@ -270,7 +258,7 @@ describe('calculatePowerComponent', () => {
 
     it('should handle fractional power values', () => {
         const powerPrices = new Map([['P1', 40]]);
-        const result = calculatePowerComponent(powerPrices, { P1: 10.37 }); // Corrected input
+        const result = calculatePowerComponent(powerPrices, { P1: 10.37 });
 
         // 10.37 * 40 = 414.8
         expect(result).toBe(414.8);
@@ -278,7 +266,7 @@ describe('calculatePowerComponent', () => {
 
     it('should handle zero power', () => {
         const powerPrices = new Map([['P1', 40]]);
-        const result = calculatePowerComponent(powerPrices, { P1: 0 }); // Corrected input
+        const result = calculatePowerComponent(powerPrices, { P1: 0 });
 
         expect(result).toBe(0);
     });
@@ -286,27 +274,25 @@ describe('calculatePowerComponent', () => {
 
 describe('calculateFixedFee', () => {
     it('should calculate annual fixed fee from monthly', () => {
-        const components = [
+        const rates: TariffRate[] = [
             {
-                id: 'comp-1',
-                company_id: 'company-1',
+                id: 'rate-f1',
                 tariff_version_id: 'tariff-1',
-                component_type: 'fixed_fee',
-                fixed_price_eur_month: 5,
-                contract_duration: 12,
-                created_at: '2026-02-03T12:00:00Z',
+                item_type: 'fixed_fee',
+                price: 5,
+                unit: 'EUR/month',
             },
-        ] as unknown as TariffRate[];
+        ];
 
-        const result = calculateFixedFee(components, 12);
+        const result = calculateFixedFee(rates, 12);
 
         // 5 * 12 = 60
         expect(result).toBe(60);
     });
 
-    it('should return 0 if no fixed fee component', () => {
-        const components: TariffRate[] = [];
-        const result = calculateFixedFee(components, 12);
+    it('should return 0 if no fixed fee rate', () => {
+        const rates: TariffRate[] = [];
+        const result = calculateFixedFee(rates, 12);
 
         expect(result).toBe(0);
     });
@@ -375,7 +361,7 @@ describe('calculateAnnualCost - 2.0TD Tariff', () => {
             tariff_version: mockTariff2_0TD,
             annual_consumption_kwh: 5000,
             contracted_power_kw: 10,
-            consumption_distribution: { P1: 60, P2: 40 }, // Explicit distribution to match manual calc
+            consumption_distribution: { P1: 60, P2: 40 }, // Explicit 2-period distribution
             meter_rental_eur_month: 0, // Disable meter rental for this test
         });
 
@@ -398,39 +384,23 @@ describe('calculateAnnualCost - 2.0TD Tariff', () => {
     });
 
     it('should use default distribution if not provided', () => {
-        calculateAnnualCost({
+        // 2.0TD default distribution: P1=29%, P2=26%, P3=45%
+        // mockTariff2_0TD has P1, P2, P3 energy rates
+        const result = calculateAnnualCost({
             tariff_version: mockTariff2_0TD,
             annual_consumption_kwh: 5000,
             contracted_power_kw: 10,
             meter_rental_eur_month: 0,
-            // Should throw error because default is 3 periods (29/26/45) but tariff has only 2 prices
         });
 
-        // Wait, since we now throw on missing price, this will fail if we default to 3 periods but don't have P3 price.
-        // So for this test to pass "using default", we either need a tariff with 3 prices,
-        // OR we accept that it throws.
-        // Let's assume for 2.0TD input we might provide P3?
-        // Let's modify the test to Expect Throw OR provide a tariff with P3.
-        // Actually, let's just inspect the P1 kwh directly to see if distribution was applied
-        // BUT we need to provide P3 price to avoid throw.
-
-        // Let's skip this check or update to check throwing behavior?
-        // Or better, update mockTariff2_0TD to have P3?
-        // No, let's just verify the P1 kWh matches the default distribution P1 percentage (29%)
-        // We can ignore the missing price error if we just want to test distribution... but we can't because it throws.
-
-        // OK, I'll update the test to expect it to use the default 2.0TD distribution which has P1=29%
-        // But I need to pass a tariff that has P3 to avoid the error.
-
-        // const tariffWithP3 = { ...mockTariff2_0TD, components: [...mockTariff2_0TD.components, { component_type: 'energy_price', period: 'P3', price_eur_kwh: 0.1 }] };
-        // ...
-
-        // Actually, let's just update the expectation to matches what happens with 2.0TD default.
-        // 29% of 5000 = 1450.
-        // So expectation is 1450.
-        // But we need to handle the "throw".
-        // I will commented out this test for now or fix it in the next step properly.
-        // For now let's just use the explicit distribution to fix the previous test.
+        // P1: 5000*0.29*0.15 = 217.50
+        // P2: 5000*0.26*0.12 = 156.00
+        // P3: 5000*0.45*0.08 = 180.00
+        // Energy total: 553.50
+        expect(result.breakdown.energy_cost).toBe(553.5);
+        expect(result.breakdown.period_breakdown?.P1?.kwh).toBe(1450);
+        expect(result.breakdown.period_breakdown?.P2?.kwh).toBe(1300);
+        expect(result.breakdown.period_breakdown?.P3?.kwh).toBe(2250);
     });
 
     it('should use custom distribution if provided', () => {
@@ -458,10 +428,6 @@ describe('calculateAnnualCost - 2.0TD Tariff', () => {
         // Power: 600
         // Fixed: 60
         // Subtotal: 660
-        // Taxes: 660 * 0.0511 = 33.726 -> 33.73
-        // Base IVA: 693.73 * 0.21 = 145.68
-        // Total: 660 + 33.73 + 145.68 = 839.41
-
         expect(result.breakdown.energy_cost).toBe(0);
         expect(result.breakdown.power_cost).toBe(600);
         expect(result.annual_cost_eur).toBeGreaterThan(800);
@@ -531,10 +497,10 @@ describe('Reproducibility', () => {
 // ============================================================================
 
 describe('Error Handling', () => {
-    it('should throw if tariff has no components', () => {
+    it('should throw if tariff has no rates', () => {
         const invalidTariff: TariffVersion = {
             ...mockTariff2_0TD,
-            tariff_components: [],
+            tariff_rates: [],
         };
 
         expect(() => {
@@ -543,20 +509,19 @@ describe('Error Handling', () => {
                 annual_consumption_kwh: 5000,
                 contracted_power_kw: 10,
             });
-        }).toThrow('Tariff version has no components');
+        }).toThrow('Tariff version has no rates');
     });
 
     it('should throw if energy prices are missing', () => {
         const tariffNoPrices: TariffVersion = {
             ...mockTariff2_0TD,
-            tariff_components: [
+            tariff_rates: [
                 {
-                    id: 'comp-1',
-                    company_id: 'company-1',
+                    id: 'rate-f1',
                     tariff_version_id: 'tariff-1',
-                    component_type: 'fixed_fee',
-                    fixed_price_eur_month: 5,
-                    created_at: '2026-02-03T12:00:00Z',
+                    item_type: 'fixed_fee',
+                    price: 5,
+                    unit: 'EUR/month',
                 },
             ],
         };

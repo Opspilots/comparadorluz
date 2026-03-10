@@ -283,7 +283,7 @@ export default function TariffDetailsPage() {
                                                                 // Fallback for gas/single period
                                                                 if (pKeys.length === 0 && energyRates.length > 0) {
                                                                     const targetDate = activeVKey.split('_')[0] === 'none' ? undefined : activeVKey.split('_')[0];
-                                                                    const active = findActiveRate(rates as any, 'energy', undefined, targetDate, dKey === 'any' ? null : parseInt(dKey));
+                                                                    const active = findActiveRate(rates, 'energy', undefined, targetDate, dKey === 'any' ? null : parseInt(dKey));
                                                                     if (!active) return null;
                                                                     return (
                                                                         <div key="energy-active" style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
@@ -298,7 +298,7 @@ export default function TariffDetailsPage() {
 
                                                                 return pKeys.map(p => {
                                                                     const targetDate = activeVKey.split('_')[0] === 'none' ? undefined : activeVKey.split('_')[0];
-                                                                    const active = findActiveRate(rates as any, 'energy', p, targetDate, dKey === 'any' ? null : parseInt(dKey));
+                                                                    const active = findActiveRate(rates, 'energy', p, targetDate, dKey === 'any' ? null : parseInt(dKey));
                                                                     if (!active) return null;
                                                                     return (
                                                                         <div key={p} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
@@ -330,8 +330,8 @@ export default function TariffDetailsPage() {
                                                                 const pKeys = Array.from(new Set(powerRates.map((r: TariffRate) => r.period).filter(Boolean))) as string[];
                                                                 return pKeys.map(p => {
                                                                     const targetDate = activeVKey.split('_')[0] === 'none' ? undefined : activeVKey.split('_')[0];
-                                                                    const active = findActiveRate(rates as any, 'power', p, targetDate, dKey === 'any' ? null : parseInt(dKey)) ||
-                                                                        findActiveRate(rates as any, 'power', 'P1', targetDate, dKey === 'any' ? null : parseInt(dKey));
+                                                                    const active = findActiveRate(rates, 'power', p, targetDate, dKey === 'any' ? null : parseInt(dKey)) ||
+                                                                        findActiveRate(rates, 'power', 'P1', targetDate, dKey === 'any' ? null : parseInt(dKey));
                                                                     if (!active) return null;
                                                                     return (
                                                                         <div key={p} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
@@ -353,8 +353,8 @@ export default function TariffDetailsPage() {
                                             {/* Fixed Fee Section */}
                                             {(() => {
                                                 const targetDate = activeVKey.split('_')[0] === 'none' ? undefined : activeVKey.split('_')[0];
-                                                const active = findActiveRate(rates as any, 'fixed_fee', undefined, targetDate, dKey === 'any' ? null : parseInt(dKey)) ||
-                                                    findActiveRate(rates as any, 'fixed_fee', 'P1', targetDate, dKey === 'any' ? null : parseInt(dKey));
+                                                const active = findActiveRate(rates, 'fixed_fee', undefined, targetDate, dKey === 'any' ? null : parseInt(dKey)) ||
+                                                    findActiveRate(rates, 'fixed_fee', 'P1', targetDate, dKey === 'any' ? null : parseInt(dKey));
                                                 if (!active) return null;
                                                 return (
                                                     <div>

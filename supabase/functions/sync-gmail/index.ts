@@ -1,4 +1,4 @@
-// @ts-nocheck
+// deno-lint-ignore-file
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { decode as base64Decode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
@@ -101,9 +101,9 @@ serve(async (req: Request) => {
                     const msgDetail = await msgDetailResponse.json();
 
                     // Extract headers
-                    const headers = msgDetail.payload.headers;
-                    const fromHeader = headers.find((h: any) => h.name === 'From')?.value || '';
-                    const subject = headers.find((h: any) => h.name === 'Subject')?.value || 'Sin asunto';
+                    const headers = msgDetail.payload.headers as Array<{ name: string; value: string }>;
+                    const fromHeader = headers.find((h) => h.name === 'From')?.value || '';
+                    const subject = headers.find((h) => h.name === 'Subject')?.value || 'Sin asunto';
 
                     // Basic email regex to extract just the email address from "Name <email@domain.com>"
                     const emailMatch = fromHeader.match(/<([^>]+)>/) || [null, fromHeader.trim()];
@@ -123,7 +123,7 @@ serve(async (req: Request) => {
                         // Extract plain text body (simplified)
                         let bodyText = '';
                         if (msgDetail.payload.parts) {
-                            const part = msgDetail.payload.parts.find((p: any) => p.mimeType === 'text/plain' || p.mimeType === 'text/html');
+                            const part = (msgDetail.payload.parts as Array<{ mimeType: string; body: { data?: string } }>).find((p) => p.mimeType === 'text/plain' || p.mimeType === 'text/html');
                             if (part && part.body.data) {
                                 bodyText = decodeBase64Url(part.body.data);
                             }

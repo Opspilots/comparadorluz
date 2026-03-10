@@ -22,6 +22,8 @@ export interface RankingOptions {
     currentAnnualCostEur?: number
     // For commission calculation (simplified for MVP)
     commissionPct?: number
+    // Market prices for indexed tariff calculations (PVPC/pool)
+    marketPrices?: Array<{ indicator_id: number; price: number }>
 }
 
 /**
@@ -37,7 +39,7 @@ export function rankTariffs(
     input: ComparisonInput,
     options: RankingOptions
 ): ComparisonResult[] {
-    const { mode, currentAnnualCostEur, commissionPct = 10 } = options
+    const { mode, currentAnnualCostEur, commissionPct = 10, marketPrices } = options
 
     // 1. Calculate costs for all tariffs
     const results: ComparisonResult[] = []
@@ -120,7 +122,7 @@ export function rankTariffs(
                     // Pass advanced fields
                     reactive_energy_kvarh: input.reactive_energy_kvarh,
                     max_demand_kw: input.max_demand_kw,
-                    meter_rental_eur_month: input.meter_rental_eur_month, // Will use default if undefined
+                    meter_rental_eur_month: input.meter_rental_eur_month,
                     contracted_power_p1_kw: input.contracted_power_p1_kw,
                     contracted_power_p2_kw: input.contracted_power_p2_kw,
                     contracted_power_p3_kw: input.contracted_power_p3_kw,
@@ -128,6 +130,7 @@ export function rankTariffs(
                     contracted_power_p5_kw: input.contracted_power_p5_kw,
                     contracted_power_p6_kw: input.contracted_power_p6_kw,
                     current_cost_eur: currentAnnualCostEur,
+                    market_prices: marketPrices,
                 })
 
                 // Calculate commission (simplified: % of annual cost or fixed fee)

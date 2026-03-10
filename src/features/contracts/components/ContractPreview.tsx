@@ -24,6 +24,10 @@ interface ContractPreviewData {
     notification_sent?: boolean;
     company_id: string;
     customer_id: string;
+    // Origin tariff (from comparator)
+    origin_supplier_name?: string | null;
+    origin_tariff_name?: string | null;
+    origin_annual_cost_eur?: number | null;
     customers?: Customer;
     supply_points?: SupplyPoint;
     tariff_versions?: TariffVersion & { suppliers?: Supplier };
@@ -216,6 +220,93 @@ export function ContractPreview() {
                     </button>
                 </div>
             </div>
+
+            {/* Origin tariff card: shows the client's current tariff vs proposed tariff */}
+            {contract.origin_supplier_name && (
+                <div
+                    style={{
+                        padding: '0.875rem 1.25rem',
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '14px',
+                        boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
+                        <ArrowRightLeft size={14} style={{ color: '#2563eb' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Cambio de Comercializadora
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{
+                            flex: 1, padding: '0.5rem 0.75rem',
+                            background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca',
+                        }}>
+                            <div style={{ fontSize: '0.625rem', color: '#991b1b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Tarifa Actual (Origen)
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#7f1d1d', marginTop: 2 }}>
+                                {contract.origin_supplier_name}
+                            </div>
+                            {contract.origin_tariff_name && (
+                                <div style={{ fontSize: '0.75rem', color: '#7f1d1d', marginTop: 2 }}>
+                                    {contract.origin_tariff_name}
+                                </div>
+                            )}
+                            {contract.origin_annual_cost_eur && (
+                                <div style={{ fontSize: '0.75rem', color: '#991b1b', marginTop: 2 }}>
+                                    {Math.round(contract.origin_annual_cost_eur)} €/año
+                                </div>
+                            )}
+                        </div>
+                        <div style={{
+                            width: 32, height: 32, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0, boxShadow: '0 2px 6px rgba(37,99,235,0.3)',
+                        }}>
+                            <span style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>→</span>
+                        </div>
+                        <div style={{
+                            flex: 1, padding: '0.5rem 0.75rem',
+                            background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0',
+                        }}>
+                            <div style={{ fontSize: '0.625rem', color: '#15803d', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Nueva Tarifa (Destino)
+                            </div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#14532d', marginTop: 2 }}>
+                                {contract.tariff_versions?.suppliers?.name || contract.tariff_versions?.supplier_name || '—'}
+                            </div>
+                            {contract.tariff_versions?.tariff_name && (
+                                <div style={{ fontSize: '0.75rem', color: '#166534', marginTop: 2 }}>
+                                    {contract.tariff_versions.tariff_name}
+                                </div>
+                            )}
+                            <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: 2 }}>
+                                {Math.round(contract.annual_value_eur)} €/año
+                            </div>
+                        </div>
+                        {contract.origin_annual_cost_eur && (
+                            <div style={{
+                                padding: '0.375rem 0.75rem', borderRadius: 8,
+                                background: (contract.origin_annual_cost_eur - contract.annual_value_eur) > 0 ? '#ecfdf5' : '#fef2f2',
+                                border: `1px solid ${(contract.origin_annual_cost_eur - contract.annual_value_eur) > 0 ? '#a7f3d0' : '#fecaca'}`,
+                                textAlign: 'center', flexShrink: 0,
+                            }}>
+                                <div style={{
+                                    fontSize: '0.9375rem', fontWeight: 700,
+                                    color: (contract.origin_annual_cost_eur - contract.annual_value_eur) > 0 ? '#059669' : '#dc2626',
+                                }}>
+                                    {(contract.origin_annual_cost_eur - contract.annual_value_eur) > 0 ? '-' : '+'}
+                                    {Math.abs(Math.round(contract.origin_annual_cost_eur - contract.annual_value_eur))} €
+                                </div>
+                                <div style={{ fontSize: '0.625rem', color: '#64748b' }}>al año</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Switching Tracker */}
             {contract.switching_status && (

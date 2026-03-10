@@ -4,6 +4,8 @@ import { supabase } from '@/shared/lib/supabase'
 import { MetricCard } from '../components/MetricCard'
 import { DashboardChart } from '../components/DashboardChart'
 import { RecentActivity } from '../components/RecentActivity'
+import { MarketPriceWidget } from '../components/MarketPriceWidget'
+import { EnergyMixWidget } from '../components/EnergyMixWidget'
 
 import { Users, FileText, CheckCircle, Plus, Search, FileSignature, Calendar, ArrowRight } from 'lucide-react'
 
@@ -113,6 +115,12 @@ export function DashboardPage() {
 
                 {/* Right Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+                    {/* Market Prices Widget */}
+                    <MarketPriceWidget />
+
+                    {/* Energy Mix Widget */}
+                    <EnergyMixWidget />
 
                     {/* Recent Activity */}
                     <RecentActivity />

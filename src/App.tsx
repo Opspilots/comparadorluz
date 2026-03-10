@@ -34,6 +34,8 @@ import { CommissionersPage } from '@/features/commissioners/pages/CommissionersP
 import { CommissionerDetailPage } from '@/features/commissioners/pages/CommissionerDetailPage'
 import SuppliersPage from '@/features/tariffs/pages/SuppliersPage'
 import { IntegrationsPage } from '@/features/integrations/pages/IntegrationsPage'
+import { CompliancePage } from '@/features/compliance/pages/CompliancePage'
+import { ConsentSignPage } from '@/features/compliance/pages/ConsentSignPage'
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
     const [session, setSession] = useState<Session | null>(null)
@@ -69,6 +71,7 @@ function App() {
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/login" element={<Login />} />
+                    <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
                     <Route path="/*" element={
                         <PrivateRoute>
                             <MainLayout>
@@ -97,6 +100,7 @@ function App() {
                                     <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
                                     <Route path="/admin/suppliers" element={<SuppliersPage />} />
                                     <Route path="/admin/integrations" element={<IntegrationsPage />} />
+                                    <Route path="/admin/compliance" element={<CompliancePage />} />
 
                                     {/* Messaging */}
                                     <Route path="/admin/messages" element={<MessagingLayout />}>

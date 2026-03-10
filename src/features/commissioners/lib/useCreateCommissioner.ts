@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 
 export interface CreateCommissionerPayload {
@@ -77,10 +77,10 @@ export function useCreateCommissioner() {
         }
     }
 
-    const resetStates = () => {
+    const resetStates = useCallback(() => {
         setError(null)
         setSuccess(false)
-    }
+    }, [])
 
     return { createCommissioner, loading, error, success, resetStates }
 }

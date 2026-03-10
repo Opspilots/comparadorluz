@@ -1,4 +1,4 @@
-// @ts-nocheck
+// deno-lint-ignore-file
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { encode as base64Encode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
@@ -180,7 +180,7 @@ serve(async (req: Request) => {
             if (!waToken || !waPhoneId) throw new Error('WhatsApp credentials missing in company settings')
 
             // Normalize phone number to international format (E.164 without +)
-            let phone = (message.recipient_contact || '').replace(/[\s\-\(\)\+]/g, '')
+            let phone = (message.recipient_contact || '').replace(/[\s\-()+]/g, '')
             // If it doesn't start with a country code, assume Spain (34)
             if (phone.startsWith('0')) {
                 phone = '34' + phone.slice(1)
