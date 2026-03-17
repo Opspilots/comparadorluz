@@ -8,11 +8,8 @@ interface Supplier {
     name: string;
     slug: string;
     website?: string;
-    logo_url?: string;
     is_active: boolean;
     is_green: boolean;
-    market_share_pct?: number | null;
-    parent_group?: string | null;
     created_at: string;
 }
 
@@ -29,10 +26,7 @@ const emptyForm = {
     name: '',
     slug: '',
     website: '',
-    logo_url: '',
     is_green: false,
-    market_share_pct: '',
-    parent_group: '',
 };
 
 export default function SuppliersPage() {
@@ -72,10 +66,7 @@ export default function SuppliersPage() {
             name: s.name,
             slug: s.slug,
             website: s.website || '',
-            logo_url: s.logo_url || '',
             is_green: s.is_green,
-            market_share_pct: s.market_share_pct != null ? String(s.market_share_pct) : '',
-            parent_group: s.parent_group || '',
         });
         setShowForm(true);
     };
@@ -98,10 +89,7 @@ export default function SuppliersPage() {
             name: form.name.trim(),
             slug: form.slug.trim() || slugify(form.name),
             website: form.website.trim() || null,
-            logo_url: form.logo_url.trim() || null,
             is_green: form.is_green,
-            market_share_pct: form.market_share_pct !== '' ? parseFloat(form.market_share_pct) : null,
-            parent_group: form.parent_group.trim() || null,
         };
 
         let error;
@@ -155,7 +143,7 @@ export default function SuppliersPage() {
                 </div>
                 <button
                     onClick={openCreate}
-                    className="btn btn-primary"
+                    className="btn btn-primary tour-suppliers-new-btn"
                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
                     <Plus size={16} /> Nueva Comercializadora
@@ -209,37 +197,6 @@ export default function SuppliersPage() {
                                     placeholder="https://..."
                                 />
                             </div>
-                            <div>
-                                <label style={labelStyle}>URL del logo</label>
-                                <input
-                                    style={inputStyle}
-                                    value={form.logo_url}
-                                    onChange={e => setForm(prev => ({ ...prev, logo_url: e.target.value }))}
-                                    placeholder="https://..."
-                                />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                <div>
-                                    <label style={labelStyle}>Grupo / Holding</label>
-                                    <input
-                                        style={inputStyle}
-                                        value={form.parent_group}
-                                        onChange={e => setForm(prev => ({ ...prev, parent_group: e.target.value }))}
-                                        placeholder="ej. EDP Group"
-                                    />
-                                </div>
-                                <div>
-                                    <label style={labelStyle}>Cuota de mercado (%)</label>
-                                    <input
-                                        style={inputStyle}
-                                        type="number"
-                                        step="0.01"
-                                        value={form.market_share_pct}
-                                        onChange={e => setForm(prev => ({ ...prev, market_share_pct: e.target.value }))}
-                                        placeholder="ej. 27.30"
-                                    />
-                                </div>
-                            </div>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                                 <input
                                     type="checkbox"
@@ -271,7 +228,7 @@ export default function SuppliersPage() {
             )}
 
             {/* Table */}
-            <div style={{ background: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+            <div className="tour-suppliers-list" style={{ background: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
                 {loading ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</div>
                 ) : suppliers.length === 0 ? (
@@ -283,7 +240,6 @@ export default function SuppliersPage() {
                         <thead>
                             <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre</th>
-                                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grupo</th>
                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verde</th>
                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Activa</th>
                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</th>
@@ -300,9 +256,6 @@ export default function SuppliersPage() {
                                                 {s.website}
                                             </a>
                                         )}
-                                    </td>
-                                    <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                                        {s.parent_group || '—'}
                                     </td>
                                     <td style={{ padding: '0.875rem 1rem', textAlign: 'center' }}>
                                         {s.is_green ? (

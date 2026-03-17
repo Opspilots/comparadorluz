@@ -7,7 +7,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background)' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-background)' }}>
             <Sidebar />
             <div style={{
                 flex: 1,

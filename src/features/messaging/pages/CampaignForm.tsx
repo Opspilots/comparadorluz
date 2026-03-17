@@ -35,7 +35,7 @@ const STYLES = {
         width: 40,
         height: 40,
         borderRadius: '10px',
-        border: '1px solid var(--border)',
+        border: '1px solid var(--color-border)',
         background: 'var(--surface)',
         display: 'flex',
         alignItems: 'center',
@@ -81,7 +81,7 @@ const STYLES = {
         fontSize: '0.8125rem',
         cursor: 'pointer',
         transition: 'all 0.15s',
-        background: active ? 'var(--primary)' : 'transparent', // Use primary color
+        background: active ? 'var(--color-primary)' : 'transparent', // Use primary color
         color: active ? '#fff' : 'var(--text-muted)',
         // Removed heavy shadow
     }),

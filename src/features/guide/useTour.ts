@@ -262,23 +262,6 @@ function getStepsForPath(pathname: string): TourStep[] {
         ]
     }
 
-    // ── Integraciones ──────────────────────────────────────────────────────
-    if (pathname.startsWith('/admin/integrations')) {
-        return [
-            {
-                element: 'body',
-                popover: { title: 'Integraciones', description: 'Conecta EnergyDeal con herramientas externas para sincronizar clientes, contratos o comunicaciones automáticamente.', side: 'left', align: 'start' }
-            },
-            {
-                element: '.tour-integrations-google',
-                popover: { title: 'Google / Gmail', description: 'Conecta tu cuenta de Gmail para enviar correos directamente desde EnergyDeal y sincronizar conversaciones.', side: 'right', align: 'start' }
-            },
-            {
-                element: '.tour-integrations-crm',
-                popover: { title: 'CRM Externo', description: 'Sincroniza clientes y oportunidades con tu CRM actual (HubSpot, Salesforce, etc.).', side: 'right', align: 'start' }
-            },
-        ]
-    }
 
     // ── Comisionados — Detalle de agente ──────────────────────────────────
     if (/^\/commissioners\/[^/]+$/.test(pathname)) {
@@ -456,6 +439,24 @@ function getStepsForPath(pathname: string): TourStep[] {
         ]
     }
 
+    // ── Cumplimiento (RGPD) ────────────────────────────────────────────────
+    if (pathname.startsWith('/admin/compliance')) {
+        return [
+            {
+                element: 'body',
+                popover: { title: 'Cumplimiento RGPD', description: 'Gestiona el cumplimiento normativo de protección de datos: consentimientos, solicitudes ARCO+ y políticas de retención.', side: 'left', align: 'start' }
+            },
+            {
+                element: '.tour-compliance-tabs',
+                popover: { title: 'Secciones', description: 'Navega entre Consentimientos (registro de permisos), ARCO+ (derechos de los interesados) y Retención (políticas de borrado automático).', side: 'bottom', align: 'start' }
+            },
+            {
+                element: '.tour-compliance-content',
+                popover: { title: 'Contenido', description: 'Cada pestaña muestra su gestión correspondiente. Aquí puedes registrar consentimientos, tramitar solicitudes y configurar plazos de retención.', side: 'top', align: 'start' }
+            },
+        ]
+    }
+
     // ── Ajustes ────────────────────────────────────────────────────────────
     if (pathname.startsWith('/settings') || pathname.startsWith('/admin/settings')) {
         return [
@@ -489,7 +490,7 @@ function getStepsForPath(pathname: string): TourStep[] {
             element: 'aside',
             popover: {
                 title: 'Navegación',
-                description: 'Desde aquí accedes a todas las secciones: CRM, Comparador, Tarifas, Contratos, Mensajería, Comisionados e Integraciones.',
+                description: 'Desde aquí accedes a todas las secciones: CRM, Comparador, Tarifas, Contratos, Mensajería y Comisionados.',
                 side: 'right',
                 align: 'start'
             }
@@ -517,5 +518,10 @@ export function useTour() {
         driverObj.drive()
     }
 
-    return { startTour }
+    const getStepCount = () => {
+        const allSteps = getStepsForPath(location.pathname)
+        return filterExistingSteps(allSteps).length
+    }
+
+    return { startTour, getStepCount }
 }

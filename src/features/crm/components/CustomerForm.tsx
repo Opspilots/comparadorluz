@@ -30,8 +30,8 @@ export function CustomerForm() {
     const [partPhone, setPartPhone] = useState('')
 
     // For Companies (Multi-value)
-    const [companyEmails, setCompanyEmails] = useState<{ id?: string, value: string, label: string }[]>([{ value: '', label: 'Administración' }])
-    const [companyPhones, setCompanyPhones] = useState<{ id?: string, value: string, label: string }[]>([{ value: '', label: 'General' }])
+    const [companyEmails, setCompanyEmails] = useState<{ id?: string, _key: string, value: string, label: string }[]>([{ _key: crypto.randomUUID(), value: '', label: 'Administración' }])
+    const [companyPhones, setCompanyPhones] = useState<{ id?: string, _key: string, value: string, label: string }[]>([{ _key: crypto.randomUUID(), value: '', label: 'General' }])
     const [province, setProvince] = useState('')
     const [city, setCity] = useState('')
     const [address, setAddress] = useState('')
@@ -82,12 +82,12 @@ export function CustomerForm() {
                         if (phoneContact) setPartPhone(phoneContact.phone);
                     } else {
                         // Company: Map to arrays
-                        const emails: { id?: string, value: string, label: string }[] = [];
-                        const phones: { id?: string, value: string, label: string }[] = [];
+                        const emails: { id?: string, _key: string, value: string, label: string }[] = [];
+                        const phones: { id?: string, _key: string, value: string, label: string }[] = [];
 
                         contacts.forEach((c) => {
-                            if (c.email) emails.push({ id: c.id, value: c.email, label: c.position || c.first_name || 'Email' });
-                            if (c.phone) phones.push({ id: c.id, value: c.phone, label: c.position || c.first_name || 'Teléfono' });
+                            if (c.email) emails.push({ id: c.id, _key: c.id, value: c.email, label: c.position || c.first_name || 'Email' });
+                            if (c.phone) phones.push({ id: c.id, _key: c.id, value: c.phone, label: c.position || c.first_name || 'Teléfono' });
                         });
 
                         setCompanyEmails(emails.length > 0 ? emails : []);
@@ -287,7 +287,7 @@ export function CustomerForm() {
     if (pageLoading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando cliente...</div>
 
     return (
-        <div className="card" style={{ maxWidth: '800px', margin: '2rem auto' }}>
+        <div className="card" style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem' }}>
 
 
             {error && (
@@ -322,7 +322,7 @@ export function CustomerForm() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
-                    <div>
+                    <div className="tour-customer-form-cif">
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>{customerType === 'empresa' ? 'CIF' : 'NIF'}</label>
                         <input
                             type="text"
@@ -333,7 +333,7 @@ export function CustomerForm() {
                                 setCif(clean);
                             }}
                             placeholder={customerType === 'empresa' ? 'Ej: B12345678' : 'Ej: 12345678A'}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                         />
                     </div>
                     <div>
@@ -344,18 +344,18 @@ export function CustomerForm() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder={customerType === 'empresa' ? 'Ej: Energy S.L.' : 'Ej: Juan Pérez'}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                         />
                     </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    <div>
+                    <div className="tour-customer-form-status">
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estado del Lead</label>
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value as CustomerStatus)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="prospecto">Prospecto (Lead)</option>
                             <option value="contactado">Contactado</option>
@@ -370,7 +370,7 @@ export function CustomerForm() {
                         <select
                             value={assignedTo}
                             onChange={(e) => setAssignedTo(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="">Sin asignar</option>
                             {commissioners.map(c => (
@@ -381,7 +381,7 @@ export function CustomerForm() {
                 </div>
 
                 {/* Contact Methods Section */}
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
 
 
                     {customerType === 'particular' ? (
@@ -393,7 +393,7 @@ export function CustomerForm() {
                                     value={partEmail}
                                     onChange={(e) => setPartEmail(e.target.value)}
                                     placeholder="ejemplo@gmail.com"
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                                 />
                             </div>
                             <div>
@@ -403,7 +403,7 @@ export function CustomerForm() {
                                     value={partPhone}
                                     onChange={(e) => setPartPhone(e.target.value)}
                                     placeholder="600 000 000"
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                                 />
                             </div>
                         </div>
@@ -414,35 +414,35 @@ export function CustomerForm() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>Correos Electrónicos</label>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {companyEmails.map((item, index) => (
-                                        <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 40px', gap: '0.5rem', alignItems: 'center' }}>
+                                        <div key={item._key} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 40px', gap: '0.5rem', alignItems: 'center' }}>
                                             <input
                                                 type="email"
                                                 placeholder="ejemplo@empresa.com"
                                                 value={item.value}
                                                 onChange={(e) => {
-                                                    const newItems = [...companyEmails];
-                                                    newItems[index].value = e.target.value;
-                                                    setCompanyEmails(newItems);
+                                                    setCompanyEmails(prev => prev.map((item, i) =>
+                                                        i === index ? { ...item, value: e.target.value } : item
+                                                    ));
                                                 }}
-                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)' }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                                             />
                                             <input
                                                 type="text"
                                                 placeholder="Etiqueta (Ej: Admin)"
                                                 value={item.label}
                                                 onChange={(e) => {
-                                                    const newItems = [...companyEmails];
-                                                    newItems[index].label = e.target.value;
-                                                    setCompanyEmails(newItems);
+                                                    setCompanyEmails(prev => prev.map((item, i) =>
+                                                        i === index ? { ...item, label: e.target.value } : item
+                                                    ));
                                                 }}
-                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.9rem' }}
                                             />
                                             {companyEmails.length > 1 && (
                                                 <button type="button" onClick={() => setCompanyEmails(companyEmails.filter((_, i) => i !== index))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
                                             )}
                                         </div>
                                     ))}
-                                    <button type="button" onClick={() => setCompanyEmails([...companyEmails, { value: '', label: '' }])} style={{ fontSize: '0.875rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>+ Añadir otro email</button>
+                                    <button type="button" onClick={() => setCompanyEmails([...companyEmails, { _key: crypto.randomUUID(), value: '', label: '' }])} style={{ fontSize: '0.875rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>+ Añadir otro email</button>
                                 </div>
                             </div>
 
@@ -451,35 +451,35 @@ export function CustomerForm() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>Teléfonos</label>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {companyPhones.map((item, index) => (
-                                        <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 40px', gap: '0.5rem', alignItems: 'center' }}>
+                                        <div key={item._key} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 40px', gap: '0.5rem', alignItems: 'center' }}>
                                             <input
                                                 type="tel"
                                                 placeholder="+34 91 000 000"
                                                 value={item.value}
                                                 onChange={(e) => {
-                                                    const newItems = [...companyPhones];
-                                                    newItems[index].value = e.target.value;
-                                                    setCompanyPhones(newItems);
+                                                    setCompanyPhones(prev => prev.map((item, i) =>
+                                                        i === index ? { ...item, value: e.target.value } : item
+                                                    ));
                                                 }}
-                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)' }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                                             />
                                             <input
                                                 type="text"
                                                 placeholder="Etiqueta (Ej: Oficina)"
                                                 value={item.label}
                                                 onChange={(e) => {
-                                                    const newItems = [...companyPhones];
-                                                    newItems[index].label = e.target.value;
-                                                    setCompanyPhones(newItems);
+                                                    setCompanyPhones(prev => prev.map((item, i) =>
+                                                        i === index ? { ...item, label: e.target.value } : item
+                                                    ));
                                                 }}
-                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem' }}
+                                                style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.9rem' }}
                                             />
                                             {companyPhones.length > 1 && (
                                                 <button type="button" onClick={() => setCompanyPhones(companyPhones.filter((_, i) => i !== index))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
                                             )}
                                         </div>
                                     ))}
-                                    <button type="button" onClick={() => setCompanyPhones([...companyPhones, { value: '', label: '' }])} style={{ fontSize: '0.875rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>+ Añadir otro teléfono</button>
+                                    <button type="button" onClick={() => setCompanyPhones([...companyPhones, { _key: crypto.randomUUID(), value: '', label: '' }])} style={{ fontSize: '0.875rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>+ Añadir otro teléfono</button>
                                 </div>
                             </div>
                         </div>
@@ -492,7 +492,7 @@ export function CustomerForm() {
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         placeholder="Calle, número, piso..."
-                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '100px' }}
+                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', minHeight: '100px' }}
                     />
                 </div>
 

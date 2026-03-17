@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/shared/lib/supabase'
 import {
     LayoutDashboard, Users, FileText, Scale, FileSignature,
-    HelpCircle, Zap, Settings, Wallet, MessageSquare, Building2, Plug, Shield
+    HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield
 } from 'lucide-react'
 import { useTour } from '@/features/guide/useTour'
 
@@ -12,15 +14,42 @@ const navItems = [
     { id: 'suppliers', label: 'Comercializadoras', path: '/admin/suppliers', icon: Building2 },
     { id: 'comparator', label: 'Comparador', path: '/comparator', icon: Scale },
     { id: 'contracts', label: 'Contratos', path: '/contracts', icon: FileSignature },
-    { id: 'messaging', label: 'Mensajería', path: '/admin/messages', icon: MessageSquare },
+    { id: 'messaging', label: 'Mensajeria', path: '/admin/messages', icon: MessageSquare },
     { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: Wallet },
-    { id: 'integrations', label: 'Integraciones', path: '/admin/integrations', icon: Plug },
     { id: 'compliance', label: 'Cumplimiento', path: '/admin/compliance', icon: Shield },
 ]
 
 export function Sidebar() {
     const location = useLocation()
     const { startTour } = useTour()
+
+    const { data: companyData } = useQuery({
+        queryKey: ['company-branding'],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return null
+
+            const { data: profile } = await supabase
+                .from('users')
+                .select('company_id')
+                .eq('id', user.id)
+                .single()
+
+            if (!profile?.company_id) return null
+
+            const { data: company } = await supabase
+                .from('companies')
+                .select('name, logo_url, primary_color, secondary_color')
+                .eq('id', profile.company_id)
+                .single()
+
+            return company
+        },
+        staleTime: 5 * 60 * 1000,
+    })
+
+    const companyName = companyData?.name || 'Mi Empresa'
+    const primaryColor = companyData?.primary_color || '#2563eb'
 
     return (
         <aside style={{
@@ -35,7 +64,7 @@ export function Sidebar() {
             zIndex: 100,
             borderRight: '1px solid rgba(255,255,255,0.06)',
         }}>
-            {/* Logo */}
+            {/* Company Brand */}
             <div style={{
                 padding: '1.25rem 1.25rem 1rem',
                 borderBottom: '1px solid rgba(255,255,255,0.07)',
@@ -44,28 +73,48 @@ export function Sidebar() {
                 gap: '0.625rem',
                 minHeight: 'var(--header-height)',
             }}>
-                <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: '0 2px 8px rgb(37 99 235 / 0.5)',
-                }}>
-                    <Zap size={17} color="white" fill="white" />
-                </div>
-                <div>
+                {companyData?.logo_url ? (
+                    <img
+                        src={companyData.logo_url}
+                        alt={companyName}
+                        style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            objectFit: 'cover',
+                            flexShrink: 0,
+                        }}
+                    />
+                ) : (
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}cc 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        boxShadow: `0 2px 8px ${primaryColor}80`,
+                    }}>
+                        <span style={{ color: 'white', fontSize: '0.875rem', fontWeight: 800 }}>
+                            {companyName.charAt(0).toUpperCase()}
+                        </span>
+                    </div>
+                )}
+                <div style={{ minWidth: 0 }}>
                     <span style={{
                         color: 'white',
-                        fontSize: '1rem',
+                        fontSize: '0.9375rem',
                         fontWeight: 700,
-                        letterSpacing: '-0.03em',
+                        letterSpacing: '-0.02em',
                         lineHeight: 1.2,
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                     }}>
-                        EnergyDeal
+                        {companyName}
                     </span>
                     <div style={{
                         color: 'rgba(255,255,255,0.35)',
@@ -75,7 +124,7 @@ export function Sidebar() {
                         textTransform: 'uppercase',
                         marginTop: '1px',
                     }}>
-                        CRM
+                        CRM Energia
                     </div>
                 </div>
             </div>
@@ -126,7 +175,7 @@ export function Sidebar() {
                                     transform: 'translateY(-50%)',
                                     width: '3px',
                                     height: '60%',
-                                    background: '#3b82f6',
+                                    background: primaryColor,
                                     borderRadius: '0 2px 2px 0',
                                 }} />
                             )}
@@ -134,7 +183,7 @@ export function Sidebar() {
                                 size={17}
                                 style={{
                                     flexShrink: 0,
-                                    color: isActive ? '#60a5fa' : 'inherit',
+                                    color: isActive ? primaryColor : 'inherit',
                                 }}
                             />
                             {item.label}
@@ -197,7 +246,7 @@ export function Sidebar() {
                     className="sidebar-nav-item"
                 >
                     <HelpCircle size={17} style={{ flexShrink: 0 }} />
-                    Ayuda y Guía
+                    Ayuda y Guia
                 </button>
             </div>
         </aside>

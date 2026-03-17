@@ -1,4 +1,5 @@
-import { serve } from "std/http/server.ts"
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,30 @@ serve(async (req: Request) => {
     }
 
     try {
+        // Validate JWT — reject unauthenticated callers
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Authorization required' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
+        const token = authHeader.replace('Bearer ', '')
+        const supabaseAuth = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+        )
+
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
         const { csv_content } = await req.json()
         if (!csv_content) throw new Error('CSV content is required')
 
@@ -79,9 +104,9 @@ serve(async (req: Request) => {
         })
 
     } catch (e: unknown) {
-        const error = e as Error;
-        console.error('Processing error:', error)
-        return new Response(JSON.stringify({ error: error.message }), {
+        const error = e instanceof Error ? e : new Error(String(e));
+        console.error('Processing error:', error.message)
+        return new Response(JSON.stringify({ error: 'Error al procesar el CSV de la CNMC.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

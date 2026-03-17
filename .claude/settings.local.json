@@ -38,7 +38,16 @@
       "WebFetch(domain:data.cnmc.es)",
       "WebFetch(domain:datos.gob.es)",
       "WebFetch(domain:comparador.cnmc.gob.es)",
-      "Bash(do grep:*)"
+      "Bash(do grep:*)",
+      "Bash(for file:*)",
+      "Bash(for f:*)",
+      "Bash(find /c/Users/pelay/OneDrive/Escritorio/comparadorluz/supabase/migrations -type f -name \"*certification*\" -o -name \"*training*\" 2>/dev/null | head -20)",
+      "Bash(cd \"C:\\\\Users\\\\pelay\\\\OneDrive\\\\Escritorio\\\\comparadorluz\" && npx vite build 2>&1 | tail -10)",
+      "Bash(cd \"C:\\\\Users\\\\pelay\\\\OneDrive\\\\Escritorio\\\\comparadorluz\" && npx vite build 2>&1 | tail -20)",
+      "Bash(cd \"C:\\\\Users\\\\pelay\\\\OneDrive\\\\Escritorio\\\\comparadorluz\" && npx vite build 2>&1 | tail -5)",
+      "Bash(npm ls:*)",
+      "Bash(cd:*)",
+      "Bash(npx vite:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -2,31 +2,41 @@ import { supabase } from '@/shared/lib/supabase'
 import { sendMessage } from '@/features/messaging/lib/messaging-service'
 import type { ConsentType } from '@/shared/types'
 
-export const CONSENT_LEGAL_TEXTS: Record<ConsentType, { label: string; text: string; required: boolean }> = {
+export const CONSENT_LEGAL_TEXTS: Record<ConsentType, { label: string; text: string; required: boolean; docUrl: string; docLabel: string }> = {
     data_processing: {
         label: 'Tratamiento de datos personales',
         text: 'En cumplimiento del Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 (LOPDGDD), autorizo el tratamiento de mis datos personales para la gestión de mi suministro energético, comparación de tarifas y servicios asociados.',
         required: true,
+        docUrl: 'https://www.boe.es/doue/2016/119/L00001-00088.pdf',
+        docLabel: 'Reglamento (UE) 2016/679 — RGPD',
     },
     commercial_contact: {
         label: 'Contacto comercial',
         text: 'De acuerdo con el Real Decreto 88/2026, autorizo el contacto comercial por los medios indicados para recibir información sobre ofertas y servicios energéticos.',
         required: true,
+        docUrl: 'https://www.boe.es/eli/es/lo/2018/12/05/3/con',
+        docLabel: 'Ley Orgánica 3/2018 — LOPDGDD',
     },
     switching_authorization: {
         label: 'Autorización de cambio de comercializadora',
         text: 'Autorizo la tramitación del cambio de comercializadora eléctrica/gas conforme a la normativa de la CNMC y el proceso ATR establecido.',
         required: true,
+        docUrl: 'https://www.cnmc.es/ambitos-de-actuacion/energia/mercado-electrico',
+        docLabel: 'CNMC — Normativa de cambio de comercializadora',
     },
     data_sharing: {
         label: 'Cesión de datos a terceros',
         text: 'Autorizo la cesión de mis datos a las comercializadoras energéticas necesarias para la gestión de ofertas y contratación, conforme al RGPD Art. 6.1.a.',
         required: false,
+        docUrl: 'https://www.aepd.es/guias/guia-consentimiento.pdf',
+        docLabel: 'AEPD — Guía sobre el consentimiento',
     },
     marketing: {
         label: 'Comunicaciones comerciales electrónicas',
         text: 'Conforme al Art. 21 de la LSSI-CE, consiento recibir comunicaciones comerciales electrónicas sobre productos y servicios energéticos.',
         required: false,
+        docUrl: 'https://www.boe.es/eli/es/l/2002/07/11/34/con',
+        docLabel: 'Ley 34/2002 — LSSI-CE',
     },
 }
 
@@ -73,11 +83,12 @@ export async function sendConsentRequest(data: SendConsentRequestData): Promise<
             return { sent: false, error: 'WhatsApp no configurado' }
         }
 
-        // 2. Find contact
+        // 2. Find contact (scoped to tenant)
         const { data: contacts } = await supabase
             .from('contacts')
             .select('id, first_name, last_name, email, phone, is_primary')
             .eq('customer_id', data.customerId)
+            .eq('company_id', data.companyId)
             .order('is_primary', { ascending: false })
             .limit(5)
 
@@ -146,18 +157,7 @@ export async function sendConsentRequest(data: SendConsentRequestData): Promise<
             })
         }
 
-        // 6. Send message
-        const message = await sendMessage({
-            company_id: data.companyId,
-            customer_id: data.customerId,
-            contact_id: contactId,
-            channel: data.channel,
-            recipient_contact: recipientContact,
-            content,
-            subject,
-        })
-
-        // 7. Insert consent_request record
+        // 6. Insert consent_request record FIRST — so the signing URL is valid if message arrives instantly
         const { error: insertError } = await supabase
             .from('consent_requests')
             .insert({
@@ -168,7 +168,7 @@ export async function sendConsentRequest(data: SendConsentRequestData): Promise<
                 legal_text: legalText,
                 channel: data.channel,
                 recipient_contact: recipientContact,
-                message_id: message.id,
+                message_id: null,
                 token,
                 status: 'sent',
                 sent_at: new Date().toISOString(),
@@ -178,6 +178,24 @@ export async function sendConsentRequest(data: SendConsentRequestData): Promise<
             })
 
         if (insertError) throw insertError
+
+        // 7. Send message — if this fails, the consent record exists but can be resent
+        const message = await sendMessage({
+            company_id: data.companyId,
+            customer_id: data.customerId,
+            contact_id: contactId,
+            channel: data.channel,
+            recipient_contact: recipientContact,
+            content,
+            subject,
+        })
+
+        // Update consent_request with message_id
+        await supabase
+            .from('consent_requests')
+            .update({ message_id: message.id })
+            .eq('token', token)
+            .eq('company_id', data.companyId)
 
         return { sent: true, channel: data.channel, token }
     } catch (err) {
@@ -204,12 +222,19 @@ export function getAvailableChannels(settings: Record<string, unknown> | null): 
     }
 }
 
+/** Escape user-controlled strings before embedding in HTML to prevent XSS */
+function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 function buildConsentEmailHtml(data: {
     customerName: string
     companyName: string
     consentTypes: ConsentType[]
     signingUrl: string
 }): string {
+    const safeCustomerName = escapeHtml(data.customerName)
+    const safeCompanyName = escapeHtml(data.companyName)
     const consentRows = data.consentTypes.map(ct => {
         const info = CONSENT_LEGAL_TEXTS[ct]
         return `
@@ -221,6 +246,12 @@ function buildConsentEmailHtml(data: {
                 <div style="font-size: 13px; color: #64748b; line-height: 1.5;">
                     ${info.text}
                 </div>
+                <div style="margin-top: 6px;">
+                    <a href="${info.docUrl}" target="_blank" rel="noopener noreferrer"
+                       style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: 500;">
+                        📄 ${info.docLabel}
+                    </a>
+                </div>
             </td>
         </tr>`
     }).join('')
@@ -229,12 +260,12 @@ function buildConsentEmailHtml(data: {
 <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
     <div style="background: #2563eb; padding: 28px 32px; border-radius: 8px 8px 0 0;">
         <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Solicitud de Consentimiento</h1>
-        <p style="color: #bfdbfe; margin: 6px 0 0; font-size: 13px;">${data.companyName} — Cumplimiento RGPD</p>
+        <p style="color: #bfdbfe; margin: 6px 0 0; font-size: 13px;">${safeCompanyName} — Cumplimiento RGPD</p>
     </div>
 
     <div style="padding: 32px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
         <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-top: 0;">
-            Estimado/a <strong>${data.customerName}</strong>,
+            Estimado/a <strong>${safeCustomerName}</strong>,
         </p>
         <p style="color: #334155; font-size: 15px; line-height: 1.6;">
             Necesitamos su consentimiento expreso para los siguientes tratamientos de datos.
@@ -258,7 +289,7 @@ function buildConsentEmailHtml(data: {
         </p>
 
         <p style="color: #94a3b8; font-size: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
-            Este mensaje ha sido generado por ${data.companyName}. Si tiene dudas, contacte con nuestro
+            Este mensaje ha sido generado por ${safeCompanyName}. Si tiene dudas, contacte con nuestro
             Delegado de Protección de Datos en la dirección indicada en nuestra política de privacidad.
         </p>
     </div>
@@ -273,7 +304,7 @@ function buildConsentWhatsAppText(data: {
 }): string {
     const typesList = data.consentTypes.map(ct => {
         const info = CONSENT_LEGAL_TEXTS[ct]
-        return `• ${info.label}${info.required ? ' (obligatorio)' : ''}`
+        return `• ${info.label}${info.required ? ' (obligatorio)' : ''}\n  Mas info: ${info.docUrl}`
     }).join('\n')
 
     return [

@@ -149,9 +149,11 @@ export default function ConversationPage() {
 
             if (!companyId) throw new Error('Company ID not found');
 
+            if (!customerId) throw new Error('Customer ID is required');
+
             return sendMessage({
                 company_id: companyId,
-                customer_id: customerId!,
+                customer_id: customerId,
                 channel: activeChannel,
                 recipient_contact: recipient,
                 contact_id: selectedContactId,
@@ -200,7 +202,7 @@ export default function ConversationPage() {
 
             <ChatWindow
                 customerName={customerData.customer.name}
-                customerContact={currentContact ? (activeChannel === 'email' ? currentContact.email : currentContact.phone) : 'Seleccione contacto'}
+                customerContact={currentContact ? (activeChannel === 'email' ? currentContact.email ?? '' : currentContact.phone ?? '') : 'Seleccione contacto'}
                 messages={messages || []}
                 onSendMessage={(content, subject, attachments) => mutation.mutate({ content, subject, attachments })}
                 isLoading={mutation.isPending}

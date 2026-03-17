@@ -38,35 +38,35 @@ export function ConsentSignPage() {
     const [isDrawing, setIsDrawing] = useState(false)
     const [hasSignature, setHasSignature] = useState(false)
 
-    useEffect(() => {
+    const loadRequest = useCallback(async () => {
         if (!token) return
-        loadRequest()
-    }, [token])
-
-    const loadRequest = async () => {
         setLoading(true)
         const { data, error: fetchError } = await supabase
-            .from('consent_requests')
-            .select('id, company_id, customer_id, consent_types, legal_text, status, expires_at, signed_at, signer_name, companies(name), customers(name, cif)')
-            .eq('token', token!)
-            .single()
+            .rpc('get_consent_request_by_token', { p_token: token })
 
-        if (fetchError || !data) {
+        if (fetchError || !data || data.length === 0) {
             setError('Enlace no válido o expirado')
             setLoading(false)
             return
         }
 
-        const req = data as unknown as ConsentRequestData
+        const row = data[0]
+        const req: ConsentRequestData = {
+            id: row.id,
+            company_id: row.company_id,
+            customer_id: row.customer_id,
+            consent_types: row.consent_types as ConsentType[],
+            legal_text: row.legal_text,
+            status: row.status as RequestStatus,
+            expires_at: row.expires_at,
+            signed_at: row.signed_at,
+            signer_name: row.signer_name,
+            companies: row.company_name ? { name: row.company_name } : null,
+            customers: row.customer_name ? { name: row.customer_name, cif: row.customer_cif } : null,
+        }
 
-        // Check expiry
+        // Check expiry client-side (server RPC already returns unexpired only, but double-check)
         if (new Date(req.expires_at) < new Date()) {
-            if (req.status !== 'expired') {
-                await supabase
-                    .from('consent_requests')
-                    .update({ status: 'expired', expired_at: new Date().toISOString() })
-                    .eq('id', req.id)
-            }
             setError('Este enlace ha expirado. Solicite un nuevo enlace a su asesor energético.')
             setLoading(false)
             return
@@ -79,17 +79,21 @@ export function ConsentSignPage() {
             return
         }
 
-        // Mark as viewed
+        // Mark as viewed (narrow RLS policy allows only sent→viewed)
         if (req.status === 'sent') {
             await supabase
                 .from('consent_requests')
                 .update({ status: 'viewed', viewed_at: new Date().toISOString() })
-                .eq('id', req.id)
+                .eq('token', token)
         }
 
         setRequest(req)
         setLoading(false)
-    }
+    }, [token])
+
+    useEffect(() => {
+        loadRequest()
+    }, [loadRequest])
 
     // Canvas signature pad
     const getCanvasCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -162,67 +166,40 @@ export function ConsentSignPage() {
     const canSubmit = signerName.trim() && signerNif.trim() && allRequiredAccepted && hasSignature && !submitting
 
     const handleSubmit = async () => {
-        if (!canSubmit || !request) return
+        if (!canSubmit || !request || !token) return
         setSubmitting(true)
 
         try {
             const signatureData = canvasRef.current?.toDataURL('image/png') || ''
 
-            // 1. Update consent_request
-            const { error: updateErr } = await supabase
-                .from('consent_requests')
-                .update({
-                    status: 'signed',
-                    signed_at: new Date().toISOString(),
-                    signer_name: signerName.trim(),
-                    signer_nif: signerNif.trim().toUpperCase(),
-                    signature_data: signatureData,
-                })
-                .eq('id', request.id)
-
-            if (updateErr) throw updateErr
-
-            // 2. Create customer_consents for each accepted type
-            const consentRows = Array.from(acceptedTypes).map(ct => ({
-                company_id: request.company_id,
-                customer_id: request.customer_id,
-                consent_type: ct,
-                granted: true,
-                granted_at: new Date().toISOString(),
-                granted_by: 'customer_self',
-                method: 'digital' as const,
-                ip_address: 'client',
-                notes: `Firmado digitalmente por ${signerName.trim()} (${signerNif.trim().toUpperCase()}) via enlace de consentimiento`,
-            }))
-
-            // For each consent type, check existing and insert/update
-            for (const row of consentRows) {
-                const { data: existing } = await supabase
-                    .from('customer_consents')
-                    .select('id')
-                    .eq('company_id', row.company_id)
-                    .eq('customer_id', row.customer_id)
-                    .eq('consent_type', row.consent_type)
-                    .is('revoked_at', null)
-                    .maybeSingle()
-
-                if (existing) {
-                    await supabase
-                        .from('customer_consents')
-                        .update({
-                            granted: true,
-                            granted_at: row.granted_at,
-                            granted_by: row.granted_by,
-                            method: row.method,
-                            ip_address: row.ip_address,
-                            notes: row.notes,
-                        })
-                        .eq('id', existing.id)
-                } else {
-                    await supabase
-                        .from('customer_consents')
-                        .insert(row)
+            // Resolve client IP for audit trail (eIDAS compliance)
+            let clientIp = 'unknown'
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json')
+                if (ipRes.ok) {
+                    const ipData = await ipRes.json()
+                    clientIp = ipData.ip || 'unknown'
                 }
+            } catch {
+                // IP resolution failure should not block consent signing
+            }
+
+            // Use secure RPC — validates token, checks expiry, and does all writes atomically
+            const { data: result, error: rpcErr } = await supabase
+                .rpc('sign_consent_request', {
+                    p_token: token,
+                    p_signer_name: signerName.trim(),
+                    p_signer_nif: signerNif.trim().toUpperCase(),
+                    p_signer_ip: clientIp,
+                    p_signature_data: signatureData,
+                    p_accepted_types: Array.from(acceptedTypes),
+                })
+
+            if (rpcErr) throw rpcErr
+
+            if (result && !result.success) {
+                setError(result.error || 'Error al firmar.')
+                return
             }
 
             setSuccess(true)
@@ -420,6 +397,14 @@ export function ConsentSignPage() {
                                             <div style={{ fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5 }}>
                                                 {info.text}
                                             </div>
+                                            <a
+                                                href={info.docUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ display: 'inline-block', marginTop: 6, fontSize: '0.75rem', color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                                            >
+                                                Leer documentacion completa: {info.docLabel}
+                                            </a>
                                         </div>
                                     </label>
                                 )

@@ -1,7 +1,7 @@
 // @ts-expect-error Deno global not available in TS context
 declare const Deno: { serve: (handler: (req: Request) => Promise<Response>) => void; env: { get: (key: string) => string | undefined } };
 
-import { encode } from "std/encoding/base64.ts";
+import { encode } from "https://deno.land/std@0.192.0/encoding/base64.ts";
 
 // ============================================================================
 // Helpers
@@ -607,8 +607,23 @@ Deno.serve(async (req: Request) => {
         if (!authHeader) {
             return new Response(JSON.stringify({
                 error: 'No autorizado',
-                details: 'Falta la cabecera Authorization.'
             }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
+        // Verify JWT — reject invalid tokens
+        const token = authHeader.replace('Bearer ', '');
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabaseAuth = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+        );
+        const { data: { user: authUser }, error: authError } = await supabaseAuth.auth.getUser();
+        if (authError || !authUser) {
+            return new Response(JSON.stringify({ error: 'Token inválido o expirado' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 401,
             });
@@ -857,9 +872,12 @@ Deno.serve(async (req: Request) => {
     } catch (e: unknown) {
         const error = e instanceof Error ? e : new Error(String(e));
         console.error("Fatal Error:", error.message);
+        // Return user-friendly message, keep details in server logs
+        const safeMessage = error.message.includes('Gemini') || error.message.includes('API')
+            ? 'Error al procesar el documento. Inténtalo de nuevo.'
+            : error.message;
         return new Response(JSON.stringify({
-            error: error.message,
-            details: error.toString()
+            error: safeMessage
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,

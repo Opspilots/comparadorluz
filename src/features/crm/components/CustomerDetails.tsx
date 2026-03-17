@@ -1,39 +1,19 @@
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
-import { Mail, Phone, MessageSquare, BarChart3, Download, Loader2, Database } from 'lucide-react';
+import { Mail, Phone, MessageSquare, Database } from 'lucide-react';
 import { SipsImportDialog } from './SipsImportDialog'
-import type { Customer, Contact, SupplyPoint, Contract, Integration } from '@/shared/types'
-import { useState, useEffect } from 'react'
-import { useConsumptionData, useFetchDatadisConsumption, useMyIntegrations } from '@/features/integrations/lib/useIntegrations'
-import { ConsumptionChart } from '@/features/integrations/components/ConsumptionChart'
+import type { Customer, Contact, SupplyPoint, Contract } from '@/shared/types'
+import { useState } from 'react'
 
-function SupplyPointWithConsumption({ sp, companyId, datadisIntegration, onRefresh }: {
+function SupplyPointWithConsumption({ sp, onRefresh }: {
     sp: SupplyPoint
-    companyId: string
-    datadisIntegration: Integration | undefined
     onRefresh: () => void
 }) {
-    const [showConsumption, setShowConsumption] = useState(false)
     const [showSips, setShowSips] = useState(false)
-    const { data: consumption, isLoading: loadingConsumption } = useConsumptionData(
-        companyId,
-        showConsumption ? sp.cups : undefined
-    )
-    const fetchConsumption = useFetchDatadisConsumption(companyId)
-
-    const handleImport = async () => {
-        if (!datadisIntegration || !sp.cups) return
-        await fetchConsumption.mutateAsync({
-            integrationId: datadisIntegration.id,
-            cups: sp.cups,
-        })
-        setShowConsumption(true)
-    }
-
-    const hasConsumption = consumption && consumption.length > 0
 
     return (
-        <div style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)' }}>
+        <div style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-background)' }}>
             <p style={{ fontWeight: 600, margin: '0 0 0.5rem 0', fontFamily: 'monospace', fontSize: '1.1rem' }}>{sp.cups || 'Sin CUPS'}</p>
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>{sp.address}</p>
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-main)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -41,22 +21,6 @@ function SupplyPointWithConsumption({ sp, companyId, datadisIntegration, onRefre
                 <span><strong>Consumo:</strong> {sp.annual_consumption_kwh || '?'} kWh</span>
                 {sp.cups && (
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-                        {datadisIntegration?.status === 'active' && (
-                            <button
-                                onClick={handleImport}
-                                disabled={fetchConsumption.isPending}
-                                style={{
-                                    padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600,
-                                    background: '#f5f3ff', color: '#7c3aed', border: '1px solid #e9d5ff',
-                                    borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
-                                }}
-                            >
-                                {fetchConsumption.isPending
-                                    ? <><Loader2 size={11} className="animate-spin" /> Importando...</>
-                                    : <><Download size={11} /> Importar Datadis</>
-                                }
-                            </button>
-                        )}
                         <button
                             onClick={() => setShowSips(true)}
                             style={{
@@ -71,50 +35,13 @@ function SupplyPointWithConsumption({ sp, companyId, datadisIntegration, onRefre
                             <Database size={11} />
                             {sp.sips_imported_at ? 'SIPS' : 'Importar SIPS'}
                         </button>
-                        <button
-                            onClick={() => setShowConsumption(!showConsumption)}
-                            style={{
-                                padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600,
-                                background: showConsumption ? '#dbeafe' : '#f1f5f9', color: showConsumption ? '#1d4ed8' : '#475569',
-                                border: '1px solid', borderColor: showConsumption ? '#bfdbfe' : '#e2e8f0',
-                                borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem'
-                            }}
-                        >
-                            <BarChart3 size={11} />
-                            {showConsumption ? 'Ocultar consumos' : 'Ver consumos'}
-                        </button>
                     </div>
                 )}
             </div>
 
-            {/* Consumption chart */}
-            {showConsumption && sp.cups && (
-                <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-                    {loadingConsumption ? (
-                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                            <Loader2 size={16} className="animate-spin inline-block mr-1" /> Cargando consumos...
-                        </div>
-                    ) : hasConsumption ? (
-                        <ConsumptionChart data={consumption} cups={sp.cups} />
-                    ) : (
-                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                            No hay datos de consumo.
-                            {datadisIntegration?.status === 'active' && ' Pulsa "Importar Datadis" para obtener datos reales.'}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Import success message */}
-            {fetchConsumption.isSuccess && (
-                <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#059669', fontWeight: 500 }}>
-                    Consumos importados correctamente
-                </p>
-            )}
-
             {/* SIPS data summary */}
             {sp.sips_imported_at && (
-                <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem' }}>
                         <Database size={12} color="#2563eb" />
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2563eb' }}>Datos SIPS</span>
@@ -148,100 +75,67 @@ function SupplyPointWithConsumption({ sp, companyId, datadisIntegration, onRefre
     )
 }
 
+const badgeStyle = (status: string): React.CSSProperties => {
+    const base: React.CSSProperties = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', border: '1px solid transparent', display: 'inline-block' }
+    switch (status) {
+        case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
+        case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
+        case 'pending': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
+        case 'cancelled': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
+        case 'cliente': return { ...base, background: '#dcfce7', color: '#10b981', borderColor: '#bbf7d0' }
+        case 'perdido': return { ...base, background: '#fee2e2', color: '#ef4444', borderColor: '#fecaca' }
+        case 'propuesta': return { ...base, background: '#e0f2fe', color: '#0ea5e9', borderColor: '#bae6fd' }
+        case 'negociacion': return { ...base, background: '#fef3c7', color: '#f59e0b', borderColor: '#fde68a' }
+        case 'contactado': return { ...base, background: '#f3e8ff', color: '#8b5cf6', borderColor: '#e9d5ff' }
+        default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
+    }
+}
+
+const statusLabels: Record<string, string> = {
+    'prospecto': 'Prospecto',
+    'contactado': 'Contactado',
+    'propuesta': 'Propuesta',
+    'negociacion': 'Negociación',
+    'cliente': 'Cliente',
+    'perdido': 'Perdido'
+}
+
 export function CustomerDetails() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const [loading, setLoading] = useState(true)
-    const [customer, setCustomer] = useState<Customer | null>(null)
-    const [contacts, setContacts] = useState<Contact[]>([])
-    const [supplyPoints, setSupplyPoints] = useState<SupplyPoint[]>([])
-    const [contracts, setContracts] = useState<Contract[]>([])
-    const [companyId, setCompanyId] = useState<string | null>(null)
+    const queryClient = useQueryClient()
 
-    // Fetch company_id for integration lookups
-    useEffect(() => {
-        supabase.rpc('get_auth_company_id').then(({ data }) => {
-            if (data) setCompanyId(data as string)
-        })
-    }, [])
+    const { data, isLoading: loading } = useQuery({
+        queryKey: ['customer-detail', id],
+        queryFn: async () => {
+            if (!id) throw new Error('No customer ID')
+            const [custRes, contRes, spRes, contrRes] = await Promise.all([
+                supabase.from('customers').select('*').eq('id', id).single(),
+                supabase.from('contacts').select('*').eq('customer_id', id).order('created_at', { ascending: true }),
+                supabase.from('supply_points').select('*').eq('customer_id', id),
+                supabase.from('contracts').select(`*, tariff_versions (tariff_name, suppliers (name))`).eq('customer_id', id).order('created_at', { ascending: false }),
+            ])
 
-    const { data: integrations } = useMyIntegrations(companyId || '')
-    const datadisIntegration = integrations?.find(
-        (i) => {
-            const provider = (i as unknown as Record<string, unknown>).integration_providers as { slug?: string } | undefined
-            return provider?.slug === 'datadis' && i.status === 'active'
-        }
-    )
+            if (custRes.error) throw custRes.error
+            if (contRes.error) throw contRes.error
+            if (spRes.error) throw spRes.error
+            if (contrRes.error) throw contrRes.error
+            return {
+                customer: custRes.data as Customer,
+                contacts: (contRes.data || []) as Contact[],
+                supplyPoints: (spRes.data || []) as SupplyPoint[],
+                contracts: (contrRes.data || []) as Contract[],
+            }
+        },
+        enabled: !!id,
+    })
 
-    useEffect(() => {
-        if (id) fetchCustomerData(id)
-    }, [id])
+    const customer = data?.customer ?? null
+    const contacts = data?.contacts ?? []
+    const supplyPoints = data?.supplyPoints ?? []
+    const contracts = data?.contracts ?? []
 
-
-    const fetchCustomerData = async (customerId: string) => {
-        setLoading(true)
-
-        const { data: cust, error: custErr } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('id', customerId)
-            .single()
-
-        const { data: cont, error: contErr } = await supabase
-            .from('contacts')
-            .select('*')
-            .eq('customer_id', customerId)
-            .order('created_at', { ascending: true })
-
-        const { data: sps, error: spErr } = await supabase
-            .from('supply_points')
-            .select('*')
-            .eq('customer_id', customerId)
-
-        const { data: contr, error: contrErr } = await supabase
-            .from('contracts')
-            .select(`
-                *,
-                tariff_versions (
-                    tariff_name,
-                    suppliers (name)
-                )
-            `)
-            .eq('customer_id', customerId)
-            .order('created_at', { ascending: false })
-
-        if (!custErr) setCustomer(cust)
-        if (!contErr) setContacts(cont || [])
-        if (!spErr) setSupplyPoints(sps || [])
-        if (!contrErr) setContracts(contr || [])
-
-        setLoading(false)
-    }
-
-    const badgeStyle = (status: string) => {
-        const base: React.CSSProperties = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', border: '1px solid transparent', display: 'inline-block' }
-        switch (status) {
-            case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
-            case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
-            case 'pending': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
-            case 'cancelled': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
-            case 'cliente': return { ...base, background: '#dcfce7', color: '#10b981', borderColor: '#bbf7d0' }
-            case 'perdido': return { ...base, background: '#fee2e2', color: '#ef4444', borderColor: '#fecaca' }
-            case 'propuesta': return { ...base, background: '#e0f2fe', color: '#0ea5e9', borderColor: '#bae6fd' }
-            case 'negociacion': return { ...base, background: '#fef3c7', color: '#f59e0b', borderColor: '#fde68a' }
-            case 'contactado': return { ...base, background: '#f3e8ff', color: '#8b5cf6', borderColor: '#e9d5ff' }
-            default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
-        }
-    }
-
-    const statusLabels: Record<string, string> = {
-        'prospecto': 'Prospecto',
-        'contactado': 'Contactado',
-        'propuesta': 'Propuesta',
-        'negociacion': 'Negociación',
-        'cliente': 'Cliente',
-        'perdido': 'Perdido'
-    }
+    const refreshData = () => queryClient.invalidateQueries({ queryKey: ['customer-detail', id] })
 
     if (loading) return <div style={{ padding: '2rem' }}>Cargando ficha del cliente...</div>
     if (!customer) return <div style={{ padding: '2rem' }}>Cliente no encontrado.</div>
@@ -282,7 +176,7 @@ export function CustomerDetails() {
                         ) : (
                             <div style={{ display: 'grid', gap: '1rem' }}>
                                 {contracts.map(contract => (
-                                    <div key={contract.id} style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--background)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div key={contract.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-background)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                                                 <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{contract.contract_number}</span>
@@ -305,7 +199,7 @@ export function CustomerDetails() {
                     </section>
 
                     {/* Section: Supply Points */}
-                    <section className="card">
+                    <section className="card tour-customer-supply-points">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
 
                         </div>
@@ -317,9 +211,7 @@ export function CustomerDetails() {
                                     <SupplyPointWithConsumption
                                         key={sp.id}
                                         sp={sp}
-                                        companyId={companyId || ''}
-                                        datadisIntegration={datadisIntegration}
-                                        onRefresh={() => id && fetchCustomerData(id)}
+                                        onRefresh={refreshData}
                                     />
                                 ))}
                             </div>
@@ -329,7 +221,7 @@ export function CustomerDetails() {
                 </div>
 
                 {/* Sidebar */}
-                <aside style={{ display: 'grid', gap: '2rem', alignContent: 'start' }}>
+                <aside className="tour-customer-contacts" style={{ display: 'grid', gap: '2rem', alignContent: 'start' }}>
                     {/* Contacts Section */}
                     <div style={{ background: 'white', padding: '1.5rem', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

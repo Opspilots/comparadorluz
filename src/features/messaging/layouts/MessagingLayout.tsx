@@ -342,7 +342,7 @@ export default function MessagingLayout() {
                                             {new Date(conv.lastMessage.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <p style={S.convPreview}>{conv.lastMessage.content}</p>
+                                    <p style={S.convPreview}>{conv.lastMessage.content.trim().startsWith('<') ? conv.lastMessage.content.replace(/<[^>]*>/g, '').slice(0, 120) : conv.lastMessage.content}</p>
                                 </div>
                             );
                         })

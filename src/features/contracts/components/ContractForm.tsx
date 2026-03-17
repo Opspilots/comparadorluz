@@ -3,7 +3,6 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer, TariffVersion, Commissioner, SupplyPoint } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
-import { sendContractNotification } from '@/features/contracts/lib/contract-notification'
 
 export function ContractForm() {
     const navigate = useNavigate()
@@ -35,6 +34,7 @@ export function ContractForm() {
     const [originSupplierName, setOriginSupplierName] = useState('')
     const [originTariffName, setOriginTariffName] = useState('')
     const [originAnnualCost, setOriginAnnualCost] = useState<number | null>(null)
+    const [commissionEur, setCommissionEur] = useState<number | null>(null)
 
     // Auto-register customer from OCR (when CIF not found)
     const [pendingCustomerName, setPendingCustomerName] = useState('')
@@ -82,6 +82,7 @@ export function ContractForm() {
                         setSignedAt(contract.signed_at || new Date().toISOString().split('T')[0])
                         setNotes(contract.notes || '')
                         setStatus(contract.status || 'signed')
+                        if (contract.commission_eur != null) setCommissionEur(contract.commission_eur)
                     }
                 } else if (location.state?.prefillData) {
                     const {
@@ -94,6 +95,7 @@ export function ContractForm() {
                         originSupplierName: prefillOriginSupplier,
                         originTariffName: prefillOriginTariff,
                         originAnnualCost: prefillOriginCost,
+                        commissionEur: prefillCommission,
                     } = location.state.prefillData
 
                     if (prefillTariff) setTariffVersionId(prefillTariff)
@@ -101,7 +103,8 @@ export function ContractForm() {
                     if (cups) setManualCups(cups)
                     if (prefillOriginSupplier) setOriginSupplierName(prefillOriginSupplier)
                     if (prefillOriginTariff) setOriginTariffName(prefillOriginTariff)
-                    if (prefillOriginCost) setOriginAnnualCost(prefillOriginCost)
+                    if (prefillOriginCost != null) setOriginAnnualCost(prefillOriginCost)
+                    if (prefillCommission != null) setCommissionEur(prefillCommission)
 
                     if (prefillCustomerId) {
                         setCustomerId(prefillCustomerId)
@@ -249,7 +252,11 @@ export function ContractForm() {
 
             if (!profile) throw new Error('Perfil no encontrado')
 
-            const annualValueEur = parseFloat(monthlyValue) * 12
+            const monthlyFloat = parseFloat(monthlyValue)
+            if (isNaN(monthlyFloat) || monthlyFloat < 0) {
+                throw new Error('El valor mensual no es válido')
+            }
+            const annualValueEur = monthlyFloat * 12
 
             // Auto-create supply point if CUPS provided but no supply point selected
             let finalSupplyPointId = supplyPointId || null
@@ -276,10 +283,9 @@ export function ContractForm() {
                         .single()
 
                     if (spError) {
-                        console.error('Error creating supply point:', spError)
-                    } else {
-                        finalSupplyPointId = newSp.id
+                        throw new Error(`Error al crear punto de suministro (${manualCups}): ${spError.message}`)
                     }
+                    finalSupplyPointId = newSp.id
                 }
             }
 
@@ -295,6 +301,7 @@ export function ContractForm() {
                     status: status,
                 }
                 if (commercialId) updatePayload.commercial_id = commercialId
+                if (commissionEur !== null) updatePayload.commission_eur = commissionEur
 
                 const { error: updateError } = await supabase
                     .from('contracts')
@@ -305,7 +312,7 @@ export function ContractForm() {
                 toast({ title: 'Contrato actualizado', description: 'El contrato se ha actualizado correctamente.' })
             } else {
                 // Create new contract
-                const contractNumber = `CTR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+                const contractNumber = `CTR-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
 
                 const insertPayload: Record<string, unknown> = {
                     company_id: profile.company_id,
@@ -325,7 +332,8 @@ export function ContractForm() {
                 // Origin tariff data from comparator
                 if (originSupplierName) insertPayload.origin_supplier_name = originSupplierName
                 if (originTariffName) insertPayload.origin_tariff_name = originTariffName
-                if (originAnnualCost) insertPayload.origin_annual_cost_eur = originAnnualCost
+                if (originAnnualCost != null) insertPayload.origin_annual_cost_eur = originAnnualCost
+                if (commissionEur !== null) insertPayload.commission_eur = commissionEur
 
                 // Update supply point with current supplier info
                 if (finalSupplyPointId && originSupplierName) {
@@ -336,64 +344,13 @@ export function ContractForm() {
                         .then(() => { /* best-effort */ })
                 }
 
-                const { data: newContract, error: insertError } = await supabase
+                const { error: insertError } = await supabase
                     .from('contracts')
                     .insert(insertPayload)
                     .select('id')
                     .single()
 
                 if (insertError) throw insertError
-
-                const selectedTariff = tariffs.find(t => t.id === tariffVersionId)
-                const selectedCustomer = customers.find(c => c.id === customerId)
-                const selectedSupplyPoint = supplyPoints.find(sp => sp.id === finalSupplyPointId)
-
-                // Best-effort: submit contract to provider API if integration exists
-                if (newContract && selectedTariff?.supplier_name) {
-                    supabase.functions
-                        .invoke('integration-sync', {
-                            body: {
-                                action: 'submit_contract',
-                                contractId: newContract.id,
-                                companyId: profile.company_id,
-                            },
-                        })
-                        .then(({ data, error }) => {
-                            if (error || !data?.ok) return
-                            if (data?.ok && data?.external_id) {
-                                toast({
-                                    title: `Contrato enviado a ${selectedTariff.supplier_name}`,
-                                    description: `ID externo: ${data.external_id}`,
-                                })
-                            }
-                        })
-                        .catch((err: unknown) => console.warn('integration-sync submit_contract failed:', err))
-                }
-
-                // Best-effort: auto-send contract notification
-                if (newContract && selectedCustomer) {
-                    sendContractNotification({
-                        contractId: newContract.id,
-                        companyId: profile.company_id,
-                        contractNumber: contractNumber,
-                        customerName: selectedCustomer.name,
-                        customerId: selectedCustomer.id,
-                        supplierName: selectedTariff?.supplier_name || 'Comercializadora',
-                        tariffName: selectedTariff?.tariff_name || 'Tarifa',
-                        monthlyValue: annualValueEur / 12,
-                        signedAt: signedAt,
-                        cups: selectedSupplyPoint?.cups || manualCups || undefined,
-                    })
-                        .then((result) => {
-                            if (result.sent) {
-                                toast({
-                                    title: 'Contrato enviado al cliente',
-                                    description: `Notificacion enviada por ${result.channel === 'email' ? 'email' : 'WhatsApp'}`,
-                                })
-                            }
-                        })
-                        .catch((err: unknown) => console.warn('Contract notification failed:', err))
-                }
 
                 toast({ title: 'Contrato registrado', description: 'El contrato se ha creado correctamente.' })
             }
@@ -411,7 +368,15 @@ export function ContractForm() {
     if (pageLoading) return <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Cargando formulario...</div>
 
     return (
-        <div className="card" style={{ maxWidth: '800px', margin: '2rem auto', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="card-padded" style={{ maxWidth: '800px', margin: '2rem auto' }}>
+            <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+                <div>
+                    <h1 className="page-title">{id ? 'Editar Contrato' : 'Nuevo Contrato'}</h1>
+                    <p className="page-subtitle">
+                        {id ? 'Modifica los datos del contrato existente' : 'Registra un nuevo contrato de energia'}
+                    </p>
+                </div>
+            </div>
 
             {error && (
                 <div style={{ padding: '1rem', background: '#fef2f2', color: '#991b1b', marginBottom: '1.5rem', borderRadius: '8px', border: '1px solid #fee2e2' }}>
@@ -495,7 +460,7 @@ export function ContractForm() {
 
             {/* Origin tariff banner (from comparator) */}
             {originSupplierName && (
-                <div style={{
+                <div className="tour-contract-comparison" style={{
                     padding: '1rem 1.25rem',
                     background: 'linear-gradient(135deg, #fefce8 0%, #fff7ed 100%)',
                     border: '1px solid #fde68a',
@@ -615,8 +580,7 @@ export function ContractForm() {
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#a16207', marginTop: 2 }}>
                             No se ha registrado el consentimiento de tratamiento de datos para este cliente.
-                            Es obligatorio antes de procesar datos personales. Puedes registrarlo en{' '}
-                            <a href="/admin/compliance" style={{ color: '#d97706', fontWeight: 600 }}>Cumplimiento Normativo</a>.
+                            Se enviara automaticamente una solicitud de firma digital antes de generar el contrato.
                         </div>
                     </div>
                 </div>
@@ -633,7 +597,7 @@ export function ContractForm() {
                                 setCustomerId(e.target.value)
                                 setSupplyPointId('')
                             }}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="">Seleccionar Cliente...</option>
                             {customers.map(c => (
@@ -653,7 +617,7 @@ export function ContractForm() {
                                 else setSupplyPointId('')
                             }}
                             placeholder="ES00..."
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: `1px solid ${manualCups && !supplyPointId ? '#f59e0b' : 'var(--border)'}` }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: `1px solid ${manualCups && !supplyPointId ? '#f59e0b' : 'var(--color-border)'}` }}
                         />
                         {manualCups && !supplyPointId && customerId && (
                             <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.25rem' }}>
@@ -679,7 +643,7 @@ export function ContractForm() {
                                 const sp = supplyPoints.find(s => s.id === e.target.value)
                                 if (sp?.cups) setManualCups(sp.cups)
                             }}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="">Seleccionar CUPS existente...</option>
                             {supplyPoints.map(sp => (
@@ -695,7 +659,7 @@ export function ContractForm() {
                         <select
                             value={commercialId}
                             onChange={(e) => setCommercialId(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="">Sin comisionado</option>
                             {commissioners.map(c => (
@@ -712,7 +676,7 @@ export function ContractForm() {
                             required
                             value={tariffVersionId}
                             onChange={(e) => setTariffVersionId(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="">Seleccionar Tarifa...</option>
                             {tariffs.map(t => (
@@ -730,7 +694,7 @@ export function ContractForm() {
                             value={monthlyValue}
                             onChange={(e) => setMonthlyValue(e.target.value)}
                             placeholder="0.00"
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                         />
                     </div>
                     <div>
@@ -740,15 +704,15 @@ export function ContractForm() {
                             required
                             value={signedAt}
                             onChange={(e) => setSignedAt(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                         />
                     </div>
-                    <div>
+                    <div className="tour-contract-status">
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estado</label>
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface)' }}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--surface)' }}
                         >
                             <option value="pending">Pendiente</option>
                             <option value="signed">Firmado</option>
@@ -765,7 +729,7 @@ export function ContractForm() {
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Detalles adicionales..."
-                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', minHeight: '100px' }}
+                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--color-border)', minHeight: '100px' }}
                     />
                 </div>
 

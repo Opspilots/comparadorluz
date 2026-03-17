@@ -36,7 +36,46 @@ serve(async (req: Request) => {
 
         // --- 2. Inbound Messages (POST) ---
         if (method === 'POST') {
-            const body = await req.json()
+            // Verify Meta webhook signature (X-Hub-Signature-256)
+            const signature = req.headers.get('X-Hub-Signature-256')
+            const appSecret = Deno.env.get('WHATSAPP_APP_SECRET')
+
+            if (!appSecret) {
+                console.error('WHATSAPP_APP_SECRET is not configured — rejecting webhook')
+                return new Response(JSON.stringify({ error: 'Webhook signature verification not configured' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 500,
+                })
+            }
+
+            if (!signature) {
+                console.error('Missing X-Hub-Signature-256 header')
+                return new Response('Forbidden', { status: 403 })
+            }
+
+            const bodyText = await req.text()
+            const key = await crypto.subtle.importKey(
+                'raw',
+                new TextEncoder().encode(appSecret),
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']
+            )
+            const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(bodyText))
+            const expectedSig = 'sha256=' + Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
+
+            // Timing-safe comparison to prevent timing oracle attacks
+            const sigBytes = new TextEncoder().encode(signature)
+            const expBytes = new TextEncoder().encode(expectedSig)
+            let sigDiff = sigBytes.length !== expBytes.length ? 1 : 0
+            for (let i = 0; i < sigBytes.length && i < expBytes.length; i++) sigDiff |= sigBytes[i] ^ expBytes[i]
+            if (sigDiff !== 0) {
+                console.error('Invalid webhook signature')
+                return new Response('Forbidden', { status: 403 })
+            }
+
+            const body = JSON.parse(bodyText)
+
             console.log('Received WhatsApp payload:', JSON.stringify(body))
 
             // Check if it's a valid WhatsApp message
@@ -51,15 +90,20 @@ serve(async (req: Request) => {
                     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
                 )
 
-                const from = message.from // e.g., "34600123456"
+                const rawFrom = message.from // e.g., "34600123456"
                 const textBody = message.text?.body || '[Multimedia/Other]'
 
-                // Find customer by phone (normalize by checking endsWith for safety against +34/0034)
-                // We'll select contacts where phone matches roughly
-                // Getting all contacts and filtering might be heavy if many contacts, but for now allows flexible matching
-                // Better: exact match if we standardise phones.
-                // We will try exact match first.
+                // Sanitize phone number to digits only (prevent PostgREST filter injection)
+                const from = rawFrom.replace(/[^\d]/g, '')
+                if (!from || from.length < 7 || from.length > 15) {
+                    console.warn(`Invalid 'from' phone format: ${rawFrom}`)
+                    return new Response(JSON.stringify({ success: true }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        status: 200,
+                    })
+                }
 
+                // Find customer by phone — use sanitized value in filter
                 const { data: contact } = await supabaseClient
                     .from('contacts')
                     .select('id, customer_id, company_id')
@@ -105,7 +149,7 @@ serve(async (req: Request) => {
     } catch (e: unknown) {
         const error = e instanceof Error ? e : new Error(String(e))
         console.error('Error processing WhatsApp webhook:', error)
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: 'Internal server error' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

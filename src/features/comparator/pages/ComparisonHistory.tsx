@@ -96,7 +96,7 @@ export function ComparisonHistory() {
                                     style={{
                                         padding: '1rem',
                                         cursor: 'pointer',
-                                        border: selectedComparison?.id === comp.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                        border: selectedComparison?.id === comp.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                                         transition: 'all 0.2s'
                                     }}
                                     onClick={() => setSelectedComparison(comp)}

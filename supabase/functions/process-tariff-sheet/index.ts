@@ -13,18 +13,63 @@ serve(async (req: Request) => {
     }
 
     try {
-        // const authHeader = req.headers.get('Authorization')
+        // Validate JWT — reject unauthenticated callers
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Authorization required' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
 
-        // Create Supabase client
+        const token = authHeader.replace('Bearer ', '')
+        const supabaseAuth = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+        )
+
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
+        // Create service role client for privileged operations
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { company_id, file_path, file_id } = await req.json()
+        // Derive company_id from authenticated user — never trust client input
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('company_id')
+            .eq('id', user.id)
+            .single()
 
-        if (!company_id || !file_path) {
-            throw new Error('Missing required fields: company_id, file_path')
+        if (userError || !userData?.company_id) {
+            return new Response(JSON.stringify({ error: 'User has no associated company' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
+        const company_id = userData.company_id
+        const { file_path, file_id } = await req.json()
+
+        if (!file_path) {
+            throw new Error('Missing required field: file_path')
+        }
+
+        // Prevent cross-tenant IDOR — file_path must belong to the caller's company
+        if (!file_path.startsWith(`${company_id}/`)) {
+            return new Response(JSON.stringify({ error: 'Access denied: file does not belong to your company' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
         }
 
         console.log(`Processing tariff sheet: ${file_path} for company ${company_id}`)
@@ -147,6 +192,7 @@ serve(async (req: Request) => {
                     extraction_error: null
                 })
                 .eq('id', file_id)
+                .eq('company_id', company_id)
 
             if (updateError) console.error('Error updating file status:', updateError)
         }
@@ -157,13 +203,10 @@ serve(async (req: Request) => {
         })
 
     } catch (e: unknown) {
-        const error = e as Error;
-        // If file_id is available, update status to failed
-        // We need to re-create client or just log it, but we can't do much if we don't have scope here easily
-        // In a real production app we would handle the error update transactionally if possible
-        console.error('Processing error:', error)
+        const error = e instanceof Error ? e : new Error(String(e));
+        console.error('Processing error:', error.message)
 
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: 'Error al procesar la hoja de tarifas. Consulta los logs.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

@@ -41,11 +41,13 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
             }
 
             if (commissions) {
-                const total = commissions.reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-                const pending = commissions
-                    .filter(c => c.status === 'pending')
+                // Exclude reverted events from all calculations
+                const activeCommissions = commissions.filter(c => c.status !== 'reverted')
+                const total = activeCommissions.reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+                const pending = activeCommissions
+                    .filter(c => c.status === 'pending' || c.status === 'validated')
                     .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-                const paid = commissions
+                const paid = activeCommissions
                     .filter(c => c.status === 'paid')
                     .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
 

@@ -3,10 +3,6 @@ import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
 import {
-    checkSwitchingCapability,
-    type SwitchingCapabilityResult,
-} from '@/features/integrations/lib/integrations-service'
-import {
     Dialog,
     DialogContent,
     DialogHeader,
@@ -19,11 +15,8 @@ import {
     MapPin,
     ChevronRight,
     Loader2,
-    Wifi,
-    WifiOff,
     CheckCircle2,
     AlertTriangle,
-    Info,
 } from 'lucide-react'
 
 interface SwitchingDialogProps {
@@ -37,10 +30,6 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
     const { toast } = useToast()
     const [submitting, setSubmitting] = useState(false)
     const [switchingNotes, setSwitchingNotes] = useState('')
-
-    // API capability detection
-    const [capabilityCheck, setCapabilityCheck] = useState<SwitchingCapabilityResult | null>(null)
-    const [checkingCapability, setCheckingCapability] = useState(false)
 
     // Manual confirmation step
     const [showConfirmation, setShowConfirmation] = useState(false)
@@ -58,31 +47,17 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
     const customerName = contract.customers?.name || 'Cliente'
     const cups = contract.supply_points?.cups || '—'
 
-    const isApiAvailable = capabilityCheck?.available && capabilityCheck.method === 'api'
-
-    // Check switching capability for destination supplier
-    useEffect(() => {
-        if (!open || !destinationSupplier || !contract.company_id) return
-
-        setCheckingCapability(true)
-        checkSwitchingCapability(contract.company_id, destinationSupplier)
-            .then(result => setCapabilityCheck(result))
-            .catch(() => setCapabilityCheck({ available: false, method: 'manual' }))
-            .finally(() => setCheckingCapability(false))
-    }, [open, destinationSupplier, contract.company_id])
-
     // Reset on close
     useEffect(() => {
         if (!open) {
             setSwitchingNotes('')
-            setCapabilityCheck(null)
             setShowConfirmation(false)
         }
     }, [open])
 
     const handleSubmit = async () => {
-        // For manual switching, require confirmation step first
-        if (!isApiAvailable && !showConfirmation) {
+        // Always require confirmation step for manual switching
+        if (!showConfirmation) {
             setShowConfirmation(true)
             return
         }
@@ -90,6 +65,20 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
         setSubmitting(true)
 
         try {
+            // Verify caller has admin/manager role before initiating switching
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No autenticado')
+
+            const { data: profile } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+
+            if (profile?.role !== 'admin' && profile?.role !== 'manager') {
+                throw new Error('Solo administradores y managers pueden iniciar traspasos')
+            }
+
             // Update this contract's switching status
             const { error: updateErr } = await supabase
                 .from('contracts')
@@ -102,32 +91,10 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
 
             if (updateErr) throw updateErr
 
-            // Best-effort: notify edge function
-            supabase.functions
-                .invoke('integration-sync', {
-                    body: {
-                        action: 'request_switching',
-                        contractId: contract.id,
-                        companyId: contract.company_id,
-                        integrationId: isApiAvailable ? capabilityCheck?.integration?.id : undefined,
-                        targetTariffVersionId: contract.tariff_version_id,
-                        cups: contract.supply_points?.cups || '',
-                        viaApi: isApiAvailable,
-                    },
-                })
-                .catch(() => { /* non-critical */ })
-
-            if (isApiAvailable) {
-                toast({
-                    title: 'Traspaso registrado',
-                    description: `Solicitud registrada. Usa "Ejecutar Traspaso" en el tracker cuando quieras enviarlo via API.`,
-                })
-            } else {
-                toast({
-                    title: 'Traspaso iniciado',
-                    description: `Cambio a ${destinationSupplier} registrado. Confirma cada paso manualmente.`,
-                })
-            }
+            toast({
+                title: 'Traspaso iniciado',
+                description: `Cambio a ${destinationSupplier} registrado. Confirma cada paso manualmente.`,
+            })
 
             onOpenChange(false)
             onSuccess?.()
@@ -335,49 +302,6 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
                                 <span className="font-mono">{cups}</span>
                             </div>
 
-                            {/* API capability badge */}
-                            {checkingCapability ? (
-                                <div className="flex items-center gap-2 text-xs" style={{ color: '#94a3b8' }}>
-                                    <Loader2 size={12} className="animate-spin" />
-                                    Verificando integracion API...
-                                </div>
-                            ) : capabilityCheck && (
-                                <div
-                                    className="rounded-lg p-3 flex items-center gap-3"
-                                    style={{
-                                        background: isApiAvailable ? '#eff6ff' : '#fefce8',
-                                        border: `1px solid ${isApiAvailable ? '#bfdbfe' : '#fef08a'}`,
-                                    }}
-                                >
-                                    {isApiAvailable ? (
-                                        <>
-                                            <Wifi size={14} color="#2563eb" />
-                                            <div className="flex-1">
-                                                <div className="text-xs font-semibold" style={{ color: '#1e40af' }}>
-                                                    Traspaso Automatico Disponible
-                                                </div>
-                                                <div className="text-[11px]" style={{ color: '#3b82f6' }}>
-                                                    Podras ejecutarlo desde el tracker cuando estes listo
-                                                </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <WifiOff size={14} color="#a16207" />
-                                            <div className="flex-1">
-                                                <div className="text-xs font-semibold" style={{ color: '#854d0e' }}>
-                                                    Traspaso Manual
-                                                </div>
-                                                <div className="text-[11px]" style={{ color: '#a16207' }}>
-                                                    Deberas gestionar el cambio y confirmar cuando este completado
-                                                </div>
-                                            </div>
-                                            <Info size={14} color="#a16207" />
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
                             {/* Notes */}
                             <div>
                                 <label className="block text-sm font-medium mb-1.5" style={{ color: '#374151' }}>
@@ -410,14 +334,14 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
                             <button
                                 type="button"
                                 onClick={handleSubmit}
-                                disabled={submitting || checkingCapability}
+                                disabled={submitting}
                                 className="h-9 px-5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"
                                 style={{
-                                    background: checkingCapability ? '#94a3b8' : '#2563eb',
+                                    background: '#2563eb',
                                     color: '#fff',
                                     opacity: submitting ? 0.7 : 1,
-                                    cursor: submitting || checkingCapability ? 'not-allowed' : 'pointer',
-                                    boxShadow: !checkingCapability ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
+                                    cursor: submitting ? 'not-allowed' : 'pointer',
+                                    boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
                                 }}
                             >
                                 {submitting ? (

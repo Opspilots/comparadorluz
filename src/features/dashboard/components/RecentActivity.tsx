@@ -58,13 +58,13 @@ export function RecentActivity() {
         <div className="card">
             <div style={{
                 padding: '1.25rem',
-                borderBottom: '1px solid var(--border)',
+                borderBottom: '1px solid var(--color-border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
                 <div style={{ fontSize: '1rem', fontWeight: 600 }}>Actividad Reciente</div>
-                <Link to="/contracts" style={{ fontSize: '0.875rem', color: 'var(--primary)', textDecoration: 'none' }}>Ver todo</Link>
+                <Link to="/contracts" style={{ fontSize: '0.875rem', color: 'var(--color-primary)', textDecoration: 'none' }}>Ver todo</Link>
             </div>
             <div>
                 {activities.length === 0 ? (
@@ -81,7 +81,7 @@ export function RecentActivity() {
                             borderBottom: '1px solid var(--border-light)',
                             transition: 'background 0.2s'
                         }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--background)'}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-background)'}
                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
                             <div style={{
@@ -89,7 +89,7 @@ export function RecentActivity() {
                                 height: '36px',
                                 borderRadius: '50%',
                                 background: 'var(--primary-light)',
-                                color: 'var(--primary)',
+                                color: 'var(--color-primary)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'

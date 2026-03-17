@@ -20,8 +20,6 @@ import type {
 export interface RankingOptions {
     mode: ComparisonMode
     currentAnnualCostEur?: number
-    // For commission calculation (simplified for MVP)
-    commissionPct?: number
     // Market prices for indexed tariff calculations (PVPC/pool)
     marketPrices?: Array<{ indicator_id: number; price: number }>
 }
@@ -39,7 +37,7 @@ export function rankTariffs(
     input: ComparisonInput,
     options: RankingOptions
 ): ComparisonResult[] {
-    const { mode, currentAnnualCostEur, commissionPct = 10, marketPrices } = options
+    const { mode, currentAnnualCostEur, marketPrices } = options
 
     // 1. Calculate costs for all tariffs
     const results: ComparisonResult[] = []
@@ -133,8 +131,14 @@ export function rankTariffs(
                     market_prices: marketPrices,
                 })
 
-                // Calculate commission (simplified: % of annual cost or fixed fee)
-                const commissionEur = Math.round((calcResult.annual_cost_eur * (commissionPct / 100)) * 100) / 100
+                // Calculate commission from tariff's own commission settings
+                const tariffCommissionType = tariff.commission_type || 'percentage';
+                const tariffCommissionValue = tariff.commission_value ?? 0;
+                // Calculate commission on subtotal (pre-tax), not on IVA-inclusive total
+                const commissionBase = calcResult.breakdown?.subtotal ?? calcResult.annual_cost_eur
+                const commissionEur = tariffCommissionType === 'fixed'
+                    ? tariffCommissionValue
+                    : Math.round((commissionBase * (tariffCommissionValue / 100)) * 100) / 100
 
                 results.push({
                     id: crypto.randomUUID(), // Temporary ID for UI

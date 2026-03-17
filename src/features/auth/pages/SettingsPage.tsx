@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { User as AppUser } from '@/shared/types'
-import { User, MessageSquare, ShieldAlert } from 'lucide-react'
+import { User, MessageSquare, ShieldAlert, Palette } from 'lucide-react'
 import { UserProfileCard } from '../components/UserProfileCard'
 import { MessagingSettingsCard } from '../components/MessagingSettingsCard'
+import { BrandingSettingsCard } from '../components/BrandingSettingsCard'
 import { SettingsAccordion } from '../components/SettingsAccordion'
 
 export function SettingsPage() {
@@ -18,8 +19,17 @@ export function SettingsPage() {
 
     const fetchUser = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            setUser(user as unknown as AppUser)
+            const { data: { user: authUser } } = await supabase.auth.getUser()
+            if (!authUser) return
+
+            const { data: profileUser, error: profileError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', authUser.id)
+                .single()
+
+            if (profileError) throw profileError
+            setUser(profileUser as AppUser)
         } catch (error) {
             console.error('Error fetching user:', error)
         } finally {
@@ -44,6 +54,14 @@ export function SettingsPage() {
         )
     }
 
+    if (!user) {
+        return (
+            <div style={{ animation: 'fadeIn 0.4s ease-out', padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>
+                No se pudo cargar el perfil de usuario.
+            </div>
+        )
+    }
+
     return (
         <div style={{ animation: 'fadeIn 0.4s ease-out', maxWidth: '56rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingTop: '1.5rem', paddingBottom: '5rem' }}>
             {/* User Profile Section */}
@@ -54,9 +72,18 @@ export function SettingsPage() {
                     icon={<User size={20} />}
                     defaultOpen={true}
                 >
-                    <UserProfileCard user={user as AppUser} />
+                    <UserProfileCard user={user} />
                 </SettingsAccordion>
             </div>
+
+            {/* Branding Section */}
+            <SettingsAccordion
+                title="Marca y Colores"
+                description="Personaliza el nombre, logo y colores de tu empresa"
+                icon={<Palette size={20} />}
+            >
+                <BrandingSettingsCard />
+            </SettingsAccordion>
 
             {/* Messaging Configuration Section */}
             <div className="tour-settings-messaging">

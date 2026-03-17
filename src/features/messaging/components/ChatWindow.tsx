@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { Send, Phone, Mail, User, Paperclip, X, FileIcon, Download, FileText } from 'lucide-react';
 import { Message, uploadAttachment } from '../lib/messaging-service';
 
@@ -233,7 +234,14 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
                                     </p>
                                 )}
 
-                                <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                                {msg.content.trim().startsWith('<') ? (
+                                    <div
+                                        style={{ margin: 0, lineHeight: 1.6, fontSize: '13px' }}
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.content) }}
+                                    />
+                                ) : (
+                                    <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                                )}
 
                                 {msg.attachments && msg.attachments.length > 0 && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>

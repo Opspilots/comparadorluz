@@ -27,15 +27,70 @@ serve(async (req: Request) => {
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
+        // Authenticate: require either service-role key or valid user JWT
+        const authHeader = req.headers.get('Authorization')
+
+        // Timing-safe comparison for service-role key to prevent timing attacks
+        const expectedBearer = `Bearer ${supabaseKey}`
+        let isCronCall = false
+        if (authHeader && authHeader.length === expectedBearer.length) {
+            const a = new TextEncoder().encode(authHeader)
+            const b = new TextEncoder().encode(expectedBearer)
+            let diff = 0
+            for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+            isCronCall = diff === 0
+        }
+
+        let callerCompanyId: string | null = null
+
+        if (!isCronCall) {
+            if (!authHeader) {
+                return new Response(JSON.stringify({ error: 'Authorization required' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 401,
+                })
+            }
+
+            const token = authHeader.replace('Bearer ', '')
+            const supabaseAuth = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+                global: { headers: { Authorization: `Bearer ${token}` } }
+            })
+
+            const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+            if (authError || !user) {
+                return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 401,
+                })
+            }
+
+            const supabaseAdmin = createClient(supabaseUrl, supabaseKey)
+            const { data: userData } = await supabaseAdmin
+                .from('users')
+                .select('company_id')
+                .eq('id', user.id)
+                .single()
+
+            callerCompanyId = userData?.company_id || null
+            if (!callerCompanyId) {
+                return new Response(JSON.stringify({ error: 'User has no associated company' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 403,
+                })
+            }
+        }
+
         const supabaseClient = createClient(supabaseUrl, supabaseKey)
 
-        // Accept optional companyId to scope sync to a single company
-        let requestCompanyId: string | null = null
-        try {
-            const body = await req.json()
-            requestCompanyId = body.companyId || null
-        } catch {
-            // No body or invalid JSON — sync all companies (cron mode)
+        // Accept optional companyId — but non-cron callers are restricted to their own company
+        let requestCompanyId: string | null = callerCompanyId
+        if (isCronCall) {
+            try {
+                const body = await req.json()
+                requestCompanyId = body.companyId || null
+            } catch {
+                // No body or invalid JSON — sync all companies (cron mode)
+            }
         }
 
         // 1. Fetch companies that have Gmail Connected (google_refresh_token exists)
@@ -131,11 +186,12 @@ serve(async (req: Request) => {
                             bodyText = decodeBase64Url(msgDetail.payload.body.data);
                         }
 
-                        // Check if we already have this message (provider_id = gmail message id)
+                        // Check if we already have this message (provider_id = gmail message id) — scoped to company
                         const { data: existingMsg } = await supabaseClient
                             .from('messages')
                             .select('id')
                             .eq('provider_id', msg.id)
+                            .eq('company_id', company.id)
                             .maybeSingle();
 
                         if (!existingMsg) {
@@ -184,7 +240,7 @@ serve(async (req: Request) => {
         const errorMessage = e instanceof Error ? e.message : 'Unknown error';
         console.error('Error syncing gmail:', errorMessage);
 
-        return new Response(JSON.stringify({ error: errorMessage }), {
+        return new Response(JSON.stringify({ error: 'Error al sincronizar Gmail. Consulta los logs.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

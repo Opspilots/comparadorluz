@@ -1,52 +1,42 @@
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import type { Commissioner } from '@/shared/types'
 import { CommissionRulesTab } from '../components/CommissionRulesTab'
 import { CommissionerPerformanceTab } from '../components/CommissionerPerformanceTab'
 import { CommissionerContractsTab } from '../components/CommissionerContractsTab'
 import { CommissionerPayoutsTab } from '../components/CommissionerPayoutsTab'
-import { AgentTrainingTab } from '../components/AgentTrainingTab'
-import { ArrowLeft, Settings, FileText, Wallet, Mail, TrendingUp, GraduationCap } from 'lucide-react'
+import { ArrowLeft, Settings, FileText, Wallet, Mail, TrendingUp } from 'lucide-react'
 
-type Tab = 'performance' | 'rules' | 'contracts' | 'payouts' | 'training'
+type Tab = 'performance' | 'rules' | 'contracts' | 'payouts'
 
 export function CommissionerDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const [commissioner, setCommissioner] = useState<Commissioner | null>(null)
-    const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<Tab>('performance')
 
-    useEffect(() => {
-        const fetchCommissioner = async () => {
-            setLoading(true)
+    const { data: commissioner = null, isLoading: loading } = useQuery({
+        queryKey: ['commissioner', id],
+        queryFn: async () => {
             const { data, error } = await supabase
                 .from('commissioners')
                 .select('*')
                 .eq('id', id)
                 .single()
 
-            if (error) {
-                console.error('Error fetching commissioner:', error)
-            } else {
-                setCommissioner(data)
-            }
-            setLoading(false)
-        }
-
-        if (id) {
-            fetchCommissioner()
-        }
-    }, [id])
+            if (error) throw error
+            return data as Commissioner
+        },
+        enabled: !!id,
+    })
 
     const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
         { id: 'performance', label: 'Rendimiento', icon: TrendingUp },
         { id: 'rules', label: 'Reglas de Comisión', icon: Settings },
         { id: 'contracts', label: 'Contratos', icon: FileText },
         { id: 'payouts', label: 'Liquidaciones', icon: Wallet },
-        { id: 'training', label: 'Formacion', icon: GraduationCap },
     ]
 
     if (loading) {
@@ -77,7 +67,7 @@ export function CommissionerDetailPage() {
                         justifyContent: 'center',
                         background: 'none',
                         border: 'none',
-                        color: 'var(--primary)',
+                        color: 'var(--color-primary)',
                         cursor: 'pointer',
                         padding: '0.375rem'
                     }}
@@ -122,7 +112,7 @@ export function CommissionerDetailPage() {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Comisión
                         </span>
-                        <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary)' }}>
+                        <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                             {commissioner.commission_default_pct}%
                         </span>
                     </div>
@@ -147,8 +137,8 @@ export function CommissionerDetailPage() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 padding: '0.75rem 1rem',
-                                borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-                                color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                                borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                color: isActive ? 'var(--color-primary)' : 'var(--text-muted)',
                                 fontWeight: isActive ? 600 : 500,
                                 background: 'none',
                                 borderTop: 'none',
@@ -172,19 +162,19 @@ export function CommissionerDetailPage() {
                 )}
 
                 {activeTab === 'rules' && (
-                    <CommissionRulesTab commissionerId={commissioner.id} />
+                    <div className="tour-commissioner-rules">
+                        <CommissionRulesTab commissionerId={commissioner.id} />
+                    </div>
                 )}
 
                 {activeTab === 'contracts' && (
-                    <CommissionerContractsTab commissionerId={commissioner.id} />
+                    <div className="tour-commissioner-contracts">
+                        <CommissionerContractsTab commissionerId={commissioner.id} />
+                    </div>
                 )}
 
                 {activeTab === 'payouts' && (
                     <CommissionerPayoutsTab commissionerId={commissioner.id} />
-                )}
-
-                {activeTab === 'training' && (
-                    <AgentTrainingTab commissionerId={commissioner.id} />
                 )}
             </div>
         </div>

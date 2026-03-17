@@ -1,7 +1,48 @@
 import { useState } from 'react'
 import { Database, X, Loader2, CheckCircle } from 'lucide-react'
-import type { SipsSupplyData } from '@/features/integrations/lib/sips-service'
-import { importSipsData } from '@/features/integrations/lib/sips-service'
+import { supabase } from '@/shared/lib/supabase'
+
+interface SipsSupplyData {
+    cups: string
+    distributor?: string
+    contracted_power_p1_kw?: number
+    contracted_power_p2_kw?: number
+    contracted_power_p3_kw?: number
+    contracted_power_p4_kw?: number
+    contracted_power_p5_kw?: number
+    contracted_power_p6_kw?: number
+    annual_consumption_kwh?: number
+    tariff_type?: string
+    meter_type?: string
+    voltage_level?: string
+    connection_date?: string
+    last_meter_reading_date?: string
+    point_type?: number
+    current_supplier?: string
+}
+
+async function importSipsData(supplyPointId: string, data: SipsSupplyData): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await supabase
+        .from('supply_points')
+        .update({
+            contracted_power_p1_kw: data.contracted_power_p1_kw,
+            contracted_power_p2_kw: data.contracted_power_p2_kw,
+            contracted_power_p3_kw: data.contracted_power_p3_kw,
+            contracted_power_p4_kw: data.contracted_power_p4_kw,
+            contracted_power_p5_kw: data.contracted_power_p5_kw,
+            contracted_power_p6_kw: data.contracted_power_p6_kw,
+            annual_consumption_kwh: data.annual_consumption_kwh,
+            tariff_type: data.tariff_type,
+            meter_type: data.meter_type,
+            voltage_level: data.voltage_level,
+            current_supplier: data.current_supplier,
+            sips_imported_at: new Date().toISOString(),
+        })
+        .eq('id', supplyPointId)
+
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+}
 
 interface SipsImportDialogProps {
     supplyPointId: string
@@ -36,7 +77,7 @@ export function SipsImportDialog({ supplyPointId, cups, onClose, onSuccess }: Si
     })
 
     const handleChange = (field: keyof SipsSupplyData, value: string | number | undefined) => {
-        setForm(prev => ({ ...prev, [field]: value }))
+        setForm((prev: SipsSupplyData) => ({ ...prev, [field]: value }))
     }
 
     const handleNumberChange = (field: keyof SipsSupplyData, raw: string) => {
@@ -62,7 +103,7 @@ export function SipsImportDialog({ supplyPointId, cups, onClose, onSuccess }: Si
 
     const inputStyle: React.CSSProperties = {
         width: '100%', padding: '0.5rem 0.625rem', borderRadius: '6px',
-        border: '1px solid var(--border)', background: 'white', fontSize: '0.85rem',
+        border: '1px solid var(--color-border)', background: 'white', fontSize: '0.85rem',
     }
     const labelStyle: React.CSSProperties = {
         display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -88,7 +129,7 @@ export function SipsImportDialog({ supplyPointId, cups, onClose, onSuccess }: Si
                 {/* Header */}
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)',
+                    padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                         <div style={{
@@ -253,13 +294,13 @@ export function SipsImportDialog({ supplyPointId, cups, onClose, onSuccess }: Si
 
                 {/* Footer */}
                 <div style={{
-                    padding: '1rem 1.5rem', borderTop: '1px solid var(--border)',
+                    padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)',
                     display: 'flex', justifyContent: 'flex-end', gap: '0.75rem',
                 }}>
                     <button
                         onClick={onClose}
                         style={{
-                            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)',
+                            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--color-border)',
                             background: 'white', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500,
                         }}
                     >

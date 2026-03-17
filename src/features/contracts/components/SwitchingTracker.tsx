@@ -3,10 +3,6 @@ import { supabase } from '@/shared/lib/supabase'
 import type { Contract, SwitchingStatus } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
 import {
-    checkSwitchingCapability,
-    submitSwitchingViaApi,
-} from '@/features/integrations/lib/integrations-service'
-import {
     ArrowRightLeft,
     Clock,
     RefreshCw,
@@ -15,10 +11,7 @@ import {
     ChevronRight,
     Loader2,
     Building2,
-    Wifi,
-    WifiOff,
     AlertTriangle,
-    Send,
     Check,
 } from 'lucide-react'
 
@@ -67,13 +60,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
     const [isAdmin, setIsAdmin] = useState(false)
     const [showRejectConfirm, setShowRejectConfirm] = useState(false)
     const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
-    const [executingApi, setExecutingApi] = useState(false)
-
-    // API capability
-    const [isApiAvailable, setIsApiAvailable] = useState(false)
-    const [apiIntegrationId, setApiIntegrationId] = useState<string | null>(null)
-    const [apiSent, setApiSent] = useState(false)
-
     // Bono Social warning
     const [hasBonaSocial, setHasBonaSocial] = useState(false)
 
@@ -119,21 +105,9 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                 if (sp?.has_bono_social) setHasBonaSocial(true)
             }
 
-            // Check API capability for destination supplier
-            if (contract.company_id && destinationSupplier !== '—') {
-                try {
-                    const cap = await checkSwitchingCapability(contract.company_id, destinationSupplier)
-                    if (cap.available && cap.integration) {
-                        setIsApiAvailable(true)
-                        setApiIntegrationId(cap.integration.id)
-                    }
-                } catch {
-                    // ignore
-                }
-            }
         }
         init()
-    }, [contract.id, contract.company_id, destinationSupplier])
+    }, [contract.id, contract.company_id, contract.supply_point_id, destinationSupplier])
 
     if (!status) return null
 
@@ -189,46 +163,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
         }
     }
 
-    const handleExecuteApi = async () => {
-        if (!apiIntegrationId) return
-        setExecutingApi(true)
-        try {
-            const result = await submitSwitchingViaApi(
-                contract.company_id,
-                contract.id,
-                apiIntegrationId,
-                contract.tariff_version_id,
-                contract.supply_points?.cups || '',
-            )
-
-            if (result.ok) {
-                setApiSent(true)
-                // Advance to in_progress
-                await supabase
-                    .from('contracts')
-                    .update({ switching_status: 'in_progress' })
-                    .eq('id', contract.id)
-
-                toast({
-                    title: 'Traspaso enviado via API',
-                    description: `Referencia: ${result.switchingRef || 'pendiente'}`,
-                })
-                onStatusChange?.()
-            } else {
-                toast({
-                    title: 'Error al enviar via API',
-                    description: result.error || 'Error desconocido',
-                    variant: 'destructive',
-                })
-            }
-        } catch (err) {
-            const e = err as Error
-            toast({ title: 'Error', description: e.message, variant: 'destructive' })
-        } finally {
-            setExecutingApi(false)
-        }
-    }
-
     const nextStatus = (): SwitchingStatus | null => {
         if (status === 'requested') return 'in_progress'
         if (status === 'in_progress') return 'completed'
@@ -259,17 +193,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                     <div>
                         <div className="text-sm font-semibold flex items-center gap-2" style={{ color: '#0f172a' }}>
                             Traspaso de Comercializadora
-                            <span
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                                style={{
-                                    background: isApiAvailable ? '#dbeafe' : '#fef9c3',
-                                    color: isApiAvailable ? '#1e40af' : '#854d0e',
-                                    border: `1px solid ${isApiAvailable ? '#bfdbfe' : '#fef08a'}`,
-                                }}
-                            >
-                                {isApiAvailable ? <Wifi size={9} /> : <WifiOff size={9} />}
-                                {isApiAvailable ? 'API' : 'Manual'}
-                            </span>
                         </div>
                         <div className="text-xs" style={{ color: '#64748b' }}>
                             {contract.switching_requested_at
@@ -475,7 +398,7 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
             )}
 
             {/* Manual switching reminder */}
-            {!isApiAvailable && !isRejected && !isCompleted && (
+            {!isRejected && !isCompleted && (
                 <div
                     className="mx-5 mb-4 rounded-lg p-3 flex items-start gap-2.5"
                     style={{ background: '#fefce8', border: '1px solid #fef08a' }}
@@ -485,41 +408,6 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                         <span className="font-semibold">Traspaso manual:</span> Contacta con {destinationSupplier} y
                         envia la documentacion. Cuando el cambio este confirmado, marca como completado.
                     </div>
-                </div>
-            )}
-
-            {/* API: Execute button (only when requested, not yet sent) */}
-            {isApiAvailable && status === 'requested' && !apiSent && isAdmin && (
-                <div
-                    className="mx-5 mb-4 rounded-lg p-3.5 flex items-center justify-between"
-                    style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}
-                >
-                    <div className="flex items-center gap-2">
-                        <Wifi size={14} color="#2563eb" />
-                        <div>
-                            <div className="text-xs font-semibold" style={{ color: '#1e40af' }}>
-                                Traspaso via API listo
-                            </div>
-                            <div className="text-[11px]" style={{ color: '#3b82f6' }}>
-                                Pulsa para enviar la solicitud a {destinationSupplier}
-                            </div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleExecuteApi}
-                        disabled={executingApi}
-                        className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-xs font-semibold transition-all"
-                        style={{
-                            background: '#2563eb',
-                            color: '#fff',
-                            cursor: executingApi ? 'not-allowed' : 'pointer',
-                            opacity: executingApi ? 0.7 : 1,
-                            boxShadow: '0 1px 4px rgba(37,99,235,0.25)',
-                        }}
-                    >
-                        {executingApi ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                        Ejecutar Traspaso
-                    </button>
                 </div>
             )}
 

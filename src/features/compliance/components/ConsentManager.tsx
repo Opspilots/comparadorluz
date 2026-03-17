@@ -1,16 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import type { CustomerConsent, ConsentType, ConsentRequest, Customer } from '@/shared/types'
 import { sendConsentRequest, getAvailableChannels, CONSENT_LEGAL_TEXTS } from '../lib/consent-notification'
 import {
-    Plus,
     Search,
     Check,
     X,
     AlertTriangle,
     Loader2,
-    Shield,
     Send,
     Mail,
     MessageCircle,
@@ -55,13 +53,6 @@ export function ConsentManager({ companyId }: Props) {
     const [search, setSearch] = useState('')
     const [viewMode, setViewMode] = useState<ViewMode>('consents')
 
-    // Manual form state
-    const [showAddForm, setShowAddForm] = useState(false)
-    const [saving, setSaving] = useState(false)
-    const [selectedCustomerId, setSelectedCustomerId] = useState('')
-    const [selectedConsentType, setSelectedConsentType] = useState<ConsentType>('data_processing')
-    const [consentMethod, setConsentMethod] = useState<string>('digital')
-
     // Send request form state
     const [showSendForm, setShowSendForm] = useState(false)
     const [sendCustomerId, setSendCustomerId] = useState('')
@@ -71,7 +62,7 @@ export function ConsentManager({ companyId }: Props) {
     const [availableChannels, setAvailableChannels] = useState<{ email: boolean; whatsapp: boolean }>({ email: false, whatsapp: false })
     const [showLegalPreview, setShowLegalPreview] = useState(false)
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true)
         const [consentsRes, requestsRes, customersRes, companyRes] = await Promise.all([
             supabase
@@ -103,64 +94,16 @@ export function ConsentManager({ companyId }: Props) {
             (companyRes.data?.messaging_settings as Record<string, unknown>) || null
         ))
         setLoading(false)
-    }
+    }, [companyId])
 
-    useEffect(() => { load() }, [companyId])
+    useEffect(() => { load() }, [load])
 
-    // ── Manual grant ──
-    const handleGrant = async () => {
-        if (!selectedCustomerId) return
-        setSaving(true)
-        try {
-            const { data: { user } } = await supabase.auth.getUser()
-            const { data: existing } = await supabase
-                .from('customer_consents')
-                .select('id')
-                .eq('company_id', companyId)
-                .eq('customer_id', selectedCustomerId)
-                .eq('consent_type', selectedConsentType)
-                .is('revoked_at', null)
-                .maybeSingle()
-
-            let error
-            if (existing) {
-                ({ error } = await supabase
-                    .from('customer_consents')
-                    .update({
-                        granted: true,
-                        granted_at: new Date().toISOString(),
-                        granted_by: user?.id || 'unknown',
-                        method: consentMethod,
-                    })
-                    .eq('id', existing.id))
-            } else {
-                ({ error } = await supabase
-                    .from('customer_consents')
-                    .insert({
-                        company_id: companyId,
-                        customer_id: selectedCustomerId,
-                        consent_type: selectedConsentType,
-                        granted: true,
-                        granted_at: new Date().toISOString(),
-                        granted_by: user?.id || 'unknown',
-                        method: consentMethod,
-                    }))
-            }
-
-            if (error) throw error
-            toast({ title: 'Consentimiento registrado' })
-            setShowAddForm(false)
-            setSelectedCustomerId('')
-            load()
-        } catch (err) {
-            toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' })
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    // ── Revoke ──
+    // ── Revoke (GDPR Art. 7.3 — must cascade to open consent requests) ──
     const handleRevoke = async (consentId: string) => {
+        // Get consent details to find the customer and type
+        const consent = consents.find(c => c.id === consentId)
+        if (!consent) return
+
         const { error } = await supabase
             .from('customer_consents')
             .update({ revoked_at: new Date().toISOString(), granted: false })
@@ -168,10 +111,25 @@ export function ConsentManager({ companyId }: Props) {
 
         if (error) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' })
-        } else {
-            toast({ title: 'Consentimiento revocado' })
-            load()
+            return
         }
+
+        // Cancel any open consent requests for this customer that include the revoked consent type
+        const openRequests = requests.filter(r =>
+            r.customer_id === consent.customer_id &&
+            ['sent', 'viewed'].includes(r.status) &&
+            r.consent_types.includes(consent.consent_type)
+        )
+
+        for (const req of openRequests) {
+            await supabase
+                .from('consent_requests')
+                .update({ status: 'rejected' })
+                .eq('id', req.id)
+        }
+
+        toast({ title: 'Consentimiento revocado', description: openRequests.length > 0 ? `${openRequests.length} solicitud(es) pendiente(s) cancelada(s)` : undefined })
+        load()
     }
 
     // ── Send consent request ──
@@ -260,38 +218,11 @@ export function ConsentManager({ companyId }: Props) {
         return !custConsents.some(c => c.consent_type === 'data_processing')
     })
 
-    const pendingRequests = requests.filter(r => ['sent', 'viewed'].includes(r.status))
-    const signedRequests = requests.filter(r => r.status === 'signed')
 
     const hasAnyChannel = availableChannels.email || availableChannels.whatsapp
 
     return (
         <div>
-            {/* Summary bar */}
-            <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.625rem',
-                marginBottom: '1rem',
-            }}>
-                {[
-                    { label: 'Consentimientos activos', value: consents.length, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-                    { label: 'Sin consentimiento', value: customersWithoutConsent.length, color: customersWithoutConsent.length > 0 ? '#d97706' : '#15803d', bg: customersWithoutConsent.length > 0 ? '#fffbeb' : '#f0fdf4', border: customersWithoutConsent.length > 0 ? '#fef08a' : '#bbf7d0' },
-                    { label: 'Solicitudes pendientes', value: pendingRequests.length, color: '#7c3aed', bg: '#f5f3ff', border: '#e9d5ff' },
-                    { label: 'Firmadas digitalmente', value: signedRequests.length, color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
-                ].map((card, i) => (
-                    <div key={i} style={{
-                        padding: '0.75rem', borderRadius: 10,
-                        background: card.bg, border: `1px solid ${card.border}`,
-                    }}>
-                        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: card.color, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
-                            {card.label}
-                        </div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: card.color }}>
-                            {card.value}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
             {/* Missing consents warning */}
             {customersWithoutConsent.length > 0 && (
                 <div style={{
@@ -337,7 +268,7 @@ export function ConsentManager({ companyId }: Props) {
                             fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
                         }}
                     >
-                        <Shield size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                        <CheckCircle2 size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
                         Consentimientos ({consents.length})
                     </button>
                     <button
@@ -371,7 +302,7 @@ export function ConsentManager({ companyId }: Props) {
                     </div>
                     {hasAnyChannel && (
                         <button
-                            onClick={() => { setShowSendForm(true); setShowAddForm(false) }}
+                            onClick={() => setShowSendForm(true)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '0.375rem',
                                 padding: '0.4rem 0.75rem', borderRadius: 8,
@@ -382,17 +313,6 @@ export function ConsentManager({ companyId }: Props) {
                             <Send size={13} /> Enviar Solicitud
                         </button>
                     )}
-                    <button
-                        onClick={() => { setShowAddForm(true); setShowSendForm(false) }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '0.375rem',
-                            padding: '0.4rem 0.75rem', borderRadius: 8,
-                            background: '#2563eb', color: '#fff', border: 'none',
-                            fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-                        }}
-                    >
-                        <Plus size={13} /> Registro Manual
-                    </button>
                 </div>
             </div>
 
@@ -586,86 +506,6 @@ export function ConsentManager({ companyId }: Props) {
                 </div>
             )}
 
-            {/* ═══════ MANUAL REGISTRATION FORM ═══════ */}
-            {showAddForm && (
-                <div style={{
-                    padding: '1.25rem', marginBottom: '1rem',
-                    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
-                }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.75rem' }}>
-                        Registro Manual de Consentimiento
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
-                                Cliente
-                            </label>
-                            <select
-                                value={selectedCustomerId}
-                                onChange={e => setSelectedCustomerId(e.target.value)}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8125rem' }}
-                            >
-                                <option value="">Seleccionar...</option>
-                                {customers.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} ({c.cif})</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
-                                Tipo de Consentimiento
-                            </label>
-                            <select
-                                value={selectedConsentType}
-                                onChange={e => setSelectedConsentType(e.target.value as ConsentType)}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8125rem' }}
-                            >
-                                {Object.entries(CONSENT_LABELS).map(([key, val]) => (
-                                    <option key={key} value={key}>
-                                        {val.label} {val.required ? '(obligatorio)' : ''}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
-                                Método de Obtención
-                            </label>
-                            <select
-                                value={consentMethod}
-                                onChange={e => setConsentMethod(e.target.value)}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8125rem' }}
-                            >
-                                <option value="digital">Digital (formulario web)</option>
-                                <option value="written">Escrito (firma física)</option>
-                                <option value="verbal_recorded">Verbal grabado</option>
-                                <option value="checkbox">Checkbox en contrato</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-                        <button
-                            onClick={() => setShowAddForm(false)}
-                            style={{ padding: '0.4rem 0.75rem', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: '0.8125rem', color: '#64748b', cursor: 'pointer' }}
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={handleGrant}
-                            disabled={!selectedCustomerId || saving}
-                            style={{
-                                padding: '0.4rem 0.75rem', borderRadius: 6, border: 'none',
-                                background: '#2563eb', color: '#fff', fontSize: '0.8125rem',
-                                fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
-                                opacity: !selectedCustomerId || saving ? 0.6 : 1,
-                            }}
-                        >
-                            {saving ? <Loader2 size={13} className="animate-spin" /> : 'Registrar'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {/* ═══════ CONSENTS VIEW ═══════ */}
             {viewMode === 'consents' && (
                 <>
@@ -676,10 +516,11 @@ export function ConsentManager({ companyId }: Props) {
                             textAlign: 'center', padding: '3rem', color: '#94a3b8',
                             background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0',
                         }}>
-                            <Shield size={32} color="#cbd5e1" style={{ marginBottom: '0.5rem' }} />
-                            <div style={{ fontSize: '0.875rem' }}>No hay consentimientos registrados</div>
-                            <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                                Registra o envía solicitudes de consentimiento a tus clientes
+                            <AlertTriangle size={32} color="#d97706" style={{ marginBottom: '0.5rem' }} />
+                            <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: 600 }}>No hay consentimientos registrados</div>
+                            <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: '#a16207' }}>
+                                Es obligatorio registrar el consentimiento de tratamiento de datos (RGPD Art. 6) antes de gestionar contratos.
+                                Registra o envia solicitudes de consentimiento a tus clientes.
                             </div>
                         </div>
                     ) : (

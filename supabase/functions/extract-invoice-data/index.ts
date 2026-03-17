@@ -12,24 +12,78 @@ serve(async (req: Request) => {
     }
 
     try {
-        // Get the authorization header and extract token
+        // Validate JWT and derive company_id from authenticated user
         const authHeader = req.headers.get('Authorization')
-        const token = authHeader?.replace('Bearer ', '')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Authorization required' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
 
-        // Create Supabase service role client
+        const token = authHeader.replace('Bearer ', '')
+
+        // Create auth client to validate the JWT
+        const supabaseAuth = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+        )
+
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
+        // Create service role client for privileged operations
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        // Derive company_id from authenticated user — never trust client input
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('company_id')
+            .eq('id', user.id)
+            .single()
+
+        if (userError || !userData?.company_id) {
+            return new Response(JSON.stringify({ error: 'User has no associated company' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
+        const companyId = userData.company_id
+        const userId = user.id
+
         const formData = await req.formData()
         const file = formData.get('file') as File
-        const companyId = formData.get('company_id') as string
 
         if (!file) {
             return new Response(JSON.stringify({ error: 'No file uploaded' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400,
+            })
+        }
+
+        // Validate file type and size
+        const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+        const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            return new Response(JSON.stringify({ error: 'Tipo de archivo no soportado. Usa PDF, JPG, PNG o WebP.' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400,
+            })
+        }
+        if (file.size > MAX_SIZE) {
+            return new Response(JSON.stringify({ error: 'El archivo es demasiado grande. Máximo 10 MB.' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 413,
             })
         }
 
@@ -124,7 +178,8 @@ serve(async (req: Request) => {
             if (response.status === 429) {
                 throw new Error('El servicio de OCR está saturado temporalmente (Límite de cuota gratuito). Por favor, intenta de nuevo en unos minutos.');
             }
-            throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+            console.error(`Gemini API error: ${response.status} - ${errorText}`);
+            throw new Error('Error al procesar la factura con el servicio de IA.');
         }
 
         const aiResult = await response.json()
@@ -151,17 +206,7 @@ serve(async (req: Request) => {
             }
         }
 
-        // 3. Extract user ID and save to DB
-        let userId = null
-        if (token) {
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]))
-                userId = payload.sub || null
-            } catch (e) {
-                console.warn('Could not decode JWT:', e)
-            }
-        }
-
+        // 3. Save extraction to DB (userId and companyId already verified from JWT above)
         const { error: dbError } = await supabase
             .from('invoice_extractions')
             .insert({
@@ -180,9 +225,13 @@ serve(async (req: Request) => {
         })
 
     } catch (e: unknown) {
-        const err = e as Error;
-        console.error('Extraction error:', err)
-        return new Response(JSON.stringify({ error: err.message, details: err.stack }), {
+        const err = e instanceof Error ? e : new Error(String(e));
+        console.error('Extraction error:', err.message)
+        // Return user-friendly message without internal details
+        const safeMessage = err.message.includes('API') || err.message.includes('Gemini')
+            ? 'Error al procesar la factura. Inténtalo de nuevo.'
+            : err.message;
+        return new Response(JSON.stringify({ error: safeMessage }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })

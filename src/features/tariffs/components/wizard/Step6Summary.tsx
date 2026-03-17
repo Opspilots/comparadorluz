@@ -20,6 +20,9 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
     const { id } = useParams();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+    // Early return before derived variables to prevent null access
+    if (!data) return null;
+
     // Validation status
     const hasRates = data.rates && data.rates.length > 0;
     const isComplete = data.metadata.supplier_id && data.metadata.name && data.metadata.tariff_structure_id && hasRates;
@@ -54,7 +57,8 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
 
             // 1. Prepare Payload
             const { data: user } = await supabase.auth.getUser();
-            const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user!.id).single();
+            if (!user.user) throw new Error('Sesión expirada. Recarga la página.');
+            const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user.id).single();
 
             const { data: selectedStructure } = await supabase
                 .from('tariff_structures')
@@ -73,23 +77,25 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 valid_from: sanitizeDate(data.metadata.valid_from),
                 valid_to: sanitizeDate((data.metadata as Record<string, unknown>).valid_to as string | null | undefined),
                 contract_duration: data.metadata.contract_duration,
+                commission_type: data.metadata.commission_type || 'percentage',
+                commission_value: data.metadata.commission_value ?? 0,
                 is_active: activate,
                 completion_status: isComplete ? 'complete' : 'draft'
             };
 
             let versionId = id;
 
-            if (mode === 'create' || id) {
-                if (id) {
-                    const { data: version, error: vError } = await supabase
-                        .from('tariff_versions')
-                        .update(payload)
-                        .eq('id', id)
-                        .select()
-                        .single();
-                    if (vError) throw vError;
-                    versionId = version.id;
-                } else {
+            if (id) {
+                // Edit mode: update existing version
+                const { data: version, error: vError } = await supabase
+                    .from('tariff_versions')
+                    .update(payload)
+                    .eq('id', id)
+                    .select()
+                    .single();
+                if (vError) throw vError;
+                versionId = version.id;
+            } else if (mode === 'create') {
                     let versionCheckQuery = supabase
                         .from('tariff_versions')
                         .select('id')
@@ -129,17 +135,13 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                         if (insertError) throw insertError;
                         versionId = insertedVersion.id;
                     }
-                }
             }
 
             if (!versionId) throw new Error("No version ID");
 
-            // 2. Handle Rates 
-            // Always delete existing rates for this version before inserting new ones to ensure clean state
-            await supabase.from('tariff_rates').delete().eq('tariff_version_id', versionId);
-
+            // 2. Handle Rates — insert new FIRST, then delete old (prevents data loss on insert failure)
             const ratesPayload = data.rates.map(r => ({
-                id: crypto.randomUUID(), // Always new IDs for rates
+                id: crypto.randomUUID(),
                 tariff_version_id: versionId,
                 item_type: r.item_type,
                 period: r.period,
@@ -152,6 +154,13 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 valid_to: sanitizeDate(r.valid_to),
             }));
 
+            // Collect old rate IDs before inserting new ones
+            const { data: oldRates } = await supabase
+                .from('tariff_rates')
+                .select('id')
+                .eq('tariff_version_id', versionId);
+            const oldRateIds = (oldRates || []).map(r => r.id);
+
             if (ratesPayload.length > 0) {
                 const { error: rError } = await supabase
                     .from('tariff_rates')
@@ -159,12 +168,15 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 if (rError) throw rError;
             }
 
-            // 3. Insert Schedules
-            // Always delete existing schedules for this version before inserting new ones
-            await supabase.from('tariff_schedules').delete().eq('tariff_version_id', versionId);
+            // Delete old rates only after new ones are confirmed inserted
+            if (oldRateIds.length > 0) {
+                const { error: delRatesErr } = await supabase.from('tariff_rates').delete().in('id', oldRateIds);
+                if (delRatesErr) throw new Error(`Error limpiando rates antiguos: ${delRatesErr.message}`);
+            }
 
+            // 3. Handle Schedules — same insert-before-delete pattern
             const schedulesPayload = data.schedules.map(s => ({
-                id: crypto.randomUUID(), // Always new IDs for schedules
+                id: crypto.randomUUID(),
                 tariff_version_id: versionId,
                 month_mask: s.month_mask,
                 day_type_mask: s.day_type_mask,
@@ -174,11 +186,22 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 context_calendar: s.context_calendar
             }));
 
+            const { data: oldSchedules } = await supabase
+                .from('tariff_schedules')
+                .select('id')
+                .eq('tariff_version_id', versionId);
+            const oldScheduleIds = (oldSchedules || []).map(s => s.id);
+
             if (schedulesPayload.length > 0) {
                 const { error: sError } = await supabase
                     .from('tariff_schedules')
                     .insert(schedulesPayload);
                 if (sError) throw sError;
+            }
+
+            if (oldScheduleIds.length > 0) {
+                const { error: delSchedErr } = await supabase.from('tariff_schedules').delete().in('id', oldScheduleIds);
+                if (delSchedErr) throw new Error(`Error limpiando horarios antiguos: ${delSchedErr.message}`);
             }
 
             toast({
@@ -205,8 +228,6 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
         }
     };
 
-    if (!data) return null;
-
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>Resumen y Confirmación</h2>
@@ -226,6 +247,16 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <dt style={{ color: '#6b7280' }}>Vigencia:</dt>
                             <dd style={{ fontWeight: 500 }}>{data.metadata.valid_from}</dd>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <dt style={{ color: '#6b7280' }}>Comisión:</dt>
+                            <dd style={{ fontWeight: 500 }}>
+                                {data.metadata.commission_value > 0
+                                    ? data.metadata.commission_type === 'percentage'
+                                        ? `${data.metadata.commission_value}%`
+                                        : `${data.metadata.commission_value}€`
+                                    : 'Sin comisión'}
+                            </dd>
                         </div>
                     </dl>
                 </div>

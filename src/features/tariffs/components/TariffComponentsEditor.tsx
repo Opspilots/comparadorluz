@@ -250,7 +250,7 @@ export function TariffComponentsEditor({ tariffVersionId, rates, onSaveSuccess }
                     style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 500,
-                        padding: '0.5rem 1rem', backgroundColor: 'var(--primary)', color: 'white',
+                        padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white',
                         border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
                         opacity: isSubmitting ? 0.7 : 1
                     }}
@@ -278,9 +278,9 @@ function TariffPricesGrid({ rates, register }: { rates: TariffRate[], register: 
     return (
         <>
             {/* Energy Prices */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--border)', padding: '1rem', borderRadius: '0.5rem', backgroundColor: 'var(--surface)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--color-border)', padding: '1rem', borderRadius: '0.5rem', backgroundColor: 'var(--surface)' }}>
                 <h3 style={{ fontWeight: 600, fontSize: '1.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                    <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: 'var(--primary)' }} />
+                    <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: 'var(--color-primary)' }} />
                     Término de Energía (€/kWh)
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
@@ -294,7 +294,7 @@ function TariffPricesGrid({ rates, register }: { rates: TariffRate[], register: 
                                 {...register(comp.id, { valueAsNumber: true, required: true })}
                                 style={{
                                     display: 'flex', height: '2.5rem', width: '100%', borderRadius: '0.375rem',
-                                    border: '1px solid var(--border)', backgroundColor: 'var(--surface)', padding: '0.5rem 0.75rem',
+                                    border: '1px solid var(--color-border)', backgroundColor: 'var(--surface)', padding: '0.5rem 0.75rem',
                                     fontSize: '0.875rem', color: 'var(--text-main)'
                                 }}
                             />
@@ -305,7 +305,7 @@ function TariffPricesGrid({ rates, register }: { rates: TariffRate[], register: 
             </div>
 
             {/* Power Prices */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--border)', padding: '1rem', borderRadius: '0.5rem', backgroundColor: 'var(--surface)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--color-border)', padding: '1rem', borderRadius: '0.5rem', backgroundColor: 'var(--surface)' }}>
                 <h3 style={{ fontWeight: 600, fontSize: '1.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                     <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
                     Término de Potencia (€/kW/mes)

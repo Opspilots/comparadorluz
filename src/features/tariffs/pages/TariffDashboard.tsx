@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
@@ -6,6 +6,7 @@ import { TariffVersion } from '@/shared/types';
 import { ElectricityTariffTable } from '../components/ElectricityTariffTable';
 import { GasTariffTable } from '../components/GasTariffTable';
 import { Loader2, ZapOff, Plus, Search, X, Zap, Flame, Calendar } from 'lucide-react';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 
 const STYLES = {
     container: {
@@ -165,15 +166,15 @@ export default function TariffDashboard() {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [durationFilter, setDurationFilter] = useState<string>('all');
     const [viewDate, setViewDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [companyId, setCompanyId] = useState<string | null>(null);
 
     // Get current user's company
-    useQuery({
+    const { data: userProfile } = useQuery({
         queryKey: ['current-user-company'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -185,12 +186,11 @@ export default function TariffDashboard() {
                 .eq('id', user.id)
                 .single();
 
-            if (userData?.company_id) {
-                setCompanyId(userData.company_id);
-            }
             return userData;
         }
     });
+
+    const companyId = userProfile?.company_id ?? null;
 
     const { data: suppliers } = useQuery({
         queryKey: ['suppliers'],
@@ -260,40 +260,7 @@ export default function TariffDashboard() {
         enabled: !!companyId
     });
 
-    // Automated Repair Logic: Backfill missing metadata in tariff_rates if mismatch found
-    useEffect(() => {
-        if (!tariffs || tariffs.length === 0) return;
-
-        const repairData = async () => {
-            let repairedAny = false;
-            for (const t of tariffs) {
-                const rates = t.tariff_rates || [];
-                // If the version has duration/dates but rates don't, we repair
-                const needsRepair = rates.length > 0 && rates.some(r =>
-                    (r.contract_duration === null && t.contract_duration !== null) ||
-                    (r.valid_from === null && t.valid_from !== null)
-                );
-
-                if (needsRepair && t.id) {
-                    const { error } = await supabase
-                        .from('tariff_rates')
-                        .update({
-                            contract_duration: t.contract_duration,
-                            valid_from: t.valid_from,
-                            valid_to: t.valid_to
-                        })
-                        .eq('tariff_version_id', t.id);
-
-                    if (!error) repairedAny = true;
-                }
-            }
-            if (repairedAny) {
-                queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
-            }
-        };
-
-        repairData();
-    }, [tariffs, queryClient]);
+    // NOTE: Repair logic removed — data backfill should be done via migration, not UI side-effects
 
 
 
@@ -401,16 +368,7 @@ export default function TariffDashboard() {
                         <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 1rem', borderLeft: '1px solid #e2e8f0' }}>
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>{selectedIds.length} seleccionadas</span>
                             <button
-                                onClick={async () => {
-                                    if (confirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} tarifas?`)) {
-                                        const { error } = await supabase.from('tariff_versions').delete().in('id', selectedIds);
-                                        if (error) alert('Error al eliminar: ' + error.message);
-                                        else {
-                                            setSelectedIds([]);
-                                            window.location.reload(); // Simple reload for now
-                                        }
-                                    }
-                                }}
+                                onClick={() => setShowDeleteConfirm(true)}
                                 style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
                             >
                                 Eliminar
@@ -418,10 +376,10 @@ export default function TariffDashboard() {
                             <button
                                 onClick={async () => {
                                     const { error } = await supabase.from('tariff_versions').update({ is_active: true }).in('id', selectedIds);
-                                    if (error) alert('Error: ' + error.message);
+                                    if (error) console.error('Error activating:', error.message);
                                     else {
                                         setSelectedIds([]);
-                                        window.location.reload();
+                                        queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
                                     }
                                 }}
                                 style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
@@ -435,7 +393,7 @@ export default function TariffDashboard() {
                 {/* Add Button - Distinct Style */}
                 <button
                     onClick={() => navigate('/admin/tariffs/new', { state: { supplyType: activeTab } })}
-                    className="btn"
+                    className="btn tour-tariffs-upload-btn"
                     style={STYLES.addButton(activeTab)}
                 >
                     <Plus size={20} strokeWidth={2.5} />
@@ -569,6 +527,23 @@ export default function TariffDashboard() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                isOpen={showDeleteConfirm}
+                title="Eliminar tarifas"
+                message={`¿Estás seguro de que quieres eliminar ${selectedIds.length} tarifas seleccionadas? Esta acción no se puede deshacer.`}
+                confirmLabel="Eliminar"
+                variant="danger"
+                onConfirm={async () => {
+                    const { error } = await supabase.from('tariff_versions').delete().in('id', selectedIds);
+                    if (!error) {
+                        setSelectedIds([]);
+                        queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
+                    }
+                    setShowDeleteConfirm(false);
+                }}
+                onCancel={() => setShowDeleteConfirm(false)}
+            />
         </div>
     );
 }

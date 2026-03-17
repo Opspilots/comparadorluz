@@ -14,7 +14,6 @@ export interface Supplier {
     id: string;
     name: string;
     is_active: boolean;
-    logo_url?: string;
     created_at?: string;
 }
 
@@ -33,6 +32,8 @@ export interface TariffVersion {
     completion_status: TariffCompletionStatus;
     is_active: boolean;
     source_file_id?: string;
+    commission_type?: 'percentage' | 'fixed';
+    commission_value?: number;
     created_at: string;
     updated_at: string;
 }
@@ -76,6 +77,8 @@ export interface TariffWizardState {
         is_indexed: boolean;
         valid_from: string;
         contract_duration: number | null;
+        commission_type: 'percentage' | 'fixed';
+        commission_value: number;
     };
     rates: TariffRate[];
     schedules: TariffSchedule[];

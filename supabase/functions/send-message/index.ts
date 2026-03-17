@@ -96,24 +96,73 @@ serve(async (req: Request) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
+    let parsedMessageId: string | null = null
+    let verifiedCompanyId: string | null = null
+
     try {
+        // Authenticate the caller
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Authorization required' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
+        const token = authHeader.replace('Bearer ', '')
+
+        const supabaseAuth = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+        )
+
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { messageId } = await req.json()
+        // Get the user's company_id for tenant verification
+        const { data: callerUser } = await supabaseClient
+            .from('users')
+            .select('company_id')
+            .eq('id', user.id)
+            .single()
 
-        // 1. Fetch message data
+        if (!callerUser?.company_id) {
+            return new Response(JSON.stringify({ error: 'User has no associated company' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
+        verifiedCompanyId = callerUser.company_id
+
+        const reqBody = await req.json()
+        const { messageId } = reqBody
+
+        // 1. Fetch message data — only set parsedMessageId AFTER tenant ownership is confirmed
         const { data: message, error: messageError } = await supabaseClient
             .from('messages')
             .select('*, companies(messaging_settings)')
             .eq('id', messageId)
+            .eq('company_id', verifiedCompanyId)
             .single()
 
         if (messageError || !message) {
-            throw new Error(`Message not found: ${messageError?.message}`)
+            throw new Error('Message not found or access denied')
         }
+
+        // Only set parsedMessageId after ownership is confirmed
+        parsedMessageId = messageId
 
         const settings = message.companies?.messaging_settings || {}
 
@@ -136,7 +185,10 @@ serve(async (req: Request) => {
             });
 
             const tokenData = await tokenResponse.json();
-            if (!tokenResponse.ok) throw new Error(`Google Auth error: ${JSON.stringify(tokenData)}`);
+            if (!tokenResponse.ok) {
+                console.error('Google Auth error details:', JSON.stringify(tokenData));
+                throw new Error('Error de autenticación con Google. Verifica las credenciales de Gmail.');
+            }
 
             const accessToken = tokenData.access_token;
 
@@ -165,7 +217,10 @@ serve(async (req: Request) => {
             })
 
             const result = await response.json()
-            if (!response.ok) throw new Error(`Gmail API error: ${JSON.stringify(result)}`)
+            if (!response.ok) {
+                console.error('Gmail API error details:', JSON.stringify(result));
+                throw new Error('Error al enviar el email a través de Gmail.');
+            }
 
             // Update message status
             await supabaseClient
@@ -206,12 +261,16 @@ serve(async (req: Request) => {
 
             const result = await response.json()
             console.log(`[WhatsApp] API response:`, JSON.stringify(result))
-            if (!response.ok) throw new Error(`WhatsApp error: ${JSON.stringify(result)}`)
+            if (!response.ok) {
+                console.error('WhatsApp API error details:', JSON.stringify(result));
+                throw new Error('Error al enviar el mensaje de WhatsApp.');
+            }
 
-            // Update message status
+            // Update message status — guard against missing messages array
+            const providerId = result.messages?.[0]?.id ?? null
             await supabaseClient
                 .from('messages')
-                .update({ status: 'sent', sent_at: new Date().toISOString(), provider_id: result.messages[0].id })
+                .update({ status: 'sent', sent_at: new Date().toISOString(), provider_id: providerId })
                 .eq('id', messageId)
         }
 
@@ -224,10 +283,9 @@ serve(async (req: Request) => {
         const errorMessage = e instanceof Error ? e.message : 'Unknown error';
         console.error('Error sending message:', errorMessage);
 
-        // Mark message as failed if we have a messageId
+        // Mark message as failed — only if ownership was already verified
         try {
-            const { messageId } = await req.clone().json().catch(() => ({ messageId: null }));
-            if (messageId) {
+            if (parsedMessageId && verifiedCompanyId) {
                 const supabaseClient = createClient(
                     Deno.env.get('SUPABASE_URL') ?? '',
                     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -235,13 +293,14 @@ serve(async (req: Request) => {
                 await supabaseClient
                     .from('messages')
                     .update({ status: 'failed' })
-                    .eq('id', messageId)
+                    .eq('id', parsedMessageId)
+                    .eq('company_id', verifiedCompanyId)
             }
         } catch (updateErr) {
             console.error('Failed to update message status:', updateErr);
         }
 
-        return new Response(JSON.stringify({ error: errorMessage }), {
+        return new Response(JSON.stringify({ error: 'Error al enviar el mensaje. Consulta los logs para más detalles.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         })

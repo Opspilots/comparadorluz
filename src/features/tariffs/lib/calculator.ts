@@ -77,9 +77,13 @@ function getConsumptionDistribution(
         // Sum all P1-P6 values
         const total = Object.values(customDistribution).reduce((sum, val) => sum + (val || 0), 0);
 
-        // If total is close to 100, use custom distribution
+        // If total is close to 100, normalize to exactly 100% and use custom distribution
         if (total > 50 && Math.abs(total - 100) < 5) {
-            return customDistribution as { [key: string]: number };
+            const normalized: { [key: string]: number } = {};
+            for (const [key, val] of Object.entries(customDistribution)) {
+                normalized[key] = ((val || 0) / total) * 100;
+            }
+            return normalized;
         }
 
         // If user provided some values but they don't sum to 100, log a warning

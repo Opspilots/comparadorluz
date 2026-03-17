@@ -2,52 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { rankTariffs, groupResultsByTariff } from '../lib/rankTariffs'
 import { useNavigate } from 'react-router-dom'
-import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput, GroupedComparisonResult, MarketPrice } from '@/shared/types'
+import type { TariffVersion, ComparisonResult, ComparisonMode, ComparisonInput, GroupedComparisonResult } from '@/shared/types'
 import { useComparatorState } from '../hooks/useComparatorState'
 import { InvoiceUploader } from './InvoiceUploader'
 import { SaveComparisonDialog } from './SaveComparisonDialog'
 import { useToast } from '@/hooks/use-toast'
 import { GAS_CONSTANTS } from '@/shared/constants'
 import { Zap, Flame, TrendingUp, Database } from 'lucide-react'
-import { getMarketPrices, getConsumptionData } from '@/features/integrations/lib/integrations-service'
 
 import { mapOcrData } from '../lib/ocrMapper'
-
-/**
- * Convert PVPC hourly market prices to period-averaged prices
- * with indicator IDs matching calculator expectations (1013=P1, 1014=P2, 1015=P3)
- */
-function marketPricesToPeriodAverages(
-    prices: MarketPrice[]
-): Array<{ indicator_id: number; price: number }> {
-    if (prices.length === 0) return []
-
-    // Group by period based on hour (2.0TD schedule)
-    const periodHours: Record<string, number[]> = {
-        P1: [], // Punta: 10-14, 18-22
-        P2: [], // Llano: 8-10, 14-18, 22-24
-        P3: [], // Valle: 0-8
-    }
-
-    for (const p of prices) {
-        const h = p.hour
-        if ((h >= 10 && h < 14) || (h >= 18 && h < 22)) {
-            periodHours.P1.push(p.price_eur_mwh)
-        } else if ((h >= 8 && h < 10) || (h >= 14 && h < 18) || (h >= 22 && h < 24)) {
-            periodHours.P2.push(p.price_eur_mwh)
-        } else {
-            periodHours.P3.push(p.price_eur_mwh)
-        }
-    }
-
-    const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
-
-    return [
-        { indicator_id: 1013, price: avg(periodHours.P1) },
-        { indicator_id: 1014, price: avg(periodHours.P2) },
-        { indicator_id: 1015, price: avg(periodHours.P3) },
-    ]
-}
 
 export function ComparatorForm() {
     const navigate = useNavigate()
@@ -79,7 +42,7 @@ export function ComparatorForm() {
                 const { data: companyData } = await supabase.rpc('get_auth_company_id')
                 if (cancelled || !companyData) return
 
-                const consumption = await getConsumptionData(companyData as string, cups, 720)
+                const consumption: Array<{ date: string; consumption_kwh: number }> = []
                 if (cancelled || consumption.length === 0) return
 
                 // Calculate annual estimate: daily avg * 365
@@ -105,7 +68,7 @@ export function ComparatorForm() {
         }, 800)
 
         return () => { cancelled = true; clearTimeout(timer) }
-    }, [state.cups]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [state.cups, state.consumption, updateState])
 
     const fetchSuppliers = useCallback(async () => {
         const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
@@ -266,20 +229,8 @@ export function ComparatorForm() {
 
             if (error) throw error
 
-            // Fetch current market prices for indexed tariff calculations
-            let marketPrices: Array<{ indicator_id: number; price: number }> | undefined
-            const hasIndexedTariffs = (tariffs as TariffVersion[]).some(t => t.is_indexed)
-            if (hasIndexedTariffs && inputState.supplyType === 'electricity') {
-                try {
-                    const today = new Date().toISOString().split('T')[0]
-                    const pvpcPrices = await getMarketPrices('pvpc', today, today, 24)
-                    if (pvpcPrices.length > 0) {
-                        marketPrices = marketPricesToPeriodAverages(pvpcPrices)
-                    }
-                } catch (mpErr) {
-                    console.warn('No se pudieron obtener precios de mercado, usando estimaciones:', mpErr)
-                }
-            }
+            // Market prices for indexed tariff calculations (not available without integrations)
+            const marketPrices: Array<{ indicator_id: number; price: number }> | undefined = undefined
 
             const results = rankTariffs(
                 tariffs as TariffVersion[],
@@ -292,7 +243,7 @@ export function ComparatorForm() {
             )
 
             setResults(results)
-            setUsedMarketPrices(!!marketPrices && marketPrices.length > 0)
+            setUsedMarketPrices(false)
 
             // Group results by tariff for UI rendering
             const grouped = groupResultsByTariff(results)
@@ -334,7 +285,7 @@ export function ComparatorForm() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '2rem', alignItems: 'start' }}>
                 {/* Form Panel */}
-                <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}>
+                <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid var(--color-border)' }}>
 
                     <div className="tour-comparator-uploader">
                         <InvoiceUploader
@@ -590,7 +541,7 @@ export function ComparatorForm() {
                                         style={inputStyleCompact}
                                     >
                                         <option value="client_first">Ahorro</option>
-                                        <option value="commercial_first">Margen</option>
+                                        <option value="commercial_first">Comisión</option>
                                     </select>
                                 </div>
                             </div>
@@ -747,7 +698,7 @@ export function ComparatorForm() {
                                             {state.mode === 'commercial_first' && (
                                                 <div style={{ background: '#fef3c7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                                                     <span style={{ display: 'block', fontSize: '0.8rem', color: '#92400e' }}>Comisión Líquida</span>
-                                                    <span style={{ fontWeight: 'bold', color: '#92400e' }}>{res.commission_eur}€</span>
+                                                    <span style={{ fontWeight: 'bold', color: '#92400e' }}>{(res.commission_eur || 0).toFixed(2)}€</span>
                                                 </div>
                                             )}
                                             {res.calculation_breakdown.penalties && (res.calculation_breakdown.penalties.reactive > 0 || res.calculation_breakdown.penalties.excess_power > 0) && (
@@ -772,6 +723,7 @@ export function ComparatorForm() {
                                                             originSupplierName: state.currentSupplier || undefined,
                                                             originTariffName: state.tariffType || undefined,
                                                             originAnnualCost: state.currentCost ? Math.round(parseFloat(state.currentCost) * 12) : undefined,
+                                                            commissionEur: res.commission_eur || 0,
                                                         }
                                                     }
                                                 })}

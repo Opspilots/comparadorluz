@@ -39,10 +39,16 @@ async function verifyWebhookSignature(
     const expectedSig = btoa(String.fromCharCode(...signatureBytes))
 
     // Svix sends multiple signatures separated by spaces, each prefixed with "v1,"
+    // Use timing-safe comparison to prevent timing oracle attacks
+    const expectedBytes = new TextEncoder().encode(expectedSig)
     const signatures = svixSignature.split(' ')
     return signatures.some(sig => {
         const sigValue = sig.startsWith('v1,') ? sig.slice(3) : sig
-        return sigValue === expectedSig
+        const sigBytes = new TextEncoder().encode(sigValue)
+        if (sigBytes.length !== expectedBytes.length) return false
+        let diff = 0
+        for (let i = 0; i < sigBytes.length; i++) diff |= sigBytes[i] ^ expectedBytes[i]
+        return diff === 0
     })
 }
 
@@ -52,19 +58,24 @@ serve(async (req: Request) => {
     }
 
     try {
-        // Verify webhook signature if secret is configured
+        // Verify webhook signature — mandatory
         const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET')
-        const rawBody = await req.text()
+        if (!webhookSecret) {
+            console.error('RESEND_WEBHOOK_SECRET not configured — rejecting all requests')
+            return new Response(JSON.stringify({ error: 'Webhook signature verification not configured' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 500,
+            })
+        }
 
-        if (webhookSecret) {
-            const isValid = await verifyWebhookSignature(rawBody, req.headers, webhookSecret)
-            if (!isValid) {
-                console.error('Invalid webhook signature — rejecting request')
-                return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                    status: 401,
-                })
-            }
+        const rawBody = await req.text()
+        const isValid = await verifyWebhookSignature(rawBody, req.headers, webhookSecret)
+        if (!isValid) {
+            console.error('Invalid webhook signature — rejecting request')
+            return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            })
         }
 
         const supabaseClient = createClient(
@@ -141,7 +152,7 @@ serve(async (req: Request) => {
     } catch (e: unknown) {
         const error = e instanceof Error ? e : new Error(String(e))
         console.error('Error processing email webhook:', error)
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: 'Internal server error' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500, // Resend will retry on 500
         })

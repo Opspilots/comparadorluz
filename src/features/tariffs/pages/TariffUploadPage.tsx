@@ -6,7 +6,6 @@ import { Upload, X, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft } fro
 
 import { useToast } from '@/hooks/use-toast';
 import { createBatch, uploadBatchFile, finalizeBatch, BatchFileStatus } from '../lib/batch-upload';
-import { processBatchMock } from '../lib/mock-pipeline';
 
 export default function TariffUploadPage() {
     const navigate = useNavigate();
@@ -113,9 +112,20 @@ export default function TariffUploadPage() {
             const successCount = newFilesState.filter(f => f.status === 'completed').length;
             await finalizeBatch(batchId, successCount);
 
-            // 4. Trigger Mock Pipeline (Simulate Backend)
-            // Fire and forget - don't await result to keep UI responsive
-            processBatchMock(batchId);
+            // 4. Trigger real OCR processing via Edge Function for each uploaded file
+            // Fetch file records from the batch to get storage paths and file IDs
+            const { data: batchFiles } = await supabase
+                .from('tariff_files')
+                .select('id, file_path')
+                .eq('batch_id', batchId);
+
+            if (batchFiles) {
+                for (const bf of batchFiles) {
+                    supabase.functions.invoke('process-tariff-sheet', {
+                        body: { file_path: bf.file_path, file_id: bf.id }
+                    }).catch(err => console.error('OCR processing error:', err));
+                }
+            }
 
             toast({
                 title: "Subida completada y procesamiento iniciado",

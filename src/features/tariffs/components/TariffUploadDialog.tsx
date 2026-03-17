@@ -76,7 +76,11 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                 try {
                     setUploads(prev => prev.map((u, i) => i === index ? { ...u, status: 'uploading', progress: 0 } : u));
 
-                    const fileExt = uploadState.file.name.split('.').pop();
+                    const fileExt = (uploadState.file.name.split('.').pop() || '').toLowerCase();
+                    const ALLOWED_EXTENSIONS = ['pdf'];
+                    if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
+                        throw new Error(`Tipo de archivo no permitido: .${fileExt}. Solo se aceptan: ${ALLOWED_EXTENSIONS.join(', ')}`);
+                    }
                     const fileName = `${companyId}/${batch.id}/${crypto.randomUUID()}.${fileExt}`;
 
                     // Upload to Storage
@@ -131,10 +135,10 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                                 const { data: suppliers } = await supabase.from('suppliers').select('id, name');
                                 const supplierNameLower = (extractedData.supplier_name || '').toLowerCase();
                                 let supplierId = null;
-                                if (suppliers) {
+                                if (suppliers && supplierNameLower) {
                                     const match = suppliers.find(s => s.name.toLowerCase().includes(supplierNameLower) || supplierNameLower.includes(s.name.toLowerCase()));
                                     if (match) supplierId = match.id;
-                                    else if (suppliers.length > 0) supplierId = suppliers[0].id; // Fallback
+                                    // No fallback — if no match, supplierId stays null and the tariff is flagged for manual review
                                 }
 
                                 const { data: structures } = await supabase.from('tariff_structures').select('id, code, energy_periods, power_periods');

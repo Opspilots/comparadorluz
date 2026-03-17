@@ -5,9 +5,10 @@ import { Plus, Trash2 } from 'lucide-react';
 interface Step5Props {
     data: TariffWizardState;
     onChange: (rates: TariffRate[]) => void;
+    onMetadataChange?: <K extends keyof TariffWizardState['metadata']>(key: K, value: TariffWizardState['metadata'][K]) => void;
 }
 
-export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
+export function Step5FeesAndTaxes({ data, onChange, onMetadataChange }: Step5Props) {
     const feesAndTaxes = data.rates.filter(r => ['fixed_fee', 'tax', 'discount'].includes(r.item_type));
 
     // Add default 21% IVA on first mount if no tax exists
@@ -59,7 +60,44 @@ export function Step5FeesAndTaxes({ data, onChange }: Step5Props) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>Cargos Extra e Impuestos</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>Comisión, Cargos Extra e Impuestos</h2>
+
+            {/* Commission Section */}
+            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '0.5rem', padding: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#0369a1', marginBottom: '0.75rem' }}>
+                    Comisión de la Tarifa
+                </label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                        <label style={labelStyle}>Valor</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            style={inputStyle}
+                            value={data.metadata.commission_value === 0 ? '' : data.metadata.commission_value}
+                            onChange={(e) => onMetadataChange?.('commission_value', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                            placeholder="Ej: 10"
+                        />
+                    </div>
+                    <div style={{ width: '10rem' }}>
+                        <label style={labelStyle}>Tipo</label>
+                        <select
+                            style={inputStyle}
+                            value={data.metadata.commission_type}
+                            onChange={(e) => onMetadataChange?.('commission_type', e.target.value as 'percentage' | 'fixed')}
+                        >
+                            <option value="percentage">% del coste anual</option>
+                            <option value="fixed">€/año fijos</option>
+                        </select>
+                    </div>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.5rem', margin: '0.5rem 0 0 0' }}>
+                    {data.metadata.commission_type === 'percentage'
+                        ? 'Porcentaje sobre el coste anual calculado del cliente.'
+                        : 'Importe fijo anual en euros por contrato.'}
+                </p>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {feesAndTaxes.map((rate) => (

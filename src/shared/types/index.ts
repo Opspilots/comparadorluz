@@ -214,6 +214,8 @@ export interface TariffVersion {
     automation_source?: string;
     last_synced_at?: string;
     contract_duration?: number | null;
+    commission_type?: 'percentage' | 'fixed';
+    commission_value?: number;
     created_at: string;
     updated_at: string;
     tariff_components?: TariffComponent[]; // For joined data

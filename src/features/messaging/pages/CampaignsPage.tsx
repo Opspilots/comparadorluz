@@ -109,7 +109,7 @@ const STYLES = {
     tableContainer: {
         background: 'var(--surface)',
         borderRadius: '16px',
-        border: '1px solid var(--border)',
+        border: '1px solid var(--color-border)',
         overflow: 'hidden',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
     },

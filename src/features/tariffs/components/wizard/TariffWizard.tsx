@@ -23,6 +23,8 @@ const INITIAL_STATE: TariffWizardState = {
         is_indexed: false,
         valid_from: new Date().toISOString().split('T')[0],
         contract_duration: null,
+        commission_type: 'percentage',
+        commission_value: 0,
     },
     rates: [],
     schedules: [],
@@ -113,6 +115,8 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                             is_indexed: version.is_indexed,
                             valid_from: version.valid_from,
                             contract_duration: version.contract_duration || null,
+                            commission_type: version.commission_type || 'percentage',
+                            commission_value: version.commission_value ?? 0,
                         },
                         rates: version.tariff_rates || [],
                         schedules: version.tariff_schedules || [],
@@ -489,7 +493,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
             goToStep(2);
         } else {
             // Default behavior (navigate away)
-            navigate('/dashboard/tariffs');
+            navigate('/admin/tariffs');
         }
     };
 
@@ -687,6 +691,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                     <Step5FeesAndTaxes
                         data={state}
                         onChange={updateRates}
+                        onMetadataChange={updateMetadata}
                     />
                 )}
                 {state.currentStep === 8 && (

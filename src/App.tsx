@@ -1,41 +1,43 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 import { MainLayout } from '@/shared/components/layout/MainLayout'
-import TariffDashboard from '@/features/tariffs/pages/TariffDashboard'
-
-import { TariffEditorPage } from '@/features/tariffs/pages/TariffEditorPage'
-import TariffDetailsPage from '@/features/tariffs/pages/TariffDetailsPage'
-import TariffUploadPage from '@/features/tariffs/pages/TariffUploadPage'
-import BatchDetailsPage from '@/features/tariffs/pages/BatchDetailsPage'
-import MessagingLayout from '@/features/messaging/layouts/MessagingLayout'
-import MessagingPage from '@/features/messaging/pages/MessagingPage'
-import ConversationPage from '@/features/messaging/pages/ConversationPage'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from '@/shared/components/ui/toaster'
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { Login } from '@/features/auth/components/Login'
-import { SettingsPage } from '@/features/auth/pages/SettingsPage'
-import { GoogleOAuthCallbackPage } from '@/features/auth/pages/GoogleOAuthCallbackPage'
-import { CustomerList } from '@/features/crm/components/CustomerList'
-import { CustomerDetails } from '@/features/crm/components/CustomerDetails'
-import { ComparatorForm } from '@/features/comparator/components/ComparatorForm'
-import { ComparisonHistory } from '@/features/comparator/pages/ComparisonHistory'
-import { ContactForm } from '@/features/crm/components/ContactForm'
-import { SupplyPointForm } from '@/features/crm/components/SupplyPointForm'
-
-import { CustomerForm } from '@/features/crm/components/CustomerForm'
-import { CampaignsPage } from '@/features/messaging/pages/CampaignsPage'
-import { CampaignForm } from '@/features/messaging/pages/CampaignForm'
-import { ContractList } from '@/features/contracts/components/ContractList'
-import { ContractForm } from '@/features/contracts/components/ContractForm'
-import { ContractPreview } from '@/features/contracts/components/ContractPreview'
-import { ContractTemplateEditor } from '@/features/contracts/components/ContractTemplateEditor'
-import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
-import { CommissionersPage } from '@/features/commissioners/pages/CommissionersPage'
-import { CommissionerDetailPage } from '@/features/commissioners/pages/CommissionerDetailPage'
-import SuppliersPage from '@/features/tariffs/pages/SuppliersPage'
-import { IntegrationsPage } from '@/features/integrations/pages/IntegrationsPage'
-import { CompliancePage } from '@/features/compliance/pages/CompliancePage'
 import { ConsentSignPage } from '@/features/compliance/pages/ConsentSignPage'
+
+// Lazy-loaded route components (code splitting)
+const TariffDashboard = lazy(() => import('@/features/tariffs/pages/TariffDashboard'))
+const TariffEditorPage = lazy(() => import('@/features/tariffs/pages/TariffEditorPage').then(m => ({ default: m.TariffEditorPage })))
+const TariffDetailsPage = lazy(() => import('@/features/tariffs/pages/TariffDetailsPage'))
+const TariffUploadPage = lazy(() => import('@/features/tariffs/pages/TariffUploadPage'))
+const BatchDetailsPage = lazy(() => import('@/features/tariffs/pages/BatchDetailsPage'))
+const MessagingLayout = lazy(() => import('@/features/messaging/layouts/MessagingLayout'))
+const MessagingPage = lazy(() => import('@/features/messaging/pages/MessagingPage'))
+const ConversationPage = lazy(() => import('@/features/messaging/pages/ConversationPage'))
+const SettingsPage = lazy(() => import('@/features/auth/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const GoogleOAuthCallbackPage = lazy(() => import('@/features/auth/pages/GoogleOAuthCallbackPage').then(m => ({ default: m.GoogleOAuthCallbackPage })))
+const CustomerList = lazy(() => import('@/features/crm/components/CustomerList').then(m => ({ default: m.CustomerList })))
+const CustomerDetails = lazy(() => import('@/features/crm/components/CustomerDetails').then(m => ({ default: m.CustomerDetails })))
+const ComparatorForm = lazy(() => import('@/features/comparator/components/ComparatorForm').then(m => ({ default: m.ComparatorForm })))
+const ComparisonHistory = lazy(() => import('@/features/comparator/pages/ComparisonHistory').then(m => ({ default: m.ComparisonHistory })))
+const ContactForm = lazy(() => import('@/features/crm/components/ContactForm').then(m => ({ default: m.ContactForm })))
+const SupplyPointForm = lazy(() => import('@/features/crm/components/SupplyPointForm').then(m => ({ default: m.SupplyPointForm })))
+const CustomerForm = lazy(() => import('@/features/crm/components/CustomerForm').then(m => ({ default: m.CustomerForm })))
+const CampaignsPage = lazy(() => import('@/features/messaging/pages/CampaignsPage').then(m => ({ default: m.CampaignsPage })))
+const CampaignForm = lazy(() => import('@/features/messaging/pages/CampaignForm').then(m => ({ default: m.CampaignForm })))
+const ContractList = lazy(() => import('@/features/contracts/components/ContractList').then(m => ({ default: m.ContractList })))
+const ContractForm = lazy(() => import('@/features/contracts/components/ContractForm').then(m => ({ default: m.ContractForm })))
+const ContractPreview = lazy(() => import('@/features/contracts/components/ContractPreview').then(m => ({ default: m.ContractPreview })))
+const ContractTemplateEditor = lazy(() => import('@/features/contracts/components/ContractTemplateEditor').then(m => ({ default: m.ContractTemplateEditor })))
+const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const CommissionersPage = lazy(() => import('@/features/commissioners/pages/CommissionersPage').then(m => ({ default: m.CommissionersPage })))
+const CommissionerDetailPage = lazy(() => import('@/features/commissioners/pages/CommissionerDetailPage').then(m => ({ default: m.CommissionerDetailPage })))
+const SuppliersPage = lazy(() => import('@/features/tariffs/pages/SuppliersPage'))
+const CompliancePage = lazy(() => import('@/features/compliance/pages/CompliancePage').then(m => ({ default: m.CompliancePage })))
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
     const [session, setSession] = useState<Session | null>(null)
@@ -49,6 +51,7 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session)
+            setLoading(false)
         })
 
         return () => subscription.unsubscribe()
@@ -60,67 +63,106 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
     return children
 }
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from '@/shared/components/ui/toaster'
+function AdminRoute({ children }: { children: JSX.Element }) {
+    const [role, setRole] = useState<string | null>(null)
+    const [loading, setLoading] = useState(true)
 
-const queryClient = new QueryClient()
+    useEffect(() => {
+        const checkRole = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { data } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single()
+                setRole(data?.role || null)
+            }
+            setLoading(false)
+        }
+        checkRole()
+    }, [])
+
+    if (loading) return <div>Cargando...</div>
+    if (role !== 'admin' && role !== 'manager') return <Navigate to="/" />
+
+    return children
+}
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 1000 * 60 * 5,
+            retry: 1,
+            refetchOnWindowFocus: false,
+        },
+    },
+})
+
+const LoadingFallback = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#64748b' }}>
+        Cargando...
+    </div>
+)
 
 function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
-                    <Route path="/*" element={
-                        <PrivateRoute>
-                            <MainLayout>
-                                <Routes>
-                                    <Route path="/" element={<DashboardPage />} />
-                                    <Route path="/comparator" element={<ComparatorForm />} />
-                                    <Route path="/comparator/history" element={<ComparisonHistory />} />
-                                    <Route path="/settings" element={<SettingsPage />} />
-                                    <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
-                                    <Route path="/crm" element={<CustomerList />} />
-                                    <Route path="/crm/new" element={<CustomerForm />} />
-                                    <Route path="/crm/:id" element={<CustomerDetails />} />
-                                    <Route path="/crm/:id/edit" element={<CustomerForm />} />
-                                    <Route path="/crm/:customerId/contacts/new" element={<ContactForm />} />
-                                    <Route path="/crm/:customerId/supply-points/new" element={<SupplyPointForm />} />
-                                    <Route path="/commissioners" element={<CommissionersPage />} />
-                                    <Route path="/commissioners/:id" element={<CommissionerDetailPage />} />
+                <ErrorBoundary>
+                <Suspense fallback={<LoadingFallback />}>
+                    <Routes>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
+                        <Route path="/*" element={
+                            <PrivateRoute>
+                                <MainLayout>
+                                    <Routes>
+                                        <Route path="/" element={<DashboardPage />} />
+                                        <Route path="/comparator" element={<ComparatorForm />} />
+                                        <Route path="/comparator/history" element={<ComparisonHistory />} />
+                                        <Route path="/settings" element={<SettingsPage />} />
+                                        <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
+                                        <Route path="/crm" element={<CustomerList />} />
+                                        <Route path="/crm/new" element={<CustomerForm />} />
+                                        <Route path="/crm/:id" element={<CustomerDetails />} />
+                                        <Route path="/crm/:id/edit" element={<CustomerForm />} />
+                                        <Route path="/crm/:customerId/contacts/new" element={<ContactForm />} />
+                                        <Route path="/crm/:customerId/supply-points/new" element={<SupplyPointForm />} />
+                                        <Route path="/commissioners" element={<CommissionersPage />} />
+                                        <Route path="/commissioners/:id" element={<CommissionerDetailPage />} />
 
+                                        {/* Tariffs — admin/manager only */}
+                                        <Route path="/admin/tariffs" element={<AdminRoute><TariffDashboard /></AdminRoute>} />
+                                        <Route path="/admin/tariffs/upload" element={<AdminRoute><TariffUploadPage /></AdminRoute>} />
+                                        <Route path="/admin/tariffs/batches/:id" element={<AdminRoute><BatchDetailsPage /></AdminRoute>} />
+                                        <Route path="/admin/tariffs/:id" element={<AdminRoute><TariffDetailsPage /></AdminRoute>} />
+                                        <Route path="/admin/tariffs/new" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
+                                        <Route path="/admin/tariffs/edit/:id" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
+                                        <Route path="/admin/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                                        <Route path="/admin/compliance" element={<AdminRoute><CompliancePage /></AdminRoute>} />
 
-                                    {/* Tariffs */}
-                                    <Route path="/admin/tariffs" element={<TariffDashboard />} />
-                                    <Route path="/admin/tariffs/upload" element={<TariffUploadPage />} />
-                                    <Route path="/admin/tariffs/batches/:id" element={<BatchDetailsPage />} />
-                                    <Route path="/admin/tariffs/:id" element={<TariffDetailsPage />} />
-                                    <Route path="/admin/tariffs/new" element={<TariffEditorPage />} />
-                                    <Route path="/admin/tariffs/edit/:id" element={<TariffEditorPage />} />
-                                    <Route path="/admin/suppliers" element={<SuppliersPage />} />
-                                    <Route path="/admin/integrations" element={<IntegrationsPage />} />
-                                    <Route path="/admin/compliance" element={<CompliancePage />} />
-
-                                    {/* Messaging */}
-                                    <Route path="/admin/messages" element={<MessagingLayout />}>
-                                        <Route index element={<MessagingPage />} />
-                                        <Route path="campaigns" element={<CampaignsPage />} />
-                                        <Route path="campaigns/new" element={<CampaignForm />} />
-                                        <Route path="campaigns/:id" element={<CampaignForm />} />
-                                        <Route path="campaigns/:id/edit" element={<CampaignForm />} />
-                                        <Route path=":customerId" element={<ConversationPage />} />
-                                    </Route>
-                                    <Route path="/contracts" element={<ContractList />} />
-                                    <Route path="/contracts/template" element={<ContractTemplateEditor />} />
-                                    <Route path="/contracts/new" element={<ContractForm />} />
-                                    <Route path="/contracts/:id" element={<ContractForm />} />
-                                    <Route path="/contracts/:id/view" element={<ContractPreview />} />
-                                </Routes>
-                            </MainLayout>
-                        </PrivateRoute>
-                    } />
-                </Routes>
+                                        {/* Messaging */}
+                                        <Route path="/admin/messages" element={<MessagingLayout />}>
+                                            <Route index element={<MessagingPage />} />
+                                            <Route path="campaigns" element={<CampaignsPage />} />
+                                            <Route path="campaigns/new" element={<CampaignForm />} />
+                                            <Route path="campaigns/:id" element={<CampaignForm />} />
+                                            <Route path="campaigns/:id/edit" element={<CampaignForm />} />
+                                            <Route path=":customerId" element={<ConversationPage />} />
+                                        </Route>
+                                        <Route path="/contracts" element={<ContractList />} />
+                                        <Route path="/contracts/template" element={<AdminRoute><ContractTemplateEditor /></AdminRoute>} />
+                                        <Route path="/contracts/new" element={<ContractForm />} />
+                                        <Route path="/contracts/:id" element={<ContractForm />} />
+                                        <Route path="/contracts/:id/view" element={<ContractPreview />} />
+                                    </Routes>
+                                </MainLayout>
+                            </PrivateRoute>
+                        } />
+                    </Routes>
+                </Suspense>
+                </ErrorBoundary>
                 <Toaster />
             </BrowserRouter>
         </QueryClientProvider>

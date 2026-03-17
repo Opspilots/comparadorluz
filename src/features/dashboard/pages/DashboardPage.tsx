@@ -4,8 +4,6 @@ import { supabase } from '@/shared/lib/supabase'
 import { MetricCard } from '../components/MetricCard'
 import { DashboardChart } from '../components/DashboardChart'
 import { RecentActivity } from '../components/RecentActivity'
-import { MarketPriceWidget } from '../components/MarketPriceWidget'
-import { EnergyMixWidget } from '../components/EnergyMixWidget'
 
 import { Users, FileText, CheckCircle, Plus, Search, FileSignature, Calendar, ArrowRight } from 'lucide-react'
 
@@ -17,6 +15,7 @@ export function DashboardPage() {
         monthlyComparisons: [] as { month: string; value: number }[]
     })
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         fetchDashboardStats()
@@ -30,14 +29,19 @@ export function DashboardPage() {
                 supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('status', 'active')
             ])
 
+            if (customersRes.error) throw customersRes.error
+            if (contractsRes.error) throw contractsRes.error
+            if (activeContractsRes.error) throw activeContractsRes.error
+
             setStats({
                 totalCustomers: customersRes.count || 0,
                 totalContracts: contractsRes.count || 0,
                 activeContracts: activeContractsRes.count || 0,
                 monthlyComparisons: []
             })
-        } catch (error) {
-            console.error('Error fetching dashboard stats:', error)
+        } catch (err) {
+            console.error('Error fetching dashboard stats:', err)
+            setError('No se pudieron cargar las estadisticas. Comprueba tu conexion.')
         } finally {
             setLoading(false)
         }
@@ -52,18 +56,41 @@ export function DashboardPage() {
     }
 
     return (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
 
-            {/* Header Section */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-                <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>Panel de Control</h1>
-                <button className="btn btn-secondary" style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Calendar size={16} /> Últimos 30 días
+            {error && (
+                <div style={{
+                    padding: '1rem', background: '#fef2f2', color: '#991b1b',
+                    borderRadius: '10px', border: '1px solid #fee2e2',
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{error}</span>
+                    <button
+                        onClick={() => { setError(null); setLoading(true); fetchDashboardStats() }}
+                        style={{
+                            marginLeft: 'auto', padding: '0.375rem 0.75rem', borderRadius: 6,
+                            border: '1px solid #fecaca', background: '#fff', color: '#dc2626',
+                            fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                        }}
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Panel de Control</h1>
+                    <p className="page-subtitle">Resumen general de tu actividad</p>
+                </div>
+                <button className="btn btn-secondary btn-sm">
+                    <Calendar size={14} /> Ultimos 30 dias
                 </button>
             </div>
 
             {/* Metrics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+            <div className="metric-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
                 <MetricCard
                     title="Total Clientes"
                     value={stats.totalCustomers}
@@ -76,7 +103,7 @@ export function DashboardPage() {
                     value={stats.totalContracts}
                     icon={<FileText size={20} />}
                     trend="up"
-                    subtitle="Histórico completo"
+                    subtitle="Historico completo"
                 />
                 <MetricCard
                     title="Contratos Activos"
@@ -88,69 +115,80 @@ export function DashboardPage() {
             </div>
 
             {/* Main Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {/* Data Chart */}
-                    <div style={{ height: '400px' }}>
-                        <DashboardChart />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
+                {/* Use CSS media query via Tailwind would be ideal, but keeping inline for consistency */}
+                <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', display: 'grid' }}>
+                    {/* Left Column */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* Chart */}
+                        <div className="dashboard-chart" style={{ height: '400px' }}>
+                            <DashboardChart />
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="card quick-actions">
+                            <div style={{
+                                padding: '1rem 1.25rem',
+                                borderBottom: '1px solid var(--color-border)',
+                                fontSize: '0.9375rem',
+                                fontWeight: 600,
+                                color: 'var(--text-main)',
+                            }}>
+                                Acciones Rapidas
+                            </div>
+                            <div style={{ padding: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <Link to="/comparator" className="btn btn-primary btn-sm">
+                                    <Search size={14} /> Nueva Comparativa
+                                </Link>
+                                <Link to="/crm/new" className="btn btn-secondary btn-sm">
+                                    <Plus size={14} /> Nuevo Cliente
+                                </Link>
+                                <Link to="/contracts/new" className="btn btn-secondary btn-sm">
+                                    <FileSignature size={14} /> Nuevo Contrato
+                                </Link>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Quick Actions */}
-                    <div className="card">
-                        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)' }}>
-                        </div>
-                        <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                            <Link to="/comparator" className="btn btn-primary" style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}>
-                                <Search size={16} /> Nueva Comparativa
-                            </Link>
-                            <Link to="/crm/new" className="btn btn-secondary" style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}>
-                                <Plus size={16} /> Nuevo Cliente
-                            </Link>
-                            <Link to="/contracts/new" className="btn btn-secondary" style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}>
-                                <FileSignature size={16} /> Nuevo Contrato
-                            </Link>
-                        </div>
-                    </div>
-                </div>
+                    {/* Right Column */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <RecentActivity />
 
-                {/* Right Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
-                    {/* Market Prices Widget */}
-                    <MarketPriceWidget />
-
-                    {/* Energy Mix Widget */}
-                    <EnergyMixWidget />
-
-                    {/* Recent Activity */}
-                    <RecentActivity />
-
-                    {/* Navigation Shortcuts */}
-                    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', background: 'var(--background)' }}>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <Link to="/crm" style={shortcutLinkStyle}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <Users size={18} color="var(--primary)" />
-                                    <span>Gestión de Clientes</span>
-                                </div>
-                                <ArrowRight size={16} color="var(--text-muted)" />
-                            </Link>
-                            <Link to="/contracts" style={shortcutLinkStyle}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <FileText size={18} color="var(--primary)" />
-                                    <span>Gestión de Contratos</span>
-                                </div>
-                                <ArrowRight size={16} color="var(--text-muted)" />
-                            </Link>
-                            <Link to="/admin/tariffs" style={shortcutLinkStyle}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <CheckCircle size={18} color="var(--primary)" />
-                                    <span>Tarifas y Precios</span>
-                                </div>
-                                <ArrowRight size={16} color="var(--text-muted)" />
-                            </Link>
+                        {/* Navigation Shortcuts */}
+                        <div className="card" style={{ overflow: 'hidden' }}>
+                            <div style={{
+                                padding: '1rem 1.25rem',
+                                borderBottom: '1px solid var(--color-border)',
+                                fontSize: '0.9375rem',
+                                fontWeight: 600,
+                                color: 'var(--text-main)',
+                                background: 'var(--color-background)',
+                            }}>
+                                Accesos Directos
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <Link to="/crm" style={shortcutLinkStyle}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <Users size={18} color="var(--color-primary)" />
+                                        <span>Gestion de Clientes</span>
+                                    </div>
+                                    <ArrowRight size={16} color="var(--text-muted)" />
+                                </Link>
+                                <Link to="/contracts" style={shortcutLinkStyle}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <FileText size={18} color="var(--color-primary)" />
+                                        <span>Gestion de Contratos</span>
+                                    </div>
+                                    <ArrowRight size={16} color="var(--text-muted)" />
+                                </Link>
+                                <Link to="/admin/tariffs" style={shortcutLinkStyle}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <CheckCircle size={18} color="var(--color-primary)" />
+                                        <span>Tarifas y Precios</span>
+                                    </div>
+                                    <ArrowRight size={16} color="var(--text-muted)" />
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -160,15 +198,15 @@ export function DashboardPage() {
 }
 
 const shortcutLinkStyle: React.CSSProperties = {
-    padding: '1rem 1.25rem',
+    padding: '0.875rem 1.25rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     textDecoration: 'none',
     color: 'var(--text-main)',
-    fontSize: '0.95rem',
+    fontSize: '0.875rem',
     fontWeight: 500,
     borderBottom: '1px solid var(--border-light)',
-    transition: 'background 0.2s',
+    transition: 'background 0.15s',
     cursor: 'pointer'
 }

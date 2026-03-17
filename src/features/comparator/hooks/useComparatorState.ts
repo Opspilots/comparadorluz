@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export interface ComparatorState {
     // Supply Type
@@ -95,10 +95,12 @@ export function useComparatorState() {
     }, [])
 
     // Auto-save to localStorage when state changes (debounced)
+    // Exclude tenant-specific IDs to prevent cross-company data leaks
     useEffect(() => {
         const timeout = setTimeout(() => {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+                const { selectedCustomer: _sc, selectedSP: _sp, ...persistableState } = state
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(persistableState))
             } catch (error) {
                 console.error('Error saving state:', error)
             }
@@ -109,15 +111,15 @@ export function useComparatorState() {
         }
     }, [state])
 
-    const updateState = (updates: Partial<ComparatorState>) => {
+    const updateState = useCallback((updates: Partial<ComparatorState>) => {
         setState(prev => ({ ...prev, ...updates }))
-    }
+    }, [])
 
-    const clearState = () => {
+    const clearState = useCallback(() => {
         setState(defaultState)
         localStorage.removeItem(STORAGE_KEY)
         setIsRestored(false)
-    }
+    }, [])
 
     return {
         state,

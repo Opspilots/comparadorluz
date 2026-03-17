@@ -39,19 +39,19 @@
   /* Typography */
   --font-family: 'Outfit', system-ui, -apple-system, sans-serif;
 
-  /* Brand */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
+  /* Brand (hex for inline styles — use color-* prefix to avoid shadcn HSL collision) */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
   --primary-light: #eff6ff;
   --primary-subtle: #dbeafe;
 
   /* Neutrals */
-  --background: #f8fafc;
+  --color-background: #f8fafc;
   --surface: #ffffff;
   --text-main: #0f172a;
   --text-muted: #64748b;
   --text-subtle: #94a3b8;
-  --border: #e2e8f0;
+  --color-border: #e2e8f0;
   --border-light: #f1f5f9;
 
   /* Semantic */
@@ -106,7 +106,7 @@ html {
 body {
   font-family: var(--font-family);
   font-weight: 400;
-  background-color: var(--background);
+  background-color: var(--color-background);
   color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -153,7 +153,7 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--primary) !important;
+  border-color: var(--color-primary) !important;
   box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
 }
 
@@ -192,14 +192,14 @@ a {
 .card {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
 }
 
 .card-padded {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
   padding: 1.5rem;
 }
@@ -244,15 +244,15 @@ a {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: var(--color-primary);
   color: white;
-  border-color: var(--primary);
+  border-color: var(--color-primary);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.1), inset 0 1px 0 0 rgb(255 255 255 / 0.08);
 }
 
 .btn-primary:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
   box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.15);
 }
 
@@ -263,7 +263,7 @@ a {
 
 .btn-secondary {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   color: var(--text-muted);
   box-shadow: var(--shadow-xs);
 }
@@ -312,7 +312,7 @@ a {
   width: 100%;
   padding: 0.5625rem 0.875rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   background: var(--surface);
   color: var(--text-main);
   font-family: var(--font-family);
@@ -385,7 +385,7 @@ a {
    ============================================================ */
 .divider {
   height: 1px;
-  background: var(--border);
+  background: var(--color-border);
   border: none;
   margin: 0;
 }
@@ -406,7 +406,7 @@ th {
   letter-spacing: 0.06em;
   padding: 0.75rem 1rem;
   background: var(--border-light);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
   text-align: left;
 }
 
@@ -454,7 +454,7 @@ tbody tr:hover {
    LOADING STATES
    ============================================================ */
 .skeleton {
-  background: linear-gradient(90deg, var(--border-light) 25%, var(--border) 50%, var(--border-light) 75%);
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--color-border) 50%, var(--border-light) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
   border-radius: var(--radius-sm);
@@ -528,7 +528,7 @@ tbody tr:hover {
    FOCUS VISIBLE (accessibility)
    ============================================================ */
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
@@ -559,7 +559,7 @@ tbody tr:hover {
    ============================================================ */
 ::selection {
   background: var(--primary-light);
-  color: var(--primary-hover);
+  color: var(--color-primary-hover);
 }
 
 /* ============================================================
@@ -568,4 +568,54 @@ tbody tr:hover {
 .sidebar-nav-item:hover {
   background-color: rgba(255, 255, 255, 0.07) !important;
   color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ============================================================
+   LANDING PAGE — Dark Energy Grid
+   ============================================================ */
+.energy-grid {
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.energy-grid-glow {
+  background-image:
+    radial-gradient(circle at 20% 60%, rgba(37, 99, 235, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-light {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.text-gradient-blue {
+  background: linear-gradient(135deg, #3b82f6, #2563eb, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-fade {
+  background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.landing-hover-lift {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.landing-hover-lift:hover {
+  transform: translateY(-6px);
 }

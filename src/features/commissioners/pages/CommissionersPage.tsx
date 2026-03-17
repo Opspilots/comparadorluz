@@ -111,7 +111,7 @@ export function CommissionersPage() {
                         placeholder="Buscar por nombre o email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'white' }}
+                        style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'white' }}
                     />
                 </div>
 
@@ -139,8 +139,8 @@ export function CommissionersPage() {
                     Cargando comisionados...
                 </div>
             ) : filteredCommissioners.length === 0 ? (
-                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                    <Users size={48} style={{ margin: '0 auto 1rem', opacity: 0.5, color: 'var(--primary)' }} />
+                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--color-border)' }}>
+                    <Users size={48} style={{ margin: '0 auto 1rem', opacity: 0.5, color: 'var(--color-primary)' }} />
                     <h3 style={{ color: 'var(--text-primary)' }}>No hay comisionados</h3>
                     <p>Comienza agregando a tu primer comercial al equipo.</p>
                 </div>

@@ -123,7 +123,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
                         style={{
                             width: '100%',
                             padding: '0.75rem',
-                            border: '1px solid var(--border)',
+                            border: '1px solid var(--color-border)',
                             borderRadius: '6px'
                         }}
                     />
@@ -141,7 +141,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
                         style={{
                             width: '100%',
                             padding: '0.75rem',
-                            border: '1px solid var(--border)',
+                            border: '1px solid var(--color-border)',
                             borderRadius: '6px',
                             resize: 'vertical'
                         }}

@@ -61,11 +61,11 @@ export function DashboardChart() {
 
     return (
         <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: '1rem', fontWeight: 600 }}>
                     Evolución de {chartType === 'contracts' ? 'Contratos' : 'Clientes'}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--background)', padding: '0.25rem', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-background)', padding: '0.25rem', borderRadius: '6px' }}>
                     <button
                         onClick={() => setChartType('contracts')}
                         style={{
@@ -74,7 +74,7 @@ export function DashboardChart() {
                             border: 'none',
                             background: chartType === 'contracts' ? 'white' : 'transparent',
                             boxShadow: chartType === 'contracts' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-                            color: chartType === 'contracts' ? 'var(--primary)' : 'var(--text-muted)',
+                            color: chartType === 'contracts' ? 'var(--color-primary)' : 'var(--text-muted)',
                             fontWeight: 500,
                             fontSize: '0.8rem',
                             cursor: 'pointer',
@@ -91,7 +91,7 @@ export function DashboardChart() {
                             border: 'none',
                             background: chartType === 'customers' ? 'white' : 'transparent',
                             boxShadow: chartType === 'customers' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-                            color: chartType === 'customers' ? 'var(--primary)' : 'var(--text-muted)',
+                            color: chartType === 'customers' ? 'var(--color-primary)' : 'var(--text-muted)',
                             fontWeight: 500,
                             fontSize: '0.8rem',
                             cursor: 'pointer',
@@ -110,8 +110,8 @@ export function DashboardChart() {
                         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <XAxis
@@ -131,7 +131,7 @@ export function DashboardChart() {
                             <Tooltip
                                 contentStyle={{
                                     background: 'white',
-                                    border: '1px solid var(--border)',
+                                    border: '1px solid var(--color-border)',
                                     borderRadius: '8px',
                                     boxShadow: 'var(--shadow-md)'
                                 }}
@@ -142,7 +142,7 @@ export function DashboardChart() {
                                 type="monotone"
                                 dataKey="value"
                                 name={chartType === 'contracts' ? 'Contratos' : 'Clientes'}
-                                stroke="var(--primary)"
+                                stroke="var(--color-primary)"
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorValue)"

@@ -13,11 +13,30 @@ const INDICATORS = [
 ]
 
 serve(async (req: Request) => {
+    // Cron-only endpoint — no CORS needed
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } })
+        return new Response(null, { status: 405 })
     }
 
     try {
+        // Only allow cron calls (service-role bearer) — reject anonymous callers
+        const authHeader = req.headers.get('Authorization')
+        const expectedBearer = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+        let isCronCall = false
+        if (authHeader && authHeader.length === expectedBearer.length) {
+            const a = new TextEncoder().encode(authHeader)
+            const b = new TextEncoder().encode(expectedBearer)
+            let diff = 0
+            for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+            isCronCall = diff === 0
+        }
+        if (!isCronCall) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                headers: { 'Content-Type': 'application/json' },
+                status: 401,
+            })
+        }
+
         if (!ESIOS_TOKEN) throw new Error('ESIOS_API_TOKEN is not configured')
 
         const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
@@ -64,14 +83,14 @@ serve(async (req: Request) => {
         }
 
         return new Response(JSON.stringify({ success: true, results }), {
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            headers: { 'Content-Type': 'application/json' },
             status: 200,
         })
     } catch (e: unknown) {
-        const error = e as Error;
-        console.error('Sync error:', error)
-        return new Response(JSON.stringify({ error: error.message }), {
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        const error = e instanceof Error ? e : new Error(String(e));
+        console.error('Sync error:', error.message)
+        return new Response(JSON.stringify({ error: 'Error en la sincronización de precios.' }), {
+            headers: { 'Content-Type': 'application/json' },
             status: 500,
         })
     }

@@ -10,6 +10,8 @@ interface Step1Props {
         is_indexed: boolean;
         valid_from: string;
         contract_duration: number | null;
+        commission_type: 'percentage' | 'fixed';
+        commission_value: number;
     };
     mode?: 'create' | 'edit';
     onChange: <K extends keyof Step1Props['data']>(key: K, value: Step1Props['data'][K]) => void;
@@ -21,7 +23,6 @@ export default function Step1Metadata({ data, mode = 'create', onChange, supplie
     // Removed internal state for structures/suppliers as they come from props now
 
     useEffect(() => {
-        console.log("Step1Metadata mounted");
         // Logic to fetch is moved to parent to allow auto-mapping
     }, []);
 
