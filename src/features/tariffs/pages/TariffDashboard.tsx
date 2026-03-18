@@ -184,7 +184,7 @@ export default function TariffDashboard() {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
             return userData;
         }

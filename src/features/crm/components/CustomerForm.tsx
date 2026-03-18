@@ -150,7 +150,7 @@ export function CustomerForm() {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (!profile) throw new Error('Perfil no encontrado')
             const companyId = profile.company_id

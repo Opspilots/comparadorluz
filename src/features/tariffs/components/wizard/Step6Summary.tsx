@@ -58,7 +58,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
             // 1. Prepare Payload
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Sesión expirada. Recarga la página.');
-            const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user.id).single();
+            const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user.id).maybeSingle();
 
             const { data: selectedStructure } = await supabase
                 .from('tariff_structures')

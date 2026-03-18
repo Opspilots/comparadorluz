@@ -26,7 +26,7 @@ export function SettingsPage() {
                 .from('users')
                 .select('*')
                 .eq('id', authUser.id)
-                .single()
+                .maybeSingle()
 
             if (profileError) throw profileError
             setUser(profileUser as AppUser)

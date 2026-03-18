@@ -38,7 +38,7 @@ export function BrandingSettingsCard() {
             .from('users')
             .select('company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) return
         setCompanyId(profile.company_id)

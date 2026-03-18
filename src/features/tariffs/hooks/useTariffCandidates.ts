@@ -125,7 +125,7 @@ export function useTariffCandidates(
         setProcessing(true);
         try {
             const { data: user } = await supabase.auth.getUser();
-            const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user!.id).single();
+            const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user!.id).maybeSingle();
             const companyId = company?.company_id;
 
             const [structsRes, suppsRes] = await Promise.all([

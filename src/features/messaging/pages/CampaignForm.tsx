@@ -415,7 +415,7 @@ export function CampaignForm() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).single();
+        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
         if (!profile) return;
 
         const payload = {

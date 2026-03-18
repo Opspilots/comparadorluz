@@ -36,9 +36,9 @@ export function ContactForm() {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
-            if (profileError) throw new Error('Error al verificar permisos de empresa.')
+            if (profileError || !profile) throw new Error('Error al verificar permisos de empresa.')
             const companyId = profile.company_id
 
             const { error: insertError } = await supabase

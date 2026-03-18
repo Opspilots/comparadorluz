@@ -44,7 +44,7 @@ export function useCreateCommissioner() {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (!userData?.company_id) throw new Error('Error al obtener info de empresa')
 

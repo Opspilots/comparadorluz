@@ -12,7 +12,7 @@ export async function getUserCompanyId(): Promise<string> {
         .from('users')
         .select('company_id')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
     if (error || !data?.company_id) {
         throw new Error('No se encontró la empresa del usuario');

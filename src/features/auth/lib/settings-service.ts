@@ -16,7 +16,7 @@ export async function getCompanySettings() {
         .from('users')
         .select('company_id')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
     if (userError || !userData?.company_id) throw new Error('Company not found');
 
@@ -39,7 +39,7 @@ export async function updateCompanySettings(settings: MessagingSettings) {
         .from('users')
         .select('company_id, role')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
     if (userError || !userData?.company_id) throw new Error('Company not found');
 

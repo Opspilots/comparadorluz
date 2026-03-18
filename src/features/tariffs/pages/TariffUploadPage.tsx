@@ -26,7 +26,7 @@ export default function TariffUploadPage() {
                 .from('users')
                 .select('id, company_id')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
             return data;
         }
     });

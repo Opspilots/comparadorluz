@@ -184,7 +184,7 @@ export function ContractForm() {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
             if (!profile) throw new Error('Perfil no encontrado')
 
             // Check duplicate CIF one more time
@@ -248,7 +248,7 @@ export function ContractForm() {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (!profile) throw new Error('Perfil no encontrado')
 

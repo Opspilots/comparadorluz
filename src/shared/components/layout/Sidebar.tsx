@@ -38,7 +38,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 .from('users')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (!profile?.company_id) return null
 
@@ -46,7 +46,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 .from('companies')
                 .select('name, logo_url, primary_color, secondary_color')
                 .eq('id', profile.company_id)
-                .single()
+                .maybeSingle()
 
             return company
         },
