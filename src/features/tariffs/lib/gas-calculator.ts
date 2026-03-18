@@ -4,7 +4,7 @@ import type {
     CalculationBreakdown,
 } from '@/shared/types';
 import { GAS_CONSTANTS } from '@/shared/constants';
-import { calculateSavings } from './calculator';
+import { calculateSavings, calculateFixedFee } from './calculator';
 import { findActiveRate } from './tariffUtils';
 
 function round(value: number): number {
@@ -21,10 +21,8 @@ export function calculateGasAnnualCost(input: CalculationInput): CalculationResu
     const rates = tariff_version.tariff_rates || [];
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. Fixed Term (Término Fijo)
-    const fixedFeeRate = findActiveRate(rates, 'fixed_fee', undefined, today, tariff_version.contract_duration);
-    const fixedFeeMonthly = fixedFeeRate?.price || 0;
-    const fixedFeeAnnual = round(fixedFeeMonthly * 12);
+    // 1. Fixed Term (Término Fijo) — delegates unit handling to shared function
+    const fixedFeeAnnual = calculateFixedFee(rates, tariff_version.contract_duration ?? null);
 
     // 2. Variable Term (Término Variable)
     const energyRate = findActiveRate(rates, 'energy', undefined, today, tariff_version.contract_duration);

@@ -1,12 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req)
     const { method } = req
     const url = new URL(req.url)
 
@@ -68,7 +66,7 @@ serve(async (req: Request) => {
             const sigBytes = new TextEncoder().encode(signature)
             const expBytes = new TextEncoder().encode(expectedSig)
             let sigDiff = sigBytes.length !== expBytes.length ? 1 : 0
-            for (let i = 0; i < sigBytes.length && i < expBytes.length; i++) sigDiff |= sigBytes[i] ^ expBytes[i]
+            for (let i = 0; i < expBytes.length; i++) sigDiff |= (sigBytes[i] ?? 0) ^ expBytes[i]
             if (sigDiff !== 0) {
                 console.error('Invalid webhook signature')
                 return new Response('Forbidden', { status: 403 })

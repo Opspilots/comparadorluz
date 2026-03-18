@@ -3,6 +3,8 @@
 -- Author: CRM System
 -- Date: 2026-02-04
 
+BEGIN;
+
 -- ===========================================================================
 -- 1. ADD SUPPLIER_ID COLUMN
 -- ===========================================================================
@@ -97,3 +99,5 @@ UNIQUE (company_id, supplier_id, tariff_name, valid_from);
 
 -- Add comment
 COMMENT ON COLUMN tariff_versions.supplier_id IS 'Foreign key to suppliers table - replaces supplier_name';
+
+COMMIT;

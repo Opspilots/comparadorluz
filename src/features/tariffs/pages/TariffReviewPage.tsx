@@ -44,6 +44,12 @@ export default function TariffReviewPage() {
 
     const publishMutation = useMutation({
         mutationFn: async () => {
+            // Read from React Query cache at call time to avoid stale closure
+            const currentVersions = queryClient.getQueryData<(TariffVersion & { tariff_rates: TariffRate[] })[]>(
+                ['tariff-batch-versions', batchId]
+            );
+            if (!currentVersions?.length) throw new Error('No hay versiones cargadas');
+
             // 1. Update batch status
             const { error: batchError } = await supabase
                 .from('tariff_batches')
@@ -56,17 +62,27 @@ export default function TariffReviewPage() {
 
             if (batchError) throw batchError;
 
-            // 2. Activate versions (should be active by default but ensures it)
-            const { error: versionError } = await supabase
-                .from('tariff_versions')
-                .update({ is_active: true })
-                .eq('batch_id', batchId);
+            // 2. Activate only versions that have at least one rate
+            const { data: validVersionIds } = await supabase
+                .from('tariff_rates')
+                .select('tariff_version_id')
+                .in('tariff_version_id', currentVersions.map(v => v.id));
 
-            if (versionError) throw versionError;
+            const idsWithRates = [...new Set((validVersionIds || []).map(r => r.tariff_version_id))];
+
+            if (idsWithRates.length > 0) {
+                const { error: versionError } = await supabase
+                    .from('tariff_versions')
+                    .update({ is_active: true })
+                    .in('id', idsWithRates);
+
+                if (versionError) throw versionError;
+            }
         },
         onSuccess: () => {
             toast({ title: 'Lote publicado correctamente', description: 'Las tarifas ya están activas.' });
-            queryClient.invalidateQueries({ queryKey: ['tariff-batch'] });
+            queryClient.invalidateQueries({ queryKey: ['tariff-batch', batchId] });
+            queryClient.invalidateQueries({ queryKey: ['tariff-batch-versions', batchId] });
             navigate('/admin/tariffs');
         },
         onError: (err) => {

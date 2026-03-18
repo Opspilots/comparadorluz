@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import type { DataRetentionPolicy, DataCategory } from '@/shared/types'
@@ -59,7 +59,7 @@ export function DataRetentionSettings({ companyId }: Props) {
     const [editedMonths, setEditedMonths] = useState<Record<string, number>>({})
     const [editedAutoDelete, setEditedAutoDelete] = useState<Record<string, boolean>>({})
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true)
         const { data } = await supabase
             .from('data_retention_policies')
@@ -68,9 +68,9 @@ export function DataRetentionSettings({ companyId }: Props) {
 
         setPolicies((data || []) as DataRetentionPolicy[])
         setLoading(false)
-    }
+    }, [companyId])
 
-    useEffect(() => { load() }, [companyId])
+    useEffect(() => { load() }, [load])
 
     const getPolicy = (cat: DataCategory) => policies.find(p => p.data_category === cat)
 
@@ -175,7 +175,11 @@ export function DataRetentionSettings({ companyId }: Props) {
                                             min={1}
                                             max={120}
                                             value={months}
-                                            onChange={e => setEditedMonths(prev => ({ ...prev, [cat]: parseInt(e.target.value) || info.defaultMonths }))}
+                                            onChange={e => {
+                                                const parsed = parseInt(e.target.value)
+                                                const clamped = isNaN(parsed) ? info.defaultMonths : Math.max(1, Math.min(120, parsed))
+                                                setEditedMonths(prev => ({ ...prev, [cat]: clamped }))
+                                            }}
                                             style={{
                                                 width: 70, padding: '0.375rem', textAlign: 'center',
                                                 borderRadius: 6, border: '1px solid #e2e8f0',

@@ -38,6 +38,6 @@ export function normalizeNumber(value: string | number | null | undefined): stri
         str = str.replace(/\./g, '')
     }
 
-    // Final cleanup - Allow ONLY digits and ONE dot. No negative signs.
-    return str.replace(/[^\d.]/g, '')
+    // Final cleanup - Allow digits, ONE dot, and optional leading minus sign.
+    return str.replace(/[^\d.-]/g, '').replace(/(?!^)-/g, '')
 }

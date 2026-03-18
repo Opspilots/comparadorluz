@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import type { AgentCertification, CertificationType } from '@/shared/types'
@@ -57,7 +57,7 @@ export function AgentTrainingTab({ commissionerId }: Props) {
         })
     }, [])
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true)
         const { data } = await supabase
             .from('agent_certifications')
@@ -67,9 +67,9 @@ export function AgentTrainingTab({ commissionerId }: Props) {
 
         setCerts((data || []) as AgentCertification[])
         setLoading(false)
-    }
+    }, [commissionerId])
 
-    useEffect(() => { load() }, [commissionerId])
+    useEffect(() => { load().catch(console.error) }, [load])
 
     // Check compliance
     const activeCerts = certs.filter(c => c.status === 'active')
@@ -82,9 +82,10 @@ export function AgentTrainingTab({ commissionerId }: Props) {
         return days <= 30 && days > 0
     })
 
-    // Update commissioner compliance status
+    // Update commissioner compliance status only when isCompliant actually changes
+    const [prevCompliant, setPrevCompliant] = useState<boolean | null>(null)
     useEffect(() => {
-        if (companyId) {
+        if (companyId && prevCompliant !== null && prevCompliant !== isCompliant) {
             supabase
                 .from('commissioners')
                 .update({
@@ -94,7 +95,8 @@ export function AgentTrainingTab({ commissionerId }: Props) {
                 .eq('id', commissionerId)
                 .then(() => { /* best-effort */ })
         }
-    }, [isCompliant, commissionerId, companyId])
+        setPrevCompliant(isCompliant)
+    }, [isCompliant, commissionerId, companyId, prevCompliant])
 
     const handleAdd = async () => {
         if (!formTitle || !companyId) return

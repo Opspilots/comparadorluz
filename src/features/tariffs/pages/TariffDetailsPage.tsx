@@ -12,6 +12,7 @@ import { TariffRate, TariffVersion, Supplier, TariffStructure, TariffSchedule } 
 import { findActiveRate, hasRateHistory, toPowerMonthly } from '../lib/tariffUtils';
 
 interface JoinedTariff extends TariffVersion {
+    tariff_name?: string; // DB column name (may differ from TariffVersion.name)
     tariff_rates: TariffRate[];
     tariff_schedules: TariffSchedule[];
     tariff_structures: TariffStructure;
@@ -198,13 +199,13 @@ export default function TariffDetailsPage() {
                     </button>
                     <div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, color: '#111827' }}>
-                            {removeEmojis(tariff.name)}
+                            {removeEmojis(tariff.tariff_name || tariff.name)}
                             <span style={badgeStyle(tariff.is_active)}>
                                 {tariff.is_active ? 'Activa' : 'Inactiva'}
                             </span>
                         </div>
                         <p style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                            <Zap size={16} /> {removeEmojis(tariff.suppliers?.name)}
+                            <Zap size={16} /> {removeEmojis(tariff.suppliers?.name ?? '')}
                             <span style={{ margin: '0 0.25rem' }}>•</span>
                             <FileText size={16} /> {tariff.tariff_structures?.name} ({tariff.tariff_structures?.code})
                         </p>
@@ -277,7 +278,6 @@ export default function TariffDetailsPage() {
                                                         <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#4b5563', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Energía</h4>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
                                                             {(() => {
-                                                                const energyRates = rates.filter((r: TariffRate) => r.item_type === 'energy');
                                                                 const pKeys = Array.from(new Set(energyRates.map((r: TariffRate) => r.period).filter(Boolean))) as string[];
 
                                                                 // Fallback for gas/single period
@@ -326,12 +326,10 @@ export default function TariffDetailsPage() {
                                                         <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#4b5563', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Potencia</h4>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
                                                             {(() => {
-                                                                const powerRates = rates.filter((r: TariffRate) => r.item_type === 'power');
                                                                 const pKeys = Array.from(new Set(powerRates.map((r: TariffRate) => r.period).filter(Boolean))) as string[];
                                                                 return pKeys.map(p => {
                                                                     const targetDate = activeVKey.split('_')[0] === 'none' ? undefined : activeVKey.split('_')[0];
-                                                                    const active = findActiveRate(rates, 'power', p, targetDate, dKey === 'any' ? null : parseInt(dKey)) ||
-                                                                        findActiveRate(rates, 'power', 'P1', targetDate, dKey === 'any' ? null : parseInt(dKey));
+                                                                    const active = findActiveRate(rates, 'power', p, targetDate, dKey === 'any' ? null : parseInt(dKey));
                                                                     if (!active) return null;
                                                                     return (
                                                                         <div key={p} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
@@ -407,7 +405,7 @@ export default function TariffDetailsPage() {
                             </div>
                             <div>
                                 <span style={{ display: 'block', color: '#6b7280', marginBottom: '0.25rem' }}>Código Interno</span>
-                                <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{tariff.code || '-'}</span>
+                                <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{tariff.code || tariff.tariff_structures?.code || '-'}</span>
                             </div>
                         </div>
                     </div>

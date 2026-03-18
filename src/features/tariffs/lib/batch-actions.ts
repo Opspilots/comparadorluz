@@ -18,7 +18,7 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
     // 1. Fetch the file and its extracted data
     const { data: file, error: fetchError } = await supabase
         .from('tariff_files')
-        .select('*')
+        .select('*, tariff_batches(id)')
         .eq('id', fileId)
         .single();
 
@@ -26,88 +26,80 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
     if (!file.extracted_data) throw new Error('No hay datos extraídos para publicar');
 
     const data = file.extracted_data as unknown as ExtractedTariffData;
+    const batchId = file.batch_id || file.tariff_batches?.id;
 
-    // 2. Resolve Supplier ID (Create if not exists mock logic, or find exact match)
-    // For now, let's try to find a supplier by name, or default to a generic one if you want
-    // But since we want to be realistic, let's just pick the first supplier we find or a specific one mock
-    const { data: supplier } = await supabase
-        .from('suppliers')
+    // Idempotency check: avoid duplicate versions from retries
+    const { data: existingVersion } = await supabase
+        .from('tariff_versions')
         .select('id')
-        .ilike('name', `%${data.supplier_name}%`)
-        .single();
+        .eq('company_id', companyId)
+        .eq('batch_id', batchId || '')
+        .eq('tariff_name', data.tariff_name)
+        .eq('supplier_name', data.supplier_name)
+        .maybeSingle();
 
-    // Fallback: Get ANY supplier if not found (just to make it work)
-    let supplierId = supplier?.id;
-    if (!supplierId) {
-        const { data: fallbackSupplier } = await supabase.from('suppliers').select('id').limit(1).single() as { data: { id: string } | null };
-        if (!fallbackSupplier) throw new Error('No existen comercializadoras en el sistema.');
-        supplierId = fallbackSupplier.id;
+    if (existingVersion) {
+        // Already published — update file status and return existing version
+        await supabase
+            .from('tariff_files')
+            .update({ status: 'published' })
+            .eq('id', fileId);
+        return existingVersion.id;
     }
 
-    // 3. Create Tariff Record
-    const { data: newTariff, error: tariffError } = await supabase
-        .from('tariffs')
-        .insert({
-            company_id: companyId,
-            supplier_id: supplierId,
-            name: data.tariff_name,
-            code: data.tariff_code,
-            type: data.tariff_type,
-            customer_type: 'business', // Default
-            current_version_id: null, // Will update later
-            is_active: true
-        })
-        .select()
-        .single();
-
-    if (tariffError) throw tariffError;
-
-    // 4. Create Tariff Version
+    // 2. Create Tariff Version
     const { data: newVersion, error: versionError } = await supabase
         .from('tariff_versions')
         .insert({
-            tariff_id: newTariff.id,
-            name: 'Versión Inicial (Importada)',
+            company_id: companyId,
+            batch_id: batchId || null,
+            supplier_name: data.supplier_name,
+            tariff_name: data.tariff_name,
+            tariff_type: data.tariff_type,
             valid_from: data.valid_from,
-            status: 'draft', // Draft so user can review/edit
-            created_by: userId
+            is_active: false,
+            created_by: userId,
         })
         .select()
         .single();
 
     if (versionError) throw versionError;
 
-    // 5. Create Components (Prices)
-    if (data.components && data.components.length > 0) {
-        const componentsToInsert = data.components.map((comp) => ({
-            tariff_version_id: newVersion.id,
-            component_type: comp.component_type, // 'energy_price' | 'power_price'
-            period: comp.period,
-            price: comp.price_eur_kwh || comp.price_eur_kw_year, // Map fields
-            currency: 'EUR'
-        }));
+    // 3. Create Tariff Rates (prices)
+    try {
+        if (data.components && data.components.length > 0) {
+            const ratesToInsert = data.components.map((comp) => {
+                const isEnergy = comp.component_type === 'energy_price' || comp.component_type === 'energy';
+                return {
+                    company_id: companyId,
+                    tariff_version_id: newVersion.id,
+                    item_type: isEnergy ? 'energy' : 'power',
+                    period: comp.period,
+                    price: comp.price_eur_kwh || comp.price_eur_kw_year || 0,
+                    unit: isEnergy ? 'EUR/kWh' : 'EUR/kW/year',
+                };
+            });
 
-        const { error: componentsError } = await supabase
-            .from('tariff_components')
-            .insert(componentsToInsert);
+            const { error: ratesError } = await supabase
+                .from('tariff_rates')
+                .insert(ratesToInsert);
 
-        if (componentsError) throw componentsError;
+            if (ratesError) throw ratesError;
+        }
+    } catch (ratesError) {
+        // Rollback: delete orphaned tariff_version if rates insert fails
+        await supabase
+            .from('tariff_versions')
+            .delete()
+            .eq('id', newVersion.id);
+        throw ratesError;
     }
 
-    // 6. Update Tariff with current version
-    await supabase
-        .from('tariffs')
-        .update({ current_version_id: newVersion.id })
-        .eq('id', newTariff.id);
-
-    // 7. Update File Status
+    // 4. Update File Status
     await supabase
         .from('tariff_files')
-        .update({
-            status: 'published',
-            // associated_tariff_id: newTariff.id // If we had this column
-        })
+        .update({ status: 'published' })
         .eq('id', fileId);
 
-    return newTariff.id;
+    return newVersion.id;
 }

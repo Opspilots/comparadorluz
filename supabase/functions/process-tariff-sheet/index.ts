@@ -2,12 +2,10 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req)
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -142,7 +140,14 @@ serve(async (req: Request) => {
                         { text: geminiPrompt },
                         {
                             inline_data: {
-                                mime_type: 'application/pdf', // Assuming PDF, strictly checking mime type would be better
+                                mime_type: (() => {
+                                    const ext = file_path.split('.').pop()?.toLowerCase()
+                                    if (ext === 'png') return 'image/png'
+                                    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+                                    if (ext === 'webp') return 'image/webp'
+                                    if (ext === 'xlsx' || ext === 'xls') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                    return 'application/pdf'
+                                })(),
                                 data: base64
                             }
                         }

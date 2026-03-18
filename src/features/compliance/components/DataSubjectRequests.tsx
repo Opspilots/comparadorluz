@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import type { DataSubjectRequest, DataSubjectRequestType, DataSubjectRequestStatus, Customer } from '@/shared/types'
@@ -51,7 +51,7 @@ export function DataSubjectRequests({ companyId }: Props) {
     const [formCustomerId, setFormCustomerId] = useState('')
     const [formDescription, setFormDescription] = useState('')
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true)
         const [requestsRes, customersRes] = await Promise.all([
             supabase
@@ -68,9 +68,9 @@ export function DataSubjectRequests({ companyId }: Props) {
         setRequests((requestsRes.data || []) as DataSubjectRequest[])
         setCustomers((customersRes.data || []) as Customer[])
         setLoading(false)
-    }
+    }, [companyId])
 
-    useEffect(() => { load() }, [companyId])
+    useEffect(() => { load() }, [load])
 
     const handleCreate = async () => {
         if (!formName) return
@@ -120,7 +120,11 @@ export function DataSubjectRequests({ companyId }: Props) {
         if (notes) updateData.response_notes = notes
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (user) updateData.handled_by = user.id
+        if (!user) {
+            toast({ title: 'Error', description: 'Sesión expirada. Por favor, recarga la página.', variant: 'destructive' })
+            return
+        }
+        updateData.handled_by = user.id
 
         const { error } = await supabase
             .from('data_subject_requests')

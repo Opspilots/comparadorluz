@@ -1,12 +1,10 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req)
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -217,7 +215,13 @@ serve(async (req: Request) => {
                 extracted_data: extractedData
             })
 
-        if (dbError) console.error('Error saving to DB:', dbError)
+        if (dbError) {
+            console.error('Error saving to DB:', dbError)
+            return new Response(JSON.stringify({ ...extractedData, _warning: 'Datos extraídos pero no se pudieron guardar en la base de datos' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 207, // Multi-Status: extraction OK, persistence failed
+            })
+        }
 
         return new Response(JSON.stringify(extractedData), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

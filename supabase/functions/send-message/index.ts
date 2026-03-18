@@ -3,10 +3,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { encode as base64Encode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 /** Encode a UTF-8 string to base64url (RFC 4648 §5) */
 function toBase64Url(str: string): string {
@@ -63,8 +60,13 @@ async function buildMimeEmail(
     headers.push('')
     headers.push(toBase64Url(htmlBody).replace(/-/g, '+').replace(/_/g, '/'))
 
+    const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024 // 25 MB
     for (const att of attachments) {
         try {
+            if (att.size && att.size > MAX_ATTACHMENT_SIZE) {
+                console.warn(`Adjunto omitido (${att.name}): ${(att.size / 1024 / 1024).toFixed(1)} MB excede el límite de 25 MB`)
+                continue
+            }
             const response = await fetch(att.url)
             if (!response.ok) {
                 console.error(`Failed to fetch attachment ${att.name}: ${response.status}`)
@@ -92,6 +94,7 @@ async function buildMimeEmail(
 }
 
 serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req)
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }

@@ -11,10 +11,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     return encode(new Uint8Array(buffer));
 }
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 // Known aggregator/comparison portals that are NOT energy suppliers
 const KNOWN_AGGREGATORS = [
@@ -583,6 +580,7 @@ FORMATO:
 // ============================================================================
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }

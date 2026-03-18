@@ -1,3 +1,5 @@
+BEGIN;
+
 -- 1. Create table commissioners
 CREATE TABLE public.commissioners (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,3 +79,5 @@ ALTER TABLE public.customers
     DROP CONSTRAINT IF EXISTS customers_assigned_to_fkey,
     ADD CONSTRAINT customers_assigned_to_fkey
     FOREIGN KEY (assigned_to) REFERENCES public.commissioners(id);
+
+COMMIT;

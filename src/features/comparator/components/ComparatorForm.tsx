@@ -39,11 +39,14 @@ export function ComparatorForm() {
         let cancelled = false
         const timer = setTimeout(async () => {
             try {
-                const { data: companyData } = await supabase.rpc('get_auth_company_id')
-                if (cancelled || !companyData) return
+                const { data: consumption } = await supabase
+                    .from('consumption_data')
+                    .select('date, consumption_kwh')
+                    .eq('cups', cups)
+                    .order('date', { ascending: false })
+                    .limit(365)
 
-                const consumption: Array<{ date: string; consumption_kwh: number }> = []
-                if (cancelled || consumption.length === 0) return
+                if (cancelled || !consumption || consumption.length === 0) return
 
                 // Calculate annual estimate: daily avg * 365
                 const dailyTotals: Record<string, number> = {}

@@ -11,13 +11,11 @@ function decodeBase64Url(data: string): string {
     return new TextDecoder('utf-8').decode(bytes)
 }
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from "../_shared/cors.ts"
 
 serve(async (req: Request) => {
     // This function can be called by a cron job or a manual trigger to sync recent emails for a specific company or all companies.
+    const corsHeaders = getCorsHeaders(req)
 
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
@@ -27,18 +25,21 @@ serve(async (req: Request) => {
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-        // Authenticate: require either service-role key or valid user JWT
+        // Authenticate: require either CRON_SECRET or valid user JWT
         const authHeader = req.headers.get('Authorization')
+        const cronSecret = Deno.env.get('CRON_SECRET')
 
-        // Timing-safe comparison for service-role key to prevent timing attacks
-        const expectedBearer = `Bearer ${supabaseKey}`
+        // Timing-safe comparison for cron secret to prevent timing attacks
         let isCronCall = false
-        if (authHeader && authHeader.length === expectedBearer.length) {
-            const a = new TextEncoder().encode(authHeader)
-            const b = new TextEncoder().encode(expectedBearer)
-            let diff = 0
-            for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
-            isCronCall = diff === 0
+        if (cronSecret && authHeader) {
+            const expectedBearer = `Bearer ${cronSecret}`
+            if (authHeader.length === expectedBearer.length) {
+                const a = new TextEncoder().encode(authHeader)
+                const b = new TextEncoder().encode(expectedBearer)
+                let diff = 0
+                for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+                isCronCall = diff === 0
+            }
         }
 
         let callerCompanyId: string | null = null

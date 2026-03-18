@@ -90,8 +90,8 @@ export function CustomerForm() {
                             if (c.phone) phones.push({ id: c.id, _key: c.id, value: c.phone, label: c.position || c.first_name || 'Teléfono' });
                         });
 
-                        setCompanyEmails(emails.length > 0 ? emails : []);
-                        setCompanyPhones(phones.length > 0 ? phones : []);
+                        setCompanyEmails(emails.length > 0 ? emails : [{ _key: crypto.randomUUID(), value: '', label: 'Administración' }]);
+                        setCompanyPhones(phones.length > 0 ? phones : [{ _key: crypto.randomUUID(), value: '', label: 'General' }]);
                     }
                 }
             }
@@ -114,7 +114,7 @@ export function CustomerForm() {
                     // Auto-fill logic from OCR if present
                     if (customerData.name) setName(customerData.name);
                     if (customerData.cif) setCif(customerData.cif);
-                    if (customerData.type) setCustomerType(customerData.type);
+                    if (customerData.type === 'empresa' || customerData.type === 'particular') setCustomerType(customerData.type);
                     if (customerData.address) setAddress(customerData.address);
                     if (customerData.city) setCity(customerData.city);
                     if (customerData.province) setProvince(customerData.province);
@@ -175,25 +175,19 @@ export function CustomerForm() {
                     .eq('id', id)
                 if (error) throw error;
             } else {
-                // Check if CIF already exists before inserting
-                const { data: existingCustomer } = await supabase
-                    .from('customers')
-                    .select('id, name')
-                    .eq('company_id', companyId)
-                    .eq('cif', cif)
-                    .maybeSingle()
-
-                if (existingCustomer) {
-                    throw new Error(`Ya existe un cliente con el CIF ${cif}: "${existingCustomer.name}". ¿Quizás quieres editarlo ? `)
-                }
-
                 const { data: newCust, error } = await supabase
                     .from('customers')
                     .insert(payload)
                     .select('id')
                     .single()
 
-                if (error) throw error;
+                if (error) {
+                    // Handle unique constraint violation (duplicate CIF within company)
+                    if (error.code === '23505' && error.message?.includes('cif')) {
+                        throw new Error(`Ya existe un cliente con el CIF ${cif}. ¿Quizás quieres editarlo?`)
+                    }
+                    throw error;
+                }
                 customerId = newCust.id;
             }
 
@@ -227,48 +221,51 @@ export function CustomerForm() {
                     }
                 }
             } else {
-                // Companies: Emails
+                // Companies: Merge emails and phones by contact ID to avoid overwrites
+                // Build a merged map: contactId → { email, phone, label }
+                const mergedContacts = new Map<string, { email?: string; phone?: string; label: string; isNew: boolean }>();
+
                 for (const item of companyEmails) {
-                    if (item.value.trim()) {
-                        const payload = {
-                            company_id: companyId,
-                            customer_id: customerId,
-                            first_name: item.label || 'Email',
-                            last_name: '',
-                            email: item.value,
-                            position: item.label,
-                            is_primary: false
-                        };
-
-                        if (item.id) {
-                            await supabase.from('contacts').update(payload).eq('id', item.id);
-                        } else {
-                            await supabase.from('contacts').insert(payload);
-                        }
-                    } else if (item.id) {
-                        // Value cleared? Delete it? Or ignore?
-                        // Let's delete if value is empty and it had an ID
-                        // await supabase.from('contacts').delete().eq('id', item.id);
-                    }
+                    if (!item.value.trim()) continue;
+                    const key = item.id || `new-email-${item._key}`;
+                    const existing = mergedContacts.get(key);
+                    mergedContacts.set(key, {
+                        ...existing,
+                        email: item.value,
+                        label: item.label || existing?.label || 'Email',
+                        isNew: !item.id,
+                    });
                 }
-                // Companies: Phones
-                for (const item of companyPhones) {
-                    if (item.value.trim()) {
-                        const payload = {
-                            company_id: companyId,
-                            customer_id: customerId,
-                            first_name: item.label || 'Teléfono',
-                            last_name: '',
-                            phone: item.value,
-                            position: item.label,
-                            is_primary: false
-                        };
 
-                        if (item.id) {
-                            await supabase.from('contacts').update(payload).eq('id', item.id);
-                        } else {
-                            await supabase.from('contacts').insert(payload);
-                        }
+                for (const item of companyPhones) {
+                    if (!item.value.trim()) continue;
+                    const key = item.id || `new-phone-${item._key}`;
+                    const existing = mergedContacts.get(key);
+                    mergedContacts.set(key, {
+                        ...existing,
+                        phone: item.value,
+                        label: item.label || existing?.label || 'Teléfono',
+                        isNew: !item.id,
+                    });
+                }
+
+                for (const [key, contact] of mergedContacts) {
+                    const payload = {
+                        company_id: companyId,
+                        customer_id: customerId,
+                        first_name: contact.label || 'Contacto',
+                        last_name: '',
+                        email: contact.email || null,
+                        phone: contact.phone || null,
+                        position: contact.label,
+                        is_primary: false,
+                    };
+
+                    if (!contact.isNew) {
+                        // key is the actual contact ID
+                        await supabase.from('contacts').update(payload).eq('id', key);
+                    } else {
+                        await supabase.from('contacts').insert(payload);
                     }
                 }
             }

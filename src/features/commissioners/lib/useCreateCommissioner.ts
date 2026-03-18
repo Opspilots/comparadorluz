@@ -21,22 +21,7 @@ export function useCreateCommissioner() {
         setSuccess(false)
 
         try {
-            // 1. Check if commissioner already exists by email
-            if (payload.email) {
-                const { data: existing } = await supabase
-                    .from('commissioners')
-                    .select('id')
-                    .eq('email', payload.email)
-                    .single()
-
-                if (existing) {
-                    setError('Ya existe un comisionado con este correo electrónico.')
-                    setLoading(false)
-                    return false
-                }
-            }
-
-            // 2. Get company_id
+            // 1. Get company_id
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('No autenticado')
 
@@ -48,7 +33,7 @@ export function useCreateCommissioner() {
 
             if (!userData?.company_id) throw new Error('Error al obtener info de empresa')
 
-            // 3. Insert new commissioner
+            // 2. Insert new commissioner — rely on DB unique constraint for email
             const pct = payload.commissionPct ? parseFloat(payload.commissionPct) : 0
             const { error: createError } = await supabase
                 .from('commissioners')
@@ -63,7 +48,15 @@ export function useCreateCommissioner() {
                     commission_default_pct: pct
                 })
 
-            if (createError) throw createError
+            if (createError) {
+                // Handle unique constraint violation (duplicate email)
+                if (createError.code === '23505' && createError.message?.includes('email')) {
+                    setError('Ya existe un comisionado con este correo electrónico.')
+                    setLoading(false)
+                    return false
+                }
+                throw createError
+            }
 
             setSuccess(true)
             return true;

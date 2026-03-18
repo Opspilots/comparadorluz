@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/shared/lib/supabase'
 
 export interface ComparatorState {
     // Supply Type
@@ -43,7 +44,7 @@ export interface ComparatorState {
     consP6: string
 }
 
-const STORAGE_KEY = 'comparator_form_state'
+const STORAGE_KEY_PREFIX = 'comparator_form_state_'
 const AUTO_SAVE_DELAY = 500 // ms
 
 const defaultState: ComparatorState = {
@@ -79,28 +80,39 @@ const defaultState: ComparatorState = {
 export function useComparatorState() {
     const [state, setState] = useState<ComparatorState>(defaultState)
     const [isRestored, setIsRestored] = useState(false)
+    const [storageKey, setStorageKey] = useState<string | null>(null)
 
-    // Load state from localStorage on mount
+    // Get current user ID to scope localStorage key
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY)
-            if (saved) {
-                const parsed = JSON.parse(saved)
-                setState({ ...defaultState, ...parsed }) // Merge with defaultState to ensure all keys exist
-                setIsRestored(true)
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) {
+                const key = `${STORAGE_KEY_PREFIX}${user.id}`
+                setStorageKey(key)
+                // Load saved state for this user
+                try {
+                    const saved = localStorage.getItem(key)
+                    if (saved) {
+                        const parsed = JSON.parse(saved)
+                        setState({ ...defaultState, ...parsed })
+                        setIsRestored(true)
+                    }
+                } catch (error) {
+                    console.error('Error loading saved state:', error)
+                }
             }
-        } catch (error) {
-            console.error('Error loading saved state:', error)
-        }
+        })
     }, [])
 
     // Auto-save to localStorage when state changes (debounced)
     // Exclude tenant-specific IDs to prevent cross-company data leaks
     useEffect(() => {
+        if (!storageKey) return
+
         const timeout = setTimeout(() => {
             try {
-                const { selectedCustomer: _sc, selectedSP: _sp, ...persistableState } = state
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(persistableState))
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { selectedCustomer, selectedSP, ...persistableState } = state
+                localStorage.setItem(storageKey, JSON.stringify(persistableState))
             } catch (error) {
                 console.error('Error saving state:', error)
             }
@@ -109,7 +121,7 @@ export function useComparatorState() {
         return () => {
             clearTimeout(timeout)
         }
-    }, [state])
+    }, [state, storageKey])
 
     const updateState = useCallback((updates: Partial<ComparatorState>) => {
         setState(prev => ({ ...prev, ...updates }))
@@ -117,9 +129,9 @@ export function useComparatorState() {
 
     const clearState = useCallback(() => {
         setState(defaultState)
-        localStorage.removeItem(STORAGE_KEY)
+        if (storageKey) localStorage.removeItem(storageKey)
         setIsRestored(false)
-    }, [])
+    }, [storageKey])
 
     return {
         state,

@@ -40,28 +40,24 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
                 console.error('Error fetching contracts:', contractError)
             }
 
-            if (commissions) {
-                // Exclude reverted events from all calculations
-                const activeCommissions = commissions.filter(c => c.status !== 'reverted')
-                const total = activeCommissions.reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-                const pending = activeCommissions
-                    .filter(c => c.status === 'pending' || c.status === 'validated')
-                    .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
-                const paid = activeCommissions
-                    .filter(c => c.status === 'paid')
-                    .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+            const contractsCount = count || 0
+            const activeCommissions = (commissions || []).filter(c => c.status !== 'reverted')
+            const total = activeCommissions.reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+            const pending = activeCommissions
+                .filter(c => c.status === 'pending' || c.status === 'validated')
+                .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+            const paid = activeCommissions
+                .filter(c => c.status === 'paid')
+                .reduce((sum, c) => sum + (c.amount_eur || 0), 0)
+            const avg = contractsCount > 0 ? total / contractsCount : 0
 
-                const contractsCount = count || 0
-                const avg = contractsCount > 0 ? total / contractsCount : 0
-
-                setStats({
-                    totalContracts: contractsCount,
-                    totalCommission: total,
-                    pendingCommission: pending,
-                    paidCommission: paid,
-                    avgCommission: avg
-                })
-            }
+            setStats({
+                totalContracts: contractsCount,
+                totalCommission: total,
+                pendingCommission: pending,
+                paidCommission: paid,
+                avgCommission: avg
+            })
             setLoading(false)
         }
 

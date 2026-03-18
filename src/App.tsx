@@ -79,10 +79,8 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
             setLoading(false)
         }
 
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            initSession(session)
-        })
-
+        // Use only onAuthStateChange — it fires INITIAL_SESSION on mount.
+        // Calling getSession() separately causes a race that can double-fire initSession.
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             initSession(session)
         })
@@ -99,17 +97,24 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
 function AdminRoute({ children }: { children: JSX.Element }) {
     const [role, setRole] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+    const [authError, setAuthError] = useState(false)
 
     useEffect(() => {
         const checkRole = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                const { data } = await supabase
-                    .from('users')
-                    .select('role')
-                    .eq('id', user.id)
-                    .maybeSingle()
-                setRole(data?.role || null)
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('role')
+                        .eq('id', user.id)
+                        .maybeSingle()
+                    setRole(data?.role || null)
+                } else {
+                    setAuthError(true)
+                }
+            } catch {
+                setAuthError(true)
             }
             setLoading(false)
         }
@@ -117,6 +122,7 @@ function AdminRoute({ children }: { children: JSX.Element }) {
     }, [])
 
     if (loading) return <div>Cargando...</div>
+    if (authError) return <Navigate to="/login" />
     if (role !== 'admin' && role !== 'manager') return <Navigate to="/" />
 
     return children
@@ -169,8 +175,8 @@ function App() {
                                         <Route path="/admin/tariffs" element={<AdminRoute><TariffDashboard /></AdminRoute>} />
                                         <Route path="/admin/tariffs/upload" element={<AdminRoute><TariffUploadPage /></AdminRoute>} />
                                         <Route path="/admin/tariffs/batches/:id" element={<AdminRoute><BatchDetailsPage /></AdminRoute>} />
-                                        <Route path="/admin/tariffs/:id" element={<AdminRoute><TariffDetailsPage /></AdminRoute>} />
                                         <Route path="/admin/tariffs/new" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
+                                        <Route path="/admin/tariffs/:id" element={<AdminRoute><TariffDetailsPage /></AdminRoute>} />
                                         <Route path="/admin/tariffs/edit/:id" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
                                         <Route path="/admin/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
                                         <Route path="/admin/compliance" element={<AdminRoute><CompliancePage /></AdminRoute>} />

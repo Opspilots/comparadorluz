@@ -85,7 +85,7 @@ export default function SuppliersPage() {
             return;
         }
         setSaving(true);
-        const payload = {
+        const payload: Record<string, unknown> = {
             name: form.name.trim(),
             slug: form.slug.trim() || slugify(form.name),
             website: form.website.trim() || null,
@@ -96,6 +96,24 @@ export default function SuppliersPage() {
         if (editing) {
             ({ error } = await supabase.from('suppliers').update(payload).eq('id', editing.id));
         } else {
+            // Get company_id for new suppliers
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                toast({ variant: 'destructive', title: 'Error', description: 'No autenticado.' });
+                setSaving(false);
+                return;
+            }
+            const { data: userData } = await supabase
+                .from('users')
+                .select('company_id')
+                .eq('id', user.id)
+                .maybeSingle();
+            if (!userData?.company_id) {
+                toast({ variant: 'destructive', title: 'Error', description: 'No se pudo obtener la empresa.' });
+                setSaving(false);
+                return;
+            }
+            payload.company_id = userData.company_id;
             ({ error } = await supabase.from('suppliers').insert(payload));
         }
 

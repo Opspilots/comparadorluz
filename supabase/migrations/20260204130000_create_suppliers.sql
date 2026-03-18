@@ -3,6 +3,8 @@
 -- Author: CRM System
 -- Date: 2026-02-04
 
+BEGIN;
+
 -- ===========================================================================
 -- 1. CREATE SUPPLIERS TABLE
 -- ===========================================================================
@@ -132,3 +134,5 @@ CREATE TRIGGER suppliers_updated_at_trigger
     BEFORE UPDATE ON suppliers
     FOR EACH ROW
     EXECUTE FUNCTION update_suppliers_updated_at();
+
+COMMIT;
