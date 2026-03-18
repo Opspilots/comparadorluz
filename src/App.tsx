@@ -44,14 +44,47 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session)
+        const initSession = async (s: Session | null) => {
+            if (s?.user) {
+                // Check if user has a profile in public.users
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('id', s.user.id)
+                    .maybeSingle()
+
+                if (!profile) {
+                    // First-time OAuth user — create company + profile
+                    const email = s.user.email || ''
+                    const companyName = `Empresa de ${email.split('@')[0]}`
+                    const randomCif = `A${Math.floor(Math.random() * 90000000 + 10000000)}`
+
+                    const { error: rpcError } = await supabase.rpc('create_company_with_user', {
+                        p_user_id: s.user.id,
+                        p_email: email,
+                        p_company_name: companyName,
+                        p_cif: randomCif,
+                    })
+
+                    if (rpcError) {
+                        console.error('Error creating user profile:', rpcError)
+                        await supabase.auth.signOut()
+                        setSession(null)
+                        setLoading(false)
+                        return
+                    }
+                }
+            }
+            setSession(s)
             setLoading(false)
+        }
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            initSession(session)
         })
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-            setLoading(false)
+            initSession(session)
         })
 
         return () => subscription.unsubscribe()
