@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import {
     LayoutDashboard, Users, FileText, Scale, FileSignature,
-    HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield
+    HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield, X
 } from 'lucide-react'
 import { useTour } from '@/features/guide/useTour'
 
@@ -19,7 +19,12 @@ const navItems = [
     { id: 'compliance', label: 'Cumplimiento', path: '/admin/compliance', icon: Shield },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+    mobileOpen?: boolean
+    onMobileClose?: () => void
+}
+
+export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const location = useLocation()
     const { startTour } = useTour()
 
@@ -51,17 +56,17 @@ export function Sidebar() {
     const companyName = companyData?.name || 'Mi Empresa'
     const primaryColor = companyData?.primary_color || '#2563eb'
 
-    return (
-        <aside style={{
+    const handleNavClick = () => {
+        if (onMobileClose) onMobileClose()
+    }
+
+    const sidebarContent = (
+        <aside className="sidebar-aside" style={{
             width: 'var(--sidebar-width)',
             height: '100vh',
-            position: 'fixed',
-            left: 0,
-            top: 0,
             backgroundColor: '#0f172a',
             display: 'flex',
             flexDirection: 'column',
-            zIndex: 100,
             borderRight: '1px solid rgba(255,255,255,0.06)',
         }}>
             {/* Company Brand */}
@@ -102,7 +107,7 @@ export function Sidebar() {
                         </span>
                     </div>
                 )}
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                     <span style={{
                         color: 'white',
                         fontSize: '0.9375rem',
@@ -127,6 +132,29 @@ export function Sidebar() {
                         CRM Energia
                     </div>
                 </div>
+                {/* Mobile close button */}
+                {onMobileClose && (
+                    <button
+                        onClick={onMobileClose}
+                        className="sidebar-mobile-close"
+                        style={{
+                            display: 'none',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: 'rgba(255,255,255,0.1)',
+                            color: 'rgba(255,255,255,0.7)',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                        }}
+                        aria-label="Cerrar menu"
+                    >
+                        <X size={18} />
+                    </button>
+                )}
             </div>
 
             {/* Navigation */}
@@ -147,6 +175,7 @@ export function Sidebar() {
                         <Link
                             key={item.id}
                             to={item.path}
+                            onClick={handleNavClick}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -202,6 +231,7 @@ export function Sidebar() {
             }}>
                 <Link
                     to="/settings"
+                    onClick={handleNavClick}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -250,5 +280,28 @@ export function Sidebar() {
                 </button>
             </div>
         </aside>
+    )
+
+    return (
+        <>
+            {/* Desktop sidebar - fixed */}
+            <div className="sidebar-desktop">
+                <div style={{ position: 'fixed', left: 0, top: 0, zIndex: 100 }}>
+                    {sidebarContent}
+                </div>
+            </div>
+
+            {/* Mobile sidebar - overlay */}
+            {mobileOpen && (
+                <div className="sidebar-mobile-overlay" onClick={onMobileClose}>
+                    <div
+                        className="sidebar-mobile-drawer"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {sidebarContent}
+                    </div>
+                </div>
+            )}
+        </>
     )
 }

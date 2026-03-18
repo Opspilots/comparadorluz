@@ -78,7 +78,12 @@ export function Login() {
         setLoading(true)
         setMessage(null)
         try {
-            const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/`,
+                },
+            })
             if (error) throw error
         } catch (error) {
             const err = error as Error

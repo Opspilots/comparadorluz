@@ -270,7 +270,7 @@ export function ComparatorForm() {
     }
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -283,7 +283,7 @@ export function ComparatorForm() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '2rem', alignItems: 'start' }}>
+            <div className="comparator-layout" style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '2rem', alignItems: 'start' }}>
                 {/* Form Panel */}
                 <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid var(--color-border)' }}>
 
@@ -466,7 +466,7 @@ export function ComparatorForm() {
                                     <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
                                         CONSUMO POR PERIODOS (%) {state.tariffType === '2.0TD' ? '- 3 periodos' : '- 6 periodos'}
                                     </span>
-                                    <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)', gap: '0.4rem' }}>
                                         <input placeholder="P1%" type="number" step="0.01" value={state.consP1} onChange={e => updateState({ consP1: e.target.value })} style={inputStyleMini} />
                                         <input placeholder="P2%" type="number" step="0.01" value={state.consP2} onChange={e => updateState({ consP2: e.target.value })} style={inputStyleMini} />
                                         <input placeholder="P3%" type="number" step="0.01" value={state.consP3} onChange={e => updateState({ consP3: e.target.value })} style={inputStyleMini} />
@@ -487,7 +487,7 @@ export function ComparatorForm() {
                                     <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#666', display: 'block', marginBottom: '0.3rem' }}>
                                         POTENCIA POR PERIODOS (kW) {state.tariffType === '2.0TD' ? '- 2 periodos' : '- 6 periodos'}
                                     </span>
-                                    <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '0.4rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: state.tariffType === '2.0TD' ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: '0.4rem' }}>
                                         <input placeholder="P1 kW" type="number" value={state.powerP1} onChange={e => updateState({ powerP1: e.target.value })} style={inputStyleMini} />
                                         <input placeholder="P2 kW" type="number" value={state.powerP2} onChange={e => updateState({ powerP2: e.target.value })} style={inputStyleMini} />
                                         {state.tariffType !== '2.0TD' && (
@@ -503,7 +503,7 @@ export function ComparatorForm() {
                             )}
 
                             {/* Row 4: Penalties & Mode (or Conversion Factor for Gas) */}
-                            <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-light)' }}>
+                            <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.8rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-light)' }}>
                                 {state.supplyType === 'electricity' ? (
                                     <>
                                         <div key="elec-reactive">

@@ -73,8 +73,8 @@ export function CustomerList() {
     return (
         <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <div></div>
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <div className="tour-crm-search" style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+            <div className="mobile-actions-wrap" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="tour-crm-search mobile-search-full" style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                         type="text"
@@ -135,6 +135,7 @@ export function CustomerList() {
                 <>
                     {viewMode === 'list' ? (
                         <div className="card tour-crm-list" style={{ padding: 0, overflow: 'hidden' }}>
+                          <div className="responsive-table-wrap">
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr style={{ textAlign: 'left', background: 'var(--border-light)', borderBottom: '1px solid var(--color-border)' }}>
@@ -204,10 +205,11 @@ export function CustomerList() {
                                     )}
                                 </tbody>
                             </table>
+                          </div>
                         </div>
                     ) : (
                         /* GRID VIEW */
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
                             {filteredCustomers.length === 0 ? (
                                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: 'var(--text-muted)', background: 'white', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                                     No se encontraron clientes.

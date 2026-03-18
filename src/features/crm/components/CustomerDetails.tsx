@@ -141,7 +141,7 @@ export function CustomerDetails() {
     if (!customer) return <div style={{ padding: '2rem' }}>Cliente no encontrado.</div>
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                 <div>
                     <Link to="/crm" style={{ color: '#666', textDecoration: 'none', marginBottom: '1rem', display: 'block' }}>← Volver al listado</Link>

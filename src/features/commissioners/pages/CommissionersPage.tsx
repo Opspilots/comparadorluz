@@ -100,11 +100,11 @@ export function CommissionersPage() {
     )
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
             {/* Actions Bar */}
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <div className="tour-commissioners-search" style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+            <div className="mobile-actions-wrap" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="tour-commissioners-search mobile-search-full" style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                         type="text"
@@ -146,6 +146,7 @@ export function CommissionersPage() {
                 </div>
             ) : (
                 <div className="card tour-commissioners-list" style={{ overflow: 'hidden' }}>
+                  <div className="responsive-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
@@ -245,6 +246,7 @@ export function CommissionersPage() {
                             ))}
                         </tbody>
                     </table>
+                  </div>
                 </div>
             )}
         </div>

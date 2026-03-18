@@ -90,7 +90,7 @@ export function DashboardPage() {
             </div>
 
             {/* Metrics Grid */}
-            <div className="metric-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+            <div className="metric-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                 <MetricCard
                     title="Total Clientes"
                     value={stats.totalCustomers}
@@ -116,8 +116,7 @@ export function DashboardPage() {
 
             {/* Main Content Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
-                {/* Use CSS media query via Tailwind would be ideal, but keeping inline for consistency */}
-                <div className="grid gap-5" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', display: 'grid' }}>
+                <div className="grid gap-5 dashboard-grid-2col" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', display: 'grid' }}>
                     {/* Left Column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {/* Chart */}

@@ -154,13 +154,13 @@ export function ContractList() {
 
 
     return (
-        <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <div className="mobile-actions-wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div></div>
 
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div className="mobile-actions-wrap" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {/* Filters */}
-                    <div className="tour-contracts-filters" style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
+                    <div className="tour-contracts-filters mobile-filters-scroll" style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
                         {['all', 'pending', 'signed', 'active', 'cancelled'].map(f => (
                             <button
                                 key={f}
@@ -230,7 +230,7 @@ export function ContractList() {
                 {/* View Content */}
                 {viewMode === 'list' ? (
                     /* LIST VIEW */
-                    <div style={{ overflowX: 'auto' }}>
+                    <div className="responsive-table-wrap" style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ textAlign: 'left', background: 'var(--border-light)', borderBottom: '1px solid var(--color-border)' }}>
@@ -362,7 +362,7 @@ export function ContractList() {
                     </div>
                 ) : (
                     /* BOARD VIEW */
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
                         {loading ? (
                             <div style={{ gridColumn: '1/-1', padding: '2rem', textAlign: 'center' }}>Cargando contratos...</div>
                         ) : filteredContracts.length === 0 ? (

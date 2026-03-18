@@ -83,7 +83,7 @@ export default function TariffReviewPage() {
     const selectedVersion = versions?.find(v => v.id === selectedVersionId) || versions?.[0];
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                 <button
                     onClick={() => navigate('/admin/tariffs')}
