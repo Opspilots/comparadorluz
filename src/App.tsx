@@ -75,7 +75,7 @@ function AdminRoute({ children }: { children: JSX.Element }) {
                     .from('users')
                     .select('role')
                     .eq('id', user.id)
-                    .single()
+                    .maybeSingle()
                 setRole(data?.role || null)
             }
             setLoading(false)

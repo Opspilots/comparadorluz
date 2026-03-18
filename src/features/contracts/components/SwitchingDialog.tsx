@@ -73,7 +73,7 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
                 .from('users')
                 .select('role')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (profile?.role !== 'admin' && profile?.role !== 'manager') {
                 throw new Error('Solo administradores y managers pueden iniciar traspasos')

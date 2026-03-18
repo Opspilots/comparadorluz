@@ -89,7 +89,7 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                     .from('users')
                     .select('role')
                     .eq('id', user.id)
-                    .single()
+                    .maybeSingle()
                 if (profile?.role === 'admin' || profile?.role === 'manager') {
                     setIsAdmin(true)
                 }
