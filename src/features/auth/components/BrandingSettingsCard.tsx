@@ -56,7 +56,7 @@ export function BrandingSettingsCard() {
 
         const { data: company } = await supabase
             .from('companies')
-            .select('name, primary_color, sidebar_color')
+            .select('*')
             .eq('id', profile.company_id)
             .single()
 

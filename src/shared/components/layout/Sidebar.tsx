@@ -44,7 +44,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
             const { data: company } = await supabase
                 .from('companies')
-                .select('name, logo_url, primary_color, secondary_color, sidebar_color')
+                .select('*')
                 .eq('id', profile.company_id)
                 .maybeSingle()
 
