@@ -101,11 +101,19 @@ serve(async (req: Request) => {
                     })
                 }
 
-                // Find customer by phone — use sanitized value in filter
+                // Find customer by phone — try multiple phone format variants
+                // Numbers may be stored with or without country code prefix
+                const phoneVariants = [from, `+${from}`]
+                // If number starts with country code (e.g., 34 for Spain), also try without it
+                if (from.length > 9 && from.startsWith('34')) {
+                    phoneVariants.push(from.slice(2), `+${from.slice(2)}`)
+                }
+                const orFilter = phoneVariants.map(p => `phone.eq.${p}`).join(',')
+
                 const { data: contact } = await supabaseClient
                     .from('contacts')
                     .select('id, customer_id, company_id')
-                    .or(`phone.eq.${from},phone.eq.+${from}`)
+                    .or(orFilter)
                     .maybeSingle()
 
                 if (contact) {

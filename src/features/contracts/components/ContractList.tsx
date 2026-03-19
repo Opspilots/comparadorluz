@@ -141,7 +141,11 @@ export function ContractList() {
 
     const handleDelete = async () => {
         if (!deleteTarget) return
-        const { error } = await supabase.from('contracts').delete().eq('id', deleteTarget)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+        if (!profile?.company_id) return
+        const { error } = await supabase.from('contracts').delete().eq('id', deleteTarget).eq('company_id', profile.company_id)
         if (error) {
             console.error(error)
             toast({ title: 'Error', description: 'No se pudo eliminar el contrato.', variant: 'destructive' })

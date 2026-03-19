@@ -346,7 +346,7 @@ export default function TariffDashboard() {
         <div className="animate-fade-in" style={STYLES.container}>
 
             {/* Header / Tabs / Action Area */}
-            <div style={STYLES.header}>
+            <div className="mobile-actions-wrap" style={STYLES.header}>
 
                 {/* Tabs */}
                 <div style={STYLES.tabsContainer}>
@@ -375,9 +375,11 @@ export default function TariffDashboard() {
                             </button>
                             <button
                                 onClick={async () => {
-                                    const { error } = await supabase.from('tariff_versions').update({ is_active: true }).in('id', selectedIds);
-                                    if (error) console.error('Error activating:', error.message);
-                                    else {
+                                    if (!companyId) return;
+                                    const { error } = await supabase.from('tariff_versions').update({ is_active: true }).in('id', selectedIds).eq('company_id', companyId);
+                                    if (error) {
+                                        console.error('Error activating:', error.message);
+                                    } else {
                                         setSelectedIds([]);
                                         queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
                                     }
@@ -535,8 +537,11 @@ export default function TariffDashboard() {
                 confirmLabel="Eliminar"
                 variant="danger"
                 onConfirm={async () => {
-                    const { error } = await supabase.from('tariff_versions').delete().in('id', selectedIds);
-                    if (!error) {
+                    if (!companyId) return;
+                    const { error } = await supabase.from('tariff_versions').delete().in('id', selectedIds).eq('company_id', companyId);
+                    if (error) {
+                        console.error('Error deleting tariffs:', error.message);
+                    } else {
                         setSelectedIds([]);
                         queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
                     }

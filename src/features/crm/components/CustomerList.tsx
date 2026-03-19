@@ -59,7 +59,11 @@ export function CustomerList() {
 
     const handleDelete = async () => {
         if (!deleteTarget) return
-        const { error } = await supabase.from('customers').delete().eq('id', deleteTarget.id)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+        if (!profile?.company_id) return
+        const { error } = await supabase.from('customers').delete().eq('id', deleteTarget.id).eq('company_id', profile.company_id)
         if (error) {
             console.error('Error deleting customer:', error)
             toast({ title: 'Error', description: 'No se pudo eliminar al cliente.', variant: 'destructive' })

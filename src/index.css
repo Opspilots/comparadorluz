@@ -841,6 +841,135 @@ tbody tr:hover {
 }
 
 /* ============================================================
+   RESPONSIVE — FORM GRIDS & INLINE LAYOUTS
+   ============================================================ */
+@media (max-width: 640px) {
+  /* Collapse all 2-column form grids to single column */
+  .mobile-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Dialog mobile padding */
+  .card[style*="maxWidth: '500px'"],
+  .card[style*="max-width: 500px"] {
+    margin: 0.5rem;
+    padding: 1.25rem !important;
+  }
+
+  /* Comparator layout already handled by .comparator-layout */
+
+  /* Comparison history: stack list and detail */
+  .comparison-history-layout {
+    flex-direction: column !important;
+  }
+
+  .comparison-history-layout > div:first-child {
+    flex: 1 1 auto !important;
+    max-height: 40vh;
+  }
+
+  /* Tariff dashboard inline filter & action bars */
+  .tour-tariffs-filters {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .tour-tariffs-filters > div {
+    flex-wrap: wrap !important;
+  }
+
+  /* Step2 candidate cards: stack actions below content */
+  .step2-container [style*="flexDirection: 'row'"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Messaging layout mobile */
+  .messaging-root {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: calc(100vh - 53px);
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .messaging-sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-height: none;
+    border-right: none !important;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .messaging-sidebar.messaging-sidebar-collapsed {
+    display: none !important;
+  }
+
+  .messaging-sidebar .messaging-conv-list {
+    max-height: 35vh;
+  }
+
+  .messaging-main {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .messaging-mobile-toggle {
+    display: flex !important;
+  }
+
+  /* Quick actions card */
+  .quick-actions [style*="flexWrap: 'wrap'"] {
+    flex-direction: column !important;
+  }
+
+  .quick-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Tighter page padding */
+  .card-padded {
+    padding: 0.75rem !important;
+  }
+
+  /* Stack dialog buttons vertically */
+  .dialog-actions,
+  [style*="justifyContent: 'flex-end'"][style*="gap: '1rem'"] {
+    flex-direction: column !important;
+  }
+
+  .dialog-actions .btn {
+    width: 100%;
+  }
+
+  /* Messaging chat bubbles wider on small screens */
+  .chat-bubble {
+    max-width: 90% !important;
+  }
+
+  /* Tariff dashboard: stack tabs and button */
+  .tour-tariffs-filters select {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  /* Commissioner table: hide less important columns */
+  .tour-commissioners-list table th:nth-child(4),
+  .tour-commissioners-list table td:nth-child(4),
+  .tour-commissioners-list table th:nth-child(5),
+  .tour-commissioners-list table td:nth-child(5),
+  .tour-commissioners-list table th:nth-child(6),
+  .tour-commissioners-list table td:nth-child(6) {
+    display: none;
+  }
+}
+
+/* ============================================================
    MOBILE SIDEBAR ANIMATION
    ============================================================ */
 @keyframes slideInFromLeft {

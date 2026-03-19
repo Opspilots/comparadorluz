@@ -45,12 +45,14 @@ export function rankTariffs(
     const today = new Date().toISOString().split('T')[0];
 
     tariffs.forEach((tariff) => {
-        // 1a. Filter components by current validity date
+        // 1a. Filter components by current validity date and exclude null-priced rates
         const allComponents = (tariff.tariff_rates || []).filter(c => {
             // If component has no validity dates, it's always valid
-            if (!c.valid_from && !c.valid_to) return true;
-            if (c.valid_from && c.valid_from > today) return false;
-            if (c.valid_to && c.valid_to < today) return false;
+            if (!c.valid_from && !c.valid_to) { /* valid */ }
+            else if (c.valid_from && c.valid_from > today) return false;
+            else if (c.valid_to && c.valid_to < today) return false;
+            // Skip rates with null price (unless they have a formula for indexed tariffs)
+            if (c.price === null && c.price === undefined && !c.price_formula) return false;
             return true;
         });
 

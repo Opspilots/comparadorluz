@@ -47,10 +47,21 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
                 return
             }
 
+            const { data: profile } = await supabase
+                .from('users')
+                .select('company_id')
+                .eq('id', user.id)
+                .maybeSingle()
+            if (!profile) {
+                setError('Perfil de empresa no encontrado')
+                return
+            }
+
             const { error: insertError } = await supabase
                 .from('saved_comparisons')
                 .insert({
                     user_id: user.id,
+                    company_id: profile.company_id,
                     customer_id: customerId || null,
                     consumption_p1: comparisonData.consumption_p1,
                     consumption_p2: comparisonData.consumption_p2,
@@ -92,7 +103,11 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
                 width: '100%',
                 maxWidth: '500px',
                 padding: '2rem',
-                position: 'relative'
+                position: 'relative',
+                margin: '1rem',
+                boxSizing: 'border-box',
+                maxHeight: '90vh',
+                overflowY: 'auto'
             }}>
                 <button
                     onClick={onClose}

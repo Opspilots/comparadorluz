@@ -111,7 +111,11 @@ export default function TariffDetailsPage() {
 
     const handleDelete = async () => {
         try {
-            const { error } = await supabase.from('tariff_versions').delete().eq('id', id);
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No user')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('No company')
+            const { error } = await supabase.from('tariff_versions').delete().eq('id', id).eq('company_id', profile.company_id);
             if (error) throw error;
             toast({ title: 'Tarifa eliminada' });
             navigate('/admin/tariffs');

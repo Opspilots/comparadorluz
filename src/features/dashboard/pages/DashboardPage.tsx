@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import { MetricCard } from '../components/MetricCard'
@@ -17,16 +17,18 @@ export function DashboardPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        fetchDashboardStats()
-    }, [])
-
-    const fetchDashboardStats = async () => {
+    const fetchDashboardStats = useCallback(async () => {
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No user')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('No company')
+            const cid = profile.company_id
+
             const [customersRes, contractsRes, activeContractsRes] = await Promise.all([
-                supabase.from('customers').select('id', { count: 'exact', head: true }),
-                supabase.from('contracts').select('id', { count: 'exact', head: true }),
-                supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('status', 'active')
+                supabase.from('customers').select('id', { count: 'exact', head: true }).eq('company_id', cid),
+                supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('company_id', cid),
+                supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('company_id', cid).eq('status', 'active')
             ])
 
             if (customersRes.error) throw customersRes.error
@@ -45,7 +47,11 @@ export function DashboardPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        fetchDashboardStats()
+    }, [fetchDashboardStats])
 
     if (loading) {
         return (

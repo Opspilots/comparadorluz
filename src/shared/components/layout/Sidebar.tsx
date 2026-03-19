@@ -44,7 +44,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
             const { data: company } = await supabase
                 .from('companies')
-                .select('name, logo_url, primary_color, secondary_color')
+                .select('name, logo_url, primary_color, secondary_color, sidebar_color')
                 .eq('id', profile.company_id)
                 .maybeSingle()
 
@@ -55,6 +55,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
     const companyName = companyData?.name || 'Mi Empresa'
     const primaryColor = companyData?.primary_color || '#2563eb'
+    const sidebarBg = companyData?.sidebar_color || '#0f172a'
 
     const handleNavClick = () => {
         if (onMobileClose) onMobileClose()
@@ -64,7 +65,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         <aside className="sidebar-aside" style={{
             width: 'var(--sidebar-width)',
             height: '100vh',
-            backgroundColor: '#0f172a',
+            backgroundColor: sidebarBg,
             display: 'flex',
             flexDirection: 'column',
             borderRight: '1px solid rgba(255,255,255,0.06)',

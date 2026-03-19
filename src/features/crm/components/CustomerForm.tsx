@@ -55,10 +55,16 @@ export function CustomerForm() {
 
     const fetchCustomer = useCallback(async () => {
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No autenticado')
+            const { data: prof } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!prof) throw new Error('Perfil no encontrado')
+
             const { data, error } = await supabase
                 .from('customers')
                 .select('*, contacts(*)')
                 .eq('id', id)
+                .eq('company_id', prof.company_id)
                 .single()
 
             if (error) throw error
@@ -173,6 +179,7 @@ export function CustomerForm() {
                     .from('customers')
                     .update(payload)
                     .eq('id', id)
+                    .eq('company_id', companyId)
                 if (error) throw error;
             } else {
                 const { data: newCust, error } = await supabase
@@ -294,7 +301,7 @@ export function CustomerForm() {
             )}
 
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Tipo de Cliente</label>
                         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -318,7 +325,7 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
                     <div className="tour-customer-form-cif">
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>{customerType === 'empresa' ? 'CIF' : 'NIF'}</label>
                         <input
@@ -346,7 +353,7 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="tour-customer-form-status">
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estado del Lead</label>
                         <select
@@ -382,7 +389,7 @@ export function CustomerForm() {
 
 
                     {customerType === 'particular' ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email Personal</label>
                                 <input

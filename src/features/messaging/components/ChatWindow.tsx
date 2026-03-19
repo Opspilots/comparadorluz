@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Send, Phone, Mail, User, Paperclip, X, FileIcon, Download, FileText } from 'lucide-react';
 import { Message, uploadAttachment } from '../lib/messaging-service';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatWindowProps {
     customerName: string;
@@ -106,6 +107,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
     const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -116,8 +118,9 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
     }, [messages]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+        const files = e.target.files;
+        if (files) {
+            setSelectedFiles(prev => [...prev, ...Array.from(files)]);
         }
     };
 
@@ -144,6 +147,11 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
             setSelectedFiles([]);
         } catch (error) {
             console.error("Error sending message:", error);
+            toast({
+                title: 'Error al enviar',
+                description: error instanceof Error ? error.message : 'No se pudo enviar el mensaje. Intenta de nuevo.',
+                variant: 'destructive'
+            });
         } finally {
             setIsUploading(false);
         }
@@ -204,6 +212,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
                             style={{ width: '100%', display: 'flex', justifyContent: msg.direction === 'inbound' ? 'flex-start' : 'flex-end' }}
                         >
                             <div
+                                className="chat-bubble"
                                 style={{
                                     maxWidth: '75%',
                                     padding: '0.875rem',

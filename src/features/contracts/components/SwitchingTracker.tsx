@@ -245,7 +245,7 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                         }}>
                             <span className="font-semibold">Plazo legal (RD 1011/2009): </span>
                             {isDeadlineExpired
-                                ? `Vencido hace ${Math.abs(daysRemaining!)} dias — el traspaso excede el plazo maximo de ${SWITCHING_MAX_DAYS} dias`
+                                ? `Vencido hace ${Math.abs(daysRemaining ?? 0)} dias — el traspaso excede el plazo maximo de ${SWITCHING_MAX_DAYS} dias`
                                 : `${daysRemaining} dias restantes de ${SWITCHING_MAX_DAYS} — Limite: ${deadlineAt.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`
                             }
                         </div>
@@ -508,23 +508,26 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                         Acciones
                     </span>
                     <div className="flex items-center gap-2">
-                        {nextStatus() && nextStatus() !== 'completed' && (
-                            <button
-                                onClick={() => advanceStatus(nextStatus()!)}
-                                disabled={updating}
-                                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-all"
-                                style={{
-                                    background: '#2563eb',
-                                    color: '#fff',
-                                    cursor: updating ? 'not-allowed' : 'pointer',
-                                    opacity: updating ? 0.7 : 1,
-                                    boxShadow: '0 1px 4px rgba(37,99,235,0.25)',
-                                }}
-                            >
-                                {updating ? <Loader2 size={13} className="animate-spin" /> : <ChevronRight size={13} />}
-                                Avanzar a {STEPS.find(s => s.key === nextStatus())?.label}
-                            </button>
-                        )}
+                        {(() => {
+                            const next = nextStatus()
+                            return next && next !== 'completed' ? (
+                                <button
+                                    onClick={() => advanceStatus(next)}
+                                    disabled={updating}
+                                    className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-all"
+                                    style={{
+                                        background: '#2563eb',
+                                        color: '#fff',
+                                        cursor: updating ? 'not-allowed' : 'pointer',
+                                        opacity: updating ? 0.7 : 1,
+                                        boxShadow: '0 1px 4px rgba(37,99,235,0.25)',
+                                    }}
+                                >
+                                    {updating ? <Loader2 size={13} className="animate-spin" /> : <ChevronRight size={13} />}
+                                    Avanzar a {STEPS.find(s => s.key === next)?.label}
+                                </button>
+                            ) : null
+                        })()}
                         {nextStatus() === 'completed' && (
                             <button
                                 onClick={() => setShowCompleteConfirm(true)}

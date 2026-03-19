@@ -20,10 +20,16 @@ export function CommissionerDetailPage() {
     const { data: commissioner = null, isLoading: loading } = useQuery({
         queryKey: ['commissioner', id],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No user')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('No company')
+
             const { data, error } = await supabase
                 .from('commissioners')
                 .select('*')
                 .eq('id', id)
+                .eq('company_id', profile.company_id)
                 .single()
 
             if (error) throw error

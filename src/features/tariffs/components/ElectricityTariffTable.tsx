@@ -62,7 +62,7 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                                     cursor: 'pointer',
                                     transition: 'background-color 0.2s',
                                     borderBottom: '1px solid #f1f5f9',
-                                    background: selectedIds.includes(tariff.id!) ? '#f0f9ff' : 'transparent'
+                                    background: selectedIds.includes(tariff.id) ? '#f0f9ff' : 'transparent'
                                 }}
                                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -70,9 +70,9 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                                 <td style={{ padding: '1rem' }} onClick={(e) => e.stopPropagation()}>
                                     <input
                                         type="checkbox"
-                                        checked={selectedIds.includes(tariff.id!)}
+                                        checked={selectedIds.includes(tariff.id)}
                                         onChange={(e) => {
-                                            if (e.target.checked) onSelectionChange([...selectedIds, tariff.id!]);
+                                            if (e.target.checked) onSelectionChange([...selectedIds, tariff.id]);
                                             else onSelectionChange(selectedIds.filter(id => id !== tariff.id));
                                         }}
                                         style={{ cursor: 'pointer' }}

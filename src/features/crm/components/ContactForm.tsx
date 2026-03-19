@@ -41,6 +41,15 @@ export function ContactForm() {
             if (profileError || !profile) throw new Error('Error al verificar permisos de empresa.')
             const companyId = profile.company_id
 
+            // Verify customer belongs to this company before inserting contact
+            const { data: customerCheck } = await supabase
+                .from('customers')
+                .select('id')
+                .eq('id', customerId)
+                .eq('company_id', companyId)
+                .maybeSingle()
+            if (!customerCheck) throw new Error('Cliente no encontrado o sin permisos')
+
             const { error: insertError } = await supabase
                 .from('contacts')
                 .insert({

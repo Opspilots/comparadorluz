@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, Suspense, lazy } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
@@ -44,6 +44,8 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        let cancelled = false
+
         const initSession = async (s: Session | null) => {
             if (s?.user) {
                 // Check if user has a profile in public.users
@@ -52,6 +54,8 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
                     .select('id')
                     .eq('id', s.user.id)
                     .maybeSingle()
+
+                if (cancelled) return
 
                 if (!profile) {
                     // First-time OAuth user — create company + profile
@@ -66,15 +70,19 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
                         p_cif: randomCif,
                     })
 
+                    if (cancelled) return
+
                     if (rpcError) {
                         console.error('Error creating user profile:', rpcError)
                         await supabase.auth.signOut()
+                        if (cancelled) return
                         setSession(null)
                         setLoading(false)
                         return
                     }
                 }
             }
+            if (cancelled) return
             setSession(s)
             setLoading(false)
         }
@@ -85,7 +93,10 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
             initSession(session)
         })
 
-        return () => subscription.unsubscribe()
+        return () => {
+            cancelled = true
+            subscription.unsubscribe()
+        }
     }, [])
 
     if (loading) return <div>Cargando...</div>
@@ -98,9 +109,11 @@ function AdminRoute({ children }: { children: JSX.Element }) {
     const [role, setRole] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [authError, setAuthError] = useState(false)
+    const location = useLocation()
 
     useEffect(() => {
         const checkRole = async () => {
+            setLoading(true)
             try {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (user) {
@@ -119,7 +132,7 @@ function AdminRoute({ children }: { children: JSX.Element }) {
             setLoading(false)
         }
         checkRole()
-    }, [])
+    }, [location.pathname])
 
     if (loading) return <div>Cargando...</div>
     if (authError) return <Navigate to="/login" />

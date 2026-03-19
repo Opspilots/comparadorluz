@@ -27,7 +27,7 @@ export function Login() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
 
         if (error) {
-            setMessage(`Error: ${error.message}`)
+            setMessage('Credenciales incorrectas. Comprueba tu email y contraseña.')
         } else {
             setMessage('Sesion iniciada correctamente.')
             navigate('/')
@@ -65,7 +65,7 @@ export function Login() {
             setAuthMode('login')
         } catch (error) {
             const err = error as Error
-            setMessage(`Error: ${err.message}`)
+            setMessage('No se pudo crear la cuenta. Revisa los datos e intenta de nuevo.')
             console.error(err)
             // Sign out to prevent orphaned auth user without company data
             await supabase.auth.signOut()
@@ -87,7 +87,7 @@ export function Login() {
             if (error) throw error
         } catch (error) {
             const err = error as Error
-            setMessage(`Error: ${err.message}`)
+            setMessage('Error al iniciar sesion con Google. Intenta de nuevo.')
             console.error(err)
             setLoading(false)
         }

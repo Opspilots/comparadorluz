@@ -74,8 +74,8 @@ export default function ConversationPage() {
     useEffect(() => {
         if (!customerId || !companyId) return;
 
-        const channelPath = `messages:customer:${customerId}`;
-        const channel = supabase.channel(channelPath)
+        const channelPath = `messages:customer:${customerId}:${activeChannel}`;
+        const realtimeChannel = supabase.channel(channelPath)
             .on(
                 'postgres_changes',
                 {
@@ -87,7 +87,7 @@ export default function ConversationPage() {
                 (payload) => {
                     const newMessage = payload.new as Message;
                     if (newMessage.channel === activeChannel) {
-                        queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+                        queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel, companyId] });
 
                         if (newMessage.direction === 'inbound') {
                             toast({
@@ -107,13 +107,13 @@ export default function ConversationPage() {
                     filter: `customer_id=eq.${customerId}`
                 },
                 () => {
-                    queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+                    queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel, companyId] });
                 }
             )
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(realtimeChannel);
         };
     }, [customerId, companyId, activeChannel, queryClient, toast]);
 
@@ -125,7 +125,7 @@ export default function ConversationPage() {
             supabase.functions.invoke('sync-gmail', {
                 body: { companyId }
             }).then(() => {
-                queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+                queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel, companyId] });
             }).catch(() => {
                 // Sync failures are silent — polling will retry
             });
@@ -163,7 +163,7 @@ export default function ConversationPage() {
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel] });
+            queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel, companyId] });
         },
         onError: (err) => {
             const error = err as Error;

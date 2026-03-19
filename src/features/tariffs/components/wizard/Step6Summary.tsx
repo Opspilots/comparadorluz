@@ -32,7 +32,11 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
 
         setSaving(true);
         try {
-            const { error } = await supabase.from('tariff_versions').delete().eq('id', id);
+            const { data: user } = await supabase.auth.getUser();
+            if (!user.user) throw new Error('Sesión expirada');
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.user.id).maybeSingle();
+            if (!profile?.company_id) throw new Error('No company');
+            const { error } = await supabase.from('tariff_versions').delete().eq('id', id).eq('company_id', profile.company_id);
             if (error) throw error;
             toast({ title: 'Tarifa eliminada', description: 'La tarifa ha sido eliminada correctamente.' });
             navigate('/admin/tariffs');

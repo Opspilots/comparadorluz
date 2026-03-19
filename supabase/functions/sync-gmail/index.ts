@@ -196,8 +196,8 @@ serve(async (req: Request) => {
                             .maybeSingle();
 
                         if (!existingMsg) {
-                            // Insert into internal DB
-                            await supabaseClient.from('messages').insert({
+                            // Insert into internal DB (upsert to handle race conditions with duplicate provider_id)
+                            await supabaseClient.from('messages').upsert({
                                 company_id: company.id,
                                 customer_id: contact.customer_id,
                                 contact_id: contact.id,
@@ -209,7 +209,7 @@ serve(async (req: Request) => {
                                 status: 'delivered',
                                 created_at: new Date(parseInt(msgDetail.internalDate)).toISOString(),
                                 provider_id: msg.id
-                            });
+                            }, { onConflict: 'provider_id,company_id', ignoreDuplicates: true });
 
                             totalSynced++;
 

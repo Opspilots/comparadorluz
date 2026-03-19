@@ -19,9 +19,11 @@ serve(async (req: Request) => {
     }
 
     try {
-        // Only allow cron calls (service-role bearer) — reject anonymous callers
+        // Only allow cron calls — reject anonymous callers
+        // Prefer CRON_SECRET for auth; fall back to SERVICE_ROLE_KEY for backwards compatibility
         const authHeader = req.headers.get('Authorization')
-        const expectedBearer = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+        const cronSecret = Deno.env.get('CRON_SECRET')
+        const expectedBearer = `Bearer ${cronSecret || SUPABASE_SERVICE_ROLE_KEY}`
         let isCronCall = false
         if (authHeader && authHeader.length === expectedBearer.length) {
             const a = new TextEncoder().encode(authHeader)

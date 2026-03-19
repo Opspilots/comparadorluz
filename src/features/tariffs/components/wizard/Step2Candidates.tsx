@@ -132,7 +132,7 @@ const norm = (s: string) =>
 function findAutoMatch(candidate: DetectedTariff, versions: ExistingTariffVersion[]): ExistingTariffVersion | undefined {
     if (!candidate.tariff_name || !candidate.tariff_structure) return undefined;
     return versions.find(v => {
-        const nameMatch = norm(v.tariff_name) === norm(candidate.tariff_name!);
+        const nameMatch = norm(v.tariff_name) === norm(candidate.tariff_name || '');
         const structureMatch = v.structure?.code === candidate.tariff_structure;
         const supplierName = v.supplier?.name || '';
         const candidateSupplier = candidate.supplier_name || '';

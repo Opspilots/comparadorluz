@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Mail, Phone, Megaphone, Search, Loader2, Plus } from 'lucide-react';
+import { Mail, Phone, Megaphone, Search, Loader2, Plus, ArrowLeft, MessageSquare } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { getConversations, getUserCompanyId } from '../lib/messaging-service';
@@ -181,6 +181,7 @@ export default function MessagingLayout() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
     const [activeChannel, setActiveChannel] = useState<'email' | 'whatsapp'>('email');
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true);
 
     // Fetch conversations filtered by channel
     const { data: conversations, isLoading: isLoadingConversations } = useQuery({
@@ -197,15 +198,21 @@ export default function MessagingLayout() {
 
     const handleSelectCustomer = (customerId: string) => {
         setSearchQuery('');
+        setMobileSidebarOpen(false);
         navigate(`/admin/messages/${customerId}`);
     };
 
     const isCampaignsRoute = location.pathname.includes('/campaigns');
+    // On mobile, when viewing a conversation, hide sidebar
+    const hasActiveConversation = /\/admin\/messages\/[^/]+$/.test(location.pathname) && !isCampaignsRoute;
 
     return (
-        <div style={S.root}>
+        <div className="messaging-root" style={S.root}>
             {/* Sidebar */}
-            <div style={S.sidebar}>
+            <div
+                className={`messaging-sidebar ${!mobileSidebarOpen && hasActiveConversation ? 'messaging-sidebar-collapsed' : ''}`}
+                style={S.sidebar}
+            >
                 <div style={S.sidebarHeader}>
                     {/* Top Row */}
                     <div style={S.topRow}>
@@ -302,7 +309,7 @@ export default function MessagingLayout() {
                 </div>
 
                 {/* Conversation List */}
-                <div style={S.convList}>
+                <div className="messaging-conv-list" style={S.convList}>
                     {isLoadingConversations ? (
                         <div style={S.loading}>
                             <Loader2 style={{ width: 20, height: 20, color: '#cbd5e1', animation: 'spin 1s linear infinite' }} />
@@ -327,9 +334,12 @@ export default function MessagingLayout() {
                             const isActive = location.pathname.includes(conv.customer.id);
                             return (
                                 <div
-                                    key={conv.customer.id}
+                                    key={`${conv.customer.id}-${activeChannel}`}
                                     style={S.convItem(isActive)}
-                                    onClick={() => navigate(`/admin/messages/${conv.customer.id}`)}
+                                    onClick={() => {
+                                        setMobileSidebarOpen(false);
+                                        navigate(`/admin/messages/${conv.customer.id}`);
+                                    }}
                                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f8fafc'; }}
                                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                                 >
@@ -351,7 +361,39 @@ export default function MessagingLayout() {
             </div>
 
             {/* Main Content */}
-            <div style={S.main}>
+            <div className="messaging-main" style={S.main}>
+                {/* Mobile back button — shown when sidebar is hidden */}
+                {hasActiveConversation && !mobileSidebarOpen && (
+                    <button
+                        className="messaging-mobile-toggle"
+                        onClick={() => setMobileSidebarOpen(true)}
+                        style={{
+                            display: 'none', /* shown via CSS on mobile */
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.625rem 1rem',
+                            background: '#fff',
+                            border: 'none',
+                            borderBottom: '1px solid #e2e8f0',
+                            color: '#2563eb',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            width: '100%',
+                        }}
+                    >
+                        <ArrowLeft size={16} />
+                        Conversaciones
+                    </button>
+                )}
+                {!hasActiveConversation && !isCampaignsRoute && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <MessageSquare size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                            <p style={{ fontWeight: 500 }}>Selecciona una conversación</p>
+                        </div>
+                    </div>
+                )}
                 <Outlet context={{ activeChannel }} />
             </div>
 

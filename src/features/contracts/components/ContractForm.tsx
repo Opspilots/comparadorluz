@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer, TariffVersion, Commissioner, SupplyPoint } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
@@ -8,6 +9,7 @@ export function ContractForm() {
     const navigate = useNavigate()
     const location = useLocation()
     const { toast } = useToast()
+    const queryClient = useQueryClient()
     const [loading, setLoading] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -49,10 +51,21 @@ export function ContractForm() {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // Get user's company_id for tenant-scoped queries
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) throw new Error('No autenticado')
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('company_id')
+                    .eq('id', user.id)
+                    .maybeSingle()
+                if (!profile) throw new Error('Perfil no encontrado')
+                const companyId = profile.company_id
+
                 const [custRes, tariffRes, commRes] = await Promise.all([
-                    supabase.from('customers').select('*').order('name'),
+                    supabase.from('customers').select('*').eq('company_id', companyId).order('name'),
                     supabase.from('tariff_versions').select('*').eq('is_active', true),
-                    supabase.from('commissioners').select('*').eq('is_active', true).order('full_name'),
+                    supabase.from('commissioners').select('*').eq('company_id', companyId).eq('is_active', true).order('full_name'),
                 ])
 
                 if (custRes.error) throw custRes.error
@@ -69,6 +82,7 @@ export function ContractForm() {
                         .from('contracts')
                         .select('*')
                         .eq('id', id)
+                        .eq('company_id', companyId)
                         .single()
 
                     if (contractError) throw contractError
@@ -133,6 +147,9 @@ export function ContractForm() {
     }, [location.state, id])
 
     // Load supply points when customer changes
+    const manualCupsRef = useRef(manualCups)
+    manualCupsRef.current = manualCups
+
     const loadSupplyPoints = useCallback(async (custId: string) => {
         if (!custId) {
             setSupplyPoints([])
@@ -148,8 +165,8 @@ export function ContractForm() {
             .order('created_at')
         if (!error) {
             setSupplyPoints(data || [])
-            if (manualCups && data) {
-                const match = data.find(sp => sp.cups === manualCups)
+            if (manualCupsRef.current && data) {
+                const match = data.find(sp => sp.cups === manualCupsRef.current)
                 if (match) setSupplyPointId(match.id)
             }
             // Check Bono Social (RD 897/2017)
@@ -166,7 +183,7 @@ export function ContractForm() {
             .is('revoked_at', null)
         const hasDataProcessing = (consents || []).some(c => c.consent_type === 'data_processing')
         setMissingConsent(!hasDataProcessing)
-    }, [manualCups])
+    }, [])
 
     useEffect(() => {
         if (customerId) loadSupplyPoints(customerId)
@@ -307,6 +324,7 @@ export function ContractForm() {
                     .from('contracts')
                     .update(updatePayload)
                     .eq('id', id)
+                    .eq('company_id', profile.company_id)
 
                 if (updateError) throw updateError
                 toast({ title: 'Contrato actualizado', description: 'El contrato se ha actualizado correctamente.' })
@@ -355,6 +373,8 @@ export function ContractForm() {
                 toast({ title: 'Contrato registrado', description: 'El contrato se ha creado correctamente.' })
             }
 
+            queryClient.invalidateQueries({ queryKey: ['contracts'] })
+            queryClient.invalidateQueries({ queryKey: ['customer-detail'] })
             navigate('/contracts')
         } catch (err) {
             const error = err as Error;
@@ -586,8 +606,8 @@ export function ContractForm() {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <form onSubmit={handleSubmit} className="mobile-form-grid" style={{ display: 'grid', gap: '1.5rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Cliente *</label>
                         <select
@@ -653,7 +673,7 @@ export function ContractForm() {
                     </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Comisionado Asignado</label>
                         <select
@@ -669,7 +689,7 @@ export function ContractForm() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Tarifa Contratada *</label>
                         <select

@@ -6,6 +6,7 @@ import { Users, Plus, FileCheck, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { CreateCommissionerDialog } from '../components/CreateCommissionerDialog'
 import { removeEmojis } from '@/shared/lib/utils'
+import { useQuery } from '@tanstack/react-query'
 
 interface CommissionerStats {
     total_contracts: number
@@ -24,7 +25,19 @@ export function CommissionersPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
 
+    const { data: userProfile } = useQuery({
+        queryKey: ['current-user-company-commissioners'],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return null
+            const { data } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            return data
+        }
+    })
+    const companyId = userProfile?.company_id ?? null
+
     const fetchCommissioners = useCallback(async () => {
+        if (!companyId) return
         setLoading(true)
 
         const [{ data: commissionersData, error }, { data: contractCounts }] = await Promise.all([
@@ -41,11 +54,13 @@ export function CommissionersPage() {
                     updated_at,
                     commissions:commission_events(amount_eur, status)
                 `)
+                .eq('company_id', companyId)
                 .eq('is_active', true)
                 .order('full_name'),
             supabase
                 .from('contracts')
                 .select('commercial_id')
+                .eq('company_id', companyId)
         ])
 
         if (error) {
@@ -88,7 +103,7 @@ export function CommissionersPage() {
         })
         setCommissioners(stats)
         setLoading(false)
-    }, [])
+    }, [companyId])
 
     useEffect(() => {
         fetchCommissioners()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { Trash2, Eye, Calendar, User } from 'lucide-react'
 import type { ComparisonResult } from '@/shared/types'
@@ -29,33 +29,47 @@ export function ComparisonHistory() {
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
     const { toast } = useToast()
 
-    useEffect(() => {
-        fetchComparisons()
-    }, [])
-
-    const fetchComparisons = async () => {
+    const fetchComparisons = useCallback(async () => {
         setLoading(true)
-        const { data } = await supabase
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setLoading(false); return }
+        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+        if (!profile?.company_id) { setLoading(false); return }
+
+        const { data, error } = await supabase
             .from('saved_comparisons')
             .select(`
                 *,
                 customers(name)
             `)
+            .eq('company_id', profile.company_id)
             .order('created_at', { ascending: false })
 
-        if (data) {
+        if (error) {
+            toast({ title: 'Error', description: 'No se pudieron cargar las comparativas.', variant: 'destructive' })
+        } else if (data) {
             setComparisons(data as SavedComparison[])
         }
         setLoading(false)
-    }
+    }, [toast])
+
+    useEffect(() => {
+        fetchComparisons()
+    }, [fetchComparisons])
 
     const deleteComparison = async () => {
         if (!deleteTarget) return
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+        if (!profile?.company_id) return
 
         const { error } = await supabase
             .from('saved_comparisons')
             .delete()
             .eq('id', deleteTarget)
+            .eq('company_id', profile.company_id)
 
         if (!error) {
             toast({ title: 'Comparativa eliminada', description: 'La comparativa se ha eliminado correctamente.' })
@@ -75,9 +89,9 @@ export function ComparisonHistory() {
 
     return (
         <>
-            <div style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 4rem)' }}>
+            <div className="comparison-history-layout" style={{ display: 'flex', gap: '2rem', height: 'calc(100vh - 4rem)' }}>
                 {/* Lista de comparativas */}
-                <div style={{ flex: '0 0 400px', overflowY: 'auto' }}>
+                <div style={{ flex: '0 0 400px', overflowY: 'auto', minWidth: 0 }}>
 
 
                     {comparisons.length === 0 ? (

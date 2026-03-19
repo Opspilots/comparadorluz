@@ -34,8 +34,34 @@ serve(async (req: Request) => {
             })
         }
 
+        // Role check: only admin/manager can import CNMC data
+        const supabaseService = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+        const { data: userData } = await supabaseService
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+        if (!userData || (userData.role !== 'admin' && userData.role !== 'manager')) {
+            return new Response(JSON.stringify({ error: 'Insufficient permissions. Admin or manager role required.' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
         const { csv_content } = await req.json()
         if (!csv_content) throw new Error('CSV content is required')
+
+        // Limit CSV size to 5MB to prevent abuse
+        const MAX_CSV_SIZE = 5 * 1024 * 1024
+        if (typeof csv_content === 'string' && csv_content.length > MAX_CSV_SIZE) {
+            return new Response(JSON.stringify({ error: 'CSV content exceeds maximum size of 5MB' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400,
+            })
+        }
 
         const geminiKey = Deno.env.get('GEMINI_API_KEY')
         if (!geminiKey) throw new Error('GEMINI_API_KEY is not configured')

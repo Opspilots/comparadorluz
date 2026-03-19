@@ -439,6 +439,7 @@ export function CampaignForm() {
                 .from('campaigns')
                 .update(payload)
                 .eq('id', id)
+                .eq('company_id', profile.company_id)
                 .select()
                 .single();
         } else {

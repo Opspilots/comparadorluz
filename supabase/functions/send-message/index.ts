@@ -61,10 +61,16 @@ async function buildMimeEmail(
     headers.push(toBase64Url(htmlBody).replace(/-/g, '+').replace(/_/g, '/'))
 
     const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024 // 25 MB
+    const allowedUrlPrefix = `${Deno.env.get('SUPABASE_URL') ?? ''}/storage/v1/object/`
     for (const att of attachments) {
         try {
             if (att.size && att.size > MAX_ATTACHMENT_SIZE) {
                 console.warn(`Adjunto omitido (${att.name}): ${(att.size / 1024 / 1024).toFixed(1)} MB excede el límite de 25 MB`)
+                continue
+            }
+            // Validate attachment URL to prevent SSRF
+            if (!att.url.startsWith(allowedUrlPrefix)) {
+                console.warn(`Adjunto omitido (${att.name}): URL no permitida — solo se permiten archivos de Supabase Storage`)
                 continue
             }
             const response = await fetch(att.url)

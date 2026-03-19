@@ -47,7 +47,12 @@
       "Bash(cd \"C:\\\\Users\\\\pelay\\\\OneDrive\\\\Escritorio\\\\comparadorluz\" && npx vite build 2>&1 | tail -5)",
       "Bash(npm ls:*)",
       "Bash(cd:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(grep -r \"auth.company_id\\(\\)\" /c/Users/pelay/OneDrive/Escritorio/comparadorluz/supabase/migrations/*.sql)",
+      "Bash(find /c/Users/pelay/OneDrive/Escritorio/comparadorluz/supabase/migrations -name \"*.sql\" -exec grep -l \"RLS\\\\|ENABLE ROW LEVEL SECURITY\" {})",
+      "Bash(sed 's/ *\\(.*//')",
+      "Bash(sed 's/.*ALTER TABLE //')",
+      "Bash(xargs ls:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -274,7 +274,7 @@ export function ComparatorForm() {
 
     return (
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div className="mobile-actions-wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <button className="btn btn-secondary tour-comparator-history-btn" onClick={() => navigate('/comparator/history')} style={{ fontSize: '0.9rem' }}>
@@ -286,7 +286,7 @@ export function ComparatorForm() {
                 </div>
             </div>
 
-            <div className="comparator-layout" style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '2rem', alignItems: 'start' }}>
+            <div className="comparator-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 400px) 1fr', gap: '2rem', alignItems: 'start' }}>
                 {/* Form Panel */}
                 <section style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid var(--color-border)' }}>
 

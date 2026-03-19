@@ -205,7 +205,8 @@ export function CampaignsPage() {
     const handleDelete = async () => {
         if (!deleteTarget) return;
 
-        const { error } = await supabase.from('campaigns').delete().eq('id', deleteTarget);
+        const companyId = await getUserCompanyId();
+        const { error } = await supabase.from('campaigns').delete().eq('id', deleteTarget).eq('company_id', companyId);
         if (error) {
             toast({ title: 'Error', description: 'Error al eliminar la campaña', variant: 'destructive' });
         } else {
