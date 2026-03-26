@@ -64,7 +64,7 @@ export function ContractForm() {
 
                 const [custRes, tariffRes, commRes] = await Promise.all([
                     supabase.from('customers').select('*').eq('company_id', companyId).order('name'),
-                    supabase.from('tariff_versions').select('*').eq('is_active', true),
+                    supabase.from('tariff_versions').select('*').eq('is_active', true).eq('company_id', companyId),
                     supabase.from('commissioners').select('*').eq('company_id', companyId).eq('is_active', true).order('full_name'),
                 ])
 

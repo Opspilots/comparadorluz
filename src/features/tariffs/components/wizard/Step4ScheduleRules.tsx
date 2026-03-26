@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TariffWizardState, TariffSchedule } from '@/types/tariff';
+import { TariffWizardState, TariffSchedule } from '@/shared/types';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 
 interface Step4Props {

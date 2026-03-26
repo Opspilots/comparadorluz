@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/lib/supabase';
-import { DetectedTariff } from '@/types/tariff';
+import { DetectedTariff } from '@/shared/types';
 import {
     Save, ArrowRight, Trash2, CheckSquare, Square, Plus, FileText,
     Loader2, Zap, Flame, SlidersHorizontal, RefreshCw, CheckCircle, X, Search, Upload

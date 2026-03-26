@@ -14,7 +14,7 @@ const navItems = [
     { id: 'suppliers', label: 'Comercializadoras', path: '/admin/suppliers', icon: Building2 },
     { id: 'comparator', label: 'Comparador', path: '/comparator', icon: Scale },
     { id: 'contracts', label: 'Contratos', path: '/contracts', icon: FileSignature },
-    { id: 'messaging', label: 'Mensajeria', path: '/admin/messages', icon: MessageSquare },
+    { id: 'messaging', label: 'Mensajería', path: '/admin/messages', icon: MessageSquare },
     { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: Wallet },
     { id: 'compliance', label: 'Cumplimiento', path: '/admin/compliance', icon: Shield },
 ]
@@ -130,7 +130,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                         textTransform: 'uppercase',
                         marginTop: '1px',
                     }}>
-                        CRM Energia
+                        CRM Energía
                     </div>
                 </div>
                 {/* Mobile close button */}
@@ -151,7 +151,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                             cursor: 'pointer',
                             flexShrink: 0,
                         }}
-                        aria-label="Cerrar menu"
+                        aria-label="Cerrar menú"
                     >
                         <X size={18} />
                     </button>
@@ -277,7 +277,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     className="sidebar-nav-item"
                 >
                     <HelpCircle size={17} style={{ flexShrink: 0 }} />
-                    Ayuda y Guia
+                    Ayuda y Guía
                 </button>
             </div>
         </aside>

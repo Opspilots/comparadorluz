@@ -84,7 +84,7 @@ export function ElectricityTariffTable({ tariffs, selectedIds, onSelectionChange
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{removeEmojis(tariff.supplier_name)}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{removeEmojis(tariff.supplier_name ?? '')}</div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                     <span style={{

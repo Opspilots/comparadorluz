@@ -82,7 +82,7 @@ export default function ConversationPage() {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
-                    filter: `customer_id=eq.${customerId}`
+                    filter: `customer_id=eq.${customerId},company_id=eq.${companyId}`
                 },
                 (payload) => {
                     const newMessage = payload.new as Message;
@@ -104,7 +104,7 @@ export default function ConversationPage() {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'messages',
-                    filter: `customer_id=eq.${customerId}`
+                    filter: `customer_id=eq.${customerId},company_id=eq.${companyId}`
                 },
                 () => {
                     queryClient.invalidateQueries({ queryKey: ['messages', customerId, activeChannel, companyId] });

@@ -1,5 +1,3 @@
-import { parsePdfText } from '@/shared/lib/pdf-utils'
-
 export interface ParsedInvoiceData {
     customer_name?: string
     cif?: string
@@ -305,6 +303,7 @@ export async function parseInvoiceLocally(file: File): Promise<ParsedInvoiceData
     }
 
     try {
+        const { parsePdfText } = await import('@/shared/lib/pdf-utils')
         const { text } = await parsePdfText(file)
         console.log('Local parser: extracted text length', text.length)
 

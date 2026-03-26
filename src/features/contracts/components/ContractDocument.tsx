@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { Customer, SupplyPoint, TariffVersion, ContractTemplate } from '@/shared/types'
-import { Supplier } from '@/types/tariff'
+import { Supplier } from '@/shared/types'
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_CONTRACT_TEMPLATE: Omit<ContractTemplate, 'id' | 'company_id' | 'created_at' | 'updated_at'> = {

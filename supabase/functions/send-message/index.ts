@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { encode as base64Encode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
 
 import { getCorsHeaders } from "../_shared/cors.ts"
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts"
 
 /** Encode a UTF-8 string to base64url (RFC 4648 §5) */
 function toBase64Url(str: string): string {
@@ -155,6 +156,17 @@ serve(async (req: Request) => {
 
         verifiedCompanyId = callerUser.company_id
 
+        // Rate limit: max 200 messages per hour per company
+        const rl = await checkRateLimit({
+            action: 'send-message',
+            companyId: verifiedCompanyId,
+            maxRequests: 200,
+            windowSeconds: 3600,
+        })
+        if (!rl.allowed) {
+            return rateLimitResponse(rl, corsHeaders)
+        }
+
         const reqBody = await req.json()
         const { messageId } = reqBody
 
@@ -195,7 +207,7 @@ serve(async (req: Request) => {
 
             const tokenData = await tokenResponse.json();
             if (!tokenResponse.ok) {
-                console.error('Google Auth error details:', JSON.stringify(tokenData));
+                console.error('Google Auth error:', tokenData.error ?? tokenResponse.status);
                 throw new Error('Error de autenticación con Google. Verifica las credenciales de Gmail.');
             }
 
@@ -269,7 +281,7 @@ serve(async (req: Request) => {
             })
 
             const result = await response.json()
-            console.log(`[WhatsApp] API response:`, JSON.stringify(result))
+            console.log(`[WhatsApp] API response status: ${response.status}, messages: ${result.messages?.length ?? 0}`)
             if (!response.ok) {
                 console.error('WhatsApp API error details:', JSON.stringify(result));
                 throw new Error('Error al enviar el mensaje de WhatsApp.');

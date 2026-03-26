@@ -4,9 +4,71 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EnergyDeal CRM</title>
+    <meta name="description" content="EnergyDeal CRM - La plataforma de comparación energética con IA para aseguradoras y corredurías. Compara tarifas de luz y gas, gestiona clientes y automatiza contratos." />
+    <title>EnergyDeal CRM - Comparador Energético con IA para Aseguradoras</title>
+
+    <!-- Canonical & hreflang -->
+    <link rel="canonical" href="https://comparadorluz.vercel.app/" />
+    <link rel="alternate" hreflang="es-ES" href="https://comparadorluz.vercel.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="EnergyDeal CRM - Comparador Energético con IA para Aseguradoras" />
+    <meta property="og:description" content="EnergyDeal CRM - La plataforma de comparación energética con IA para aseguradoras y corredurías. Compara tarifas de luz y gas, gestiona clientes y automatiza contratos." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:url" content="https://comparadorluz.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EnergyDeal CRM - Comparador Energético con IA para Aseguradoras" />
+    <meta name="twitter:description" content="EnergyDeal CRM - La plataforma de comparación energética con IA para aseguradoras y corredurías. Compara tarifas de luz y gas, gestiona clientes y automatiza contratos." />
+    <meta name="twitter:image" content="/og-image.png" />
+
+    <!-- Preconnect Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "EnergyDeal CRM",
+      "description": "Plataforma de comparación energética con IA para aseguradoras y corredurías en España",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://comparadorluz.vercel.app",
+      "inLanguage": "es",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Starter",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        {
+          "@type": "Offer",
+          "name": "Professional",
+          "price": "19",
+          "priceCurrency": "EUR"
+        },
+        {
+          "@type": "Offer",
+          "name": "Enterprise",
+          "price": "49",
+          "priceCurrency": "EUR"
+        }
+      ],
+      "provider": {
+        "@type": "Organization",
+        "name": "EnergyDeal"
+      }
+    }
+    </script>
   </head>
   <body>
+    <noscript><div style="padding:2rem;text-align:center"><h1>EnergyDeal CRM</h1><p>Esta aplicación requiere JavaScript para funcionar. Por favor, habilita JavaScript en tu navegador.</p></div></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

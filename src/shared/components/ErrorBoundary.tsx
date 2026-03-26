@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         Algo ha ido mal
                     </h2>
                     <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>
-                        {this.state.error?.message || 'Se ha producido un error inesperado.'}
+                        Se ha producido un error inesperado.
                     </p>
                     <button
                         onClick={() => window.location.reload()}
@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             cursor: 'pointer',
                         }}
                     >
-                        Recargar pagina
+                        Recargar página
                     </button>
                 </div>
             )

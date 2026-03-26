@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { DetectedTariff } from '@/types/tariff';
+import { DetectedTariff } from '@/shared/types';
 
 interface RateInput {
     period?: string;

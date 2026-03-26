@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { TariffRate, TariffWizardState } from '@/types/tariff';
+import { useEffect, useRef } from 'react';
+import { TariffRate, TariffWizardState } from '@/shared/types';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface Step5Props {
@@ -10,9 +10,12 @@ interface Step5Props {
 
 export function Step5FeesAndTaxes({ data, onChange, onMetadataChange }: Step5Props) {
     const feesAndTaxes = data.rates.filter(r => ['fixed_fee', 'tax', 'discount'].includes(r.item_type));
+    const initialized = useRef(false);
 
     // Add default 21% IVA on first mount if no tax exists
     useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
         const hasTax = data.rates.some(r => r.item_type === 'tax');
         if (!hasTax) {
             const ivaRate: TariffRate = {

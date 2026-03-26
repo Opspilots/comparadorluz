@@ -1,4 +1,4 @@
-import { TariffRate } from '@/types/tariff';
+import { TariffRate } from '@/shared/types';
 import { Trash2 } from 'lucide-react';
 
 interface ValidityPriceGroupProps {

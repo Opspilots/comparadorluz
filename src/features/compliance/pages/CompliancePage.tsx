@@ -51,7 +51,7 @@ export function CompliancePage() {
                             Cumplimiento Normativo
                         </h1>
                         <p style={{ margin: 0, fontSize: '0.8125rem', color: '#64748b' }}>
-                            RGPD / LOPD-GDD / RD 88/2026 — Gestion de consentimientos, derechos ARCO+ y retencion de datos
+                            RGPD / LOPD-GDD / RD 88/2026 — Gestión de consentimientos, derechos ARCO+ y retención de datos
                         </p>
                     </div>
                 </div>

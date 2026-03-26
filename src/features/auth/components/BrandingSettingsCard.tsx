@@ -392,7 +392,7 @@ export function BrandingSettingsCard() {
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                         }}>
-                            CRM Energia
+                            CRM Energía
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, Suspense, lazy } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
@@ -109,30 +109,34 @@ function AdminRoute({ children }: { children: JSX.Element }) {
     const [role, setRole] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [authError, setAuthError] = useState(false)
-    const location = useLocation()
 
     useEffect(() => {
+        let cancelled = false
         const checkRole = async () => {
             setLoading(true)
             try {
                 const { data: { user } } = await supabase.auth.getUser()
+                if (cancelled) return
                 if (user) {
                     const { data } = await supabase
                         .from('users')
                         .select('role')
                         .eq('id', user.id)
                         .maybeSingle()
+                    if (cancelled) return
                     setRole(data?.role || null)
                 } else {
                     setAuthError(true)
                 }
             } catch {
+                if (cancelled) return
                 setAuthError(true)
             }
             setLoading(false)
         }
         checkRole()
-    }, [location.pathname])
+        return () => { cancelled = true }
+    }, [])
 
     if (loading) return <div>Cargando...</div>
     if (authError) return <Navigate to="/login" />
@@ -208,6 +212,13 @@ function App() {
                                         <Route path="/contracts/new" element={<ContractForm />} />
                                         <Route path="/contracts/:id" element={<ContractForm />} />
                                         <Route path="/contracts/:id/view" element={<ContractPreview />} />
+                                        <Route path="*" element={
+                                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                                <h1 className="text-4xl font-bold text-slate-800 mb-2">404</h1>
+                                                <p className="text-lg text-slate-500 mb-6">Página no encontrada</p>
+                                                <a href="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</a>
+                                            </div>
+                                        } />
                                     </Routes>
                                 </MainLayout>
                             </PrivateRoute>

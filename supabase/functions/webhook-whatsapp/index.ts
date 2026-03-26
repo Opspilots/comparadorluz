@@ -74,7 +74,9 @@ serve(async (req: Request) => {
 
             const body = JSON.parse(bodyText)
 
-            console.log('Received WhatsApp payload:', JSON.stringify(body))
+            const msgCount = body.entry?.[0]?.changes?.[0]?.value?.messages?.length ?? 0
+            const senderType = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.type ?? 'unknown'
+            console.log(`Received WhatsApp webhook: ${msgCount} message(s), type: ${senderType}`)
 
             // Check if it's a valid WhatsApp message
             const entry = body.entry?.[0]
@@ -103,17 +105,18 @@ serve(async (req: Request) => {
 
                 // Find customer by phone — try multiple phone format variants
                 // Numbers may be stored with or without country code prefix
-                const phoneVariants = [from, `+${from}`]
+                const phoneVariants: string[] = [from, `+${from}`]
                 // If number starts with country code (e.g., 34 for Spain), also try without it
                 if (from.length > 9 && from.startsWith('34')) {
                     phoneVariants.push(from.slice(2), `+${from.slice(2)}`)
                 }
-                const orFilter = phoneVariants.map(p => `phone.eq.${p}`).join(',')
 
+                // Use parameterized .in() instead of string-concatenated .or()
+                // to prevent PostgREST filter injection
                 const { data: contact } = await supabaseClient
                     .from('contacts')
                     .select('id, customer_id, company_id')
-                    .or(orFilter)
+                    .in('phone', phoneVariants)
                     .maybeSingle()
 
                 if (contact) {

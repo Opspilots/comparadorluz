@@ -25,9 +25,23 @@ export default defineConfig({
             target: 'esnext',
         },
     },
+    esbuild: {
+        drop: ['console', 'debugger'],
+    },
     build: {
         target: 'esnext',
-        chunkSizeWarningLimit: 2000,
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    supabase: ['@supabase/supabase-js'],
+                    ui: ['@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-toast'],
+                    charts: ['recharts'],
+                    'pdf-renderer': ['@react-pdf/renderer'],
+                },
+            },
+        },
     },
     test: {
         globals: true,

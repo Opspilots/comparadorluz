@@ -111,7 +111,7 @@ export function useComparatorState() {
         const timeout = setTimeout(() => {
             try {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { selectedCustomer, selectedSP, ...persistableState } = state
+                const { selectedCustomer, selectedSP, cif, cups, ...persistableState } = state
                 localStorage.setItem(storageKey, JSON.stringify(persistableState))
             } catch (error) {
                 console.error('Error saving state:', error)

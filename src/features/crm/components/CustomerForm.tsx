@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
+import { customerSchema, contactSchema, getFirstZodError } from '@/shared/lib/validations'
 
 import type { CustomerStatus, Commissioner } from '@/shared/types'
 
@@ -136,16 +137,22 @@ export function CustomerForm() {
         setLoading(true)
         setError(null)
 
-        // Validate CIF/NIF format
-        const isValidFormat =
-            /^[0-9]{8}[A-Z]$/.test(cif) ||
-            /^[XYZ][0-9]{7}[A-Z]$/.test(cif) ||
-            /^[A-Z][0-9]{7}[0-9A-Z]$/.test(cif);
+        // Validate form data with Zod schema
+        const validation = customerSchema.safeParse({
+            cif,
+            name,
+            customerType,
+            status,
+            province: province || undefined,
+            city: city || undefined,
+            address: address || undefined,
+            assignedTo: assignedTo || null,
+        })
 
-        if (!isValidFormat) {
-            setError('El NIF/CIF no tiene un formato válido (Ej: 12345678A, B12345678)');
-            setLoading(false);
-            return;
+        if (!validation.success) {
+            setError(getFirstZodError(validation) ?? 'Error de validación')
+            setLoading(false)
+            return
         }
 
         try {
@@ -198,6 +205,39 @@ export function CustomerForm() {
                 customerId = newCust.id;
             }
 
+            // Validate contacts before saving
+            if (customerType === 'particular') {
+                if (partEmail) {
+                    const emailResult = contactSchema.shape.email.safeParse(partEmail)
+                    if (emailResult.success === false) {
+                        throw new Error(emailResult.error.issues[0]?.message || 'Email de contacto no válido')
+                    }
+                }
+                if (partPhone) {
+                    const phoneResult = contactSchema.shape.phone.safeParse(partPhone)
+                    if (phoneResult.success === false) {
+                        throw new Error(phoneResult.error.issues[0]?.message || 'Teléfono de contacto no válido')
+                    }
+                }
+            } else {
+                for (const item of companyEmails) {
+                    if (item.value.trim()) {
+                        const emailResult = contactSchema.shape.email.safeParse(item.value)
+                        if (emailResult.success === false) {
+                            throw new Error(`Email "${item.value}" no válido: ${emailResult.error.issues[0]?.message}`)
+                        }
+                    }
+                }
+                for (const item of companyPhones) {
+                    if (item.value.trim()) {
+                        const phoneResult = contactSchema.shape.phone.safeParse(item.value)
+                        if (phoneResult.success === false) {
+                            throw new Error(`Teléfono "${item.value}" no válido: ${phoneResult.error.issues[0]?.message}`)
+                        }
+                    }
+                }
+            }
+
             // HANDLE CONTACTS (Create or Update)
             if (customerType === 'particular') {
                 // Particular: Upsert Primary (Search by customer_id + is_primary/position?)
@@ -222,9 +262,11 @@ export function CustomerForm() {
                     };
 
                     if (existingContacts && existingContacts.length > 0) {
-                        await supabase.from('contacts').update(contactPayload).eq('id', existingContacts[0].id);
+                        const { error: contactError } = await supabase.from('contacts').update(contactPayload).eq('id', existingContacts[0].id);
+                        if (contactError) throw contactError;
                     } else {
-                        await supabase.from('contacts').insert(contactPayload);
+                        const { error: contactError } = await supabase.from('contacts').insert(contactPayload);
+                        if (contactError) throw contactError;
                     }
                 }
             } else {
@@ -270,9 +312,11 @@ export function CustomerForm() {
 
                     if (!contact.isNew) {
                         // key is the actual contact ID
-                        await supabase.from('contacts').update(payload).eq('id', key);
+                        const { error: contactError } = await supabase.from('contacts').update(payload).eq('id', key);
+                        if (contactError) throw contactError;
                     } else {
-                        await supabase.from('contacts').insert(payload);
+                        const { error: contactError } = await supabase.from('contacts').insert(payload);
+                        if (contactError) throw contactError;
                     }
                 }
             }

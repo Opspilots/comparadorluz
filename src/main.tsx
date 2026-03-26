@@ -1,21 +1,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { HelmetProvider } from 'react-helmet-async'
 import App from './App'
 import './index.css'
-import { pdfjs } from 'react-pdf';
+// PDF worker configuration moved to src/shared/lib/pdf-utils.ts
+// so it's only loaded when PDF features are actually used (lazy routes).
 
-// Worker configuration
-// Manual copy to public because Vite bundling was inconsistent
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
+// Using the user-friendly ErrorBoundary from shared components (imported in App.tsx).
+// This top-level boundary is a last-resort fallback — no stack traces exposed.
+class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
     constructor(props: { children: React.ReactNode }) {
         super(props);
-        this.state = { hasError: false, error: null };
+        this.state = { hasError: false };
     }
 
-    static getDerivedStateFromError(error: Error) {
-        return { hasError: true, error };
+    static getDerivedStateFromError() {
+        return { hasError: true };
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -25,16 +25,15 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     render() {
         if (this.state.hasError) {
             return (
-                <div style={{ padding: '2rem', color: 'red', fontFamily: 'monospace' }}>
-                    <h1>Algo salió mal.</h1>
-                    <h3 style={{ marginTop: '1rem' }}>Error:</h3>
-                    <pre style={{ background: '#fef2f2', padding: '1rem', borderRadius: '4px', overflowX: 'auto' }}>
-                        {this.state.error?.toString()}
-                    </pre>
-                    <h3 style={{ marginTop: '1rem' }}>Stack Trace:</h3>
-                    <pre style={{ background: '#f8fafc', padding: '1rem', borderRadius: '4px', overflowX: 'auto', fontSize: '0.8rem' }}>
-                        {this.state.error?.stack}
-                    </pre>
+                <div style={{ padding: '3rem', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '480px', margin: '4rem auto' }}>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.5rem' }}>Algo salió mal</h1>
+                    <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Se ha producido un error inesperado.</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{ padding: '0.625rem 1.25rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 500, cursor: 'pointer' }}
+                    >
+                        Recargar página
+                    </button>
                 </div>
             );
         }
@@ -45,8 +44,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-        <ErrorBoundary>
-            <App />
-        </ErrorBoundary>
+        <HelmetProvider>
+            <RootErrorBoundary>
+                <App />
+            </RootErrorBoundary>
+        </HelmetProvider>
     </React.StrictMode>,
 )

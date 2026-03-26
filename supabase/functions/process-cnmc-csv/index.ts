@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
 import { getCorsHeaders } from "../_shared/cors.ts"
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts"
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req)
@@ -49,6 +50,17 @@ serve(async (req: Request) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 403,
             })
+        }
+
+        // Rate limit: max 20 CNMC CSV parses per hour per user
+        const rl = await checkRateLimit({
+            action: 'process-cnmc-csv',
+            companyId: user.id,
+            maxRequests: 20,
+            windowSeconds: 3600,
+        })
+        if (!rl.allowed) {
+            return rateLimitResponse(rl, corsHeaders)
         }
 
         const { csv_content } = await req.json()

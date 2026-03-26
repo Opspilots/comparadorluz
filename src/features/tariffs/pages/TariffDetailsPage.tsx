@@ -8,11 +8,10 @@ import { useToast } from '@/hooks/use-toast';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 
-import { TariffRate, TariffVersion, Supplier, TariffStructure, TariffSchedule } from '@/types/tariff';
+import { TariffRate, TariffVersion, Supplier, TariffStructure, TariffSchedule } from '@/shared/types';
 import { findActiveRate, hasRateHistory, toPowerMonthly } from '../lib/tariffUtils';
 
 interface JoinedTariff extends TariffVersion {
-    tariff_name?: string; // DB column name (may differ from TariffVersion.name)
     tariff_rates: TariffRate[];
     tariff_schedules: TariffSchedule[];
     tariff_structures: TariffStructure;
@@ -203,7 +202,7 @@ export default function TariffDetailsPage() {
                     </button>
                     <div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, color: '#111827' }}>
-                            {removeEmojis(tariff.tariff_name || tariff.name)}
+                            {removeEmojis(tariff.tariff_name || tariff.name || '')}
                             <span style={badgeStyle(tariff.is_active)}>
                                 {tariff.is_active ? 'Activa' : 'Inactiva'}
                             </span>

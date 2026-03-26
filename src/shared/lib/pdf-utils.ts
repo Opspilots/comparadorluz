@@ -1,5 +1,8 @@
 import { pdfjs } from 'react-pdf';
 
+// Worker configuration — loaded lazily only when PDF features are used
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
 export interface ParsedPdfData {
     text: string;
     totalPages: number;

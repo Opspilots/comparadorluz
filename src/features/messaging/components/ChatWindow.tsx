@@ -145,6 +145,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
             setNewMessage('');
             setSubject('');
             setSelectedFiles([]);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (error) {
             console.error("Error sending message:", error);
             toast({

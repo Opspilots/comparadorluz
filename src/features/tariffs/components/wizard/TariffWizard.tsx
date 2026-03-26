@@ -9,7 +9,7 @@ import { Step3BPowerPrices } from './Step3BPowerPrices';
 import { Step4ScheduleRules } from './Step4ScheduleRules';
 import { Step5FeesAndTaxes } from './Step5FeesAndTaxes';
 import { Step6Summary } from './Step6Summary';
-import { TariffWizardState, TariffStructure, DetectedTariff, TariffRate, TariffRateType, Supplier } from '@/types/tariff';
+import { TariffWizardState, TariffStructure, DetectedTariff, TariffRate, TariffRateType, Supplier } from '@/shared/types';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronRight, ChevronLeft, ListChecks, Building2, X } from 'lucide-react';
 import { Step3BGasFixedFee } from './Step3BGasFixedFee';

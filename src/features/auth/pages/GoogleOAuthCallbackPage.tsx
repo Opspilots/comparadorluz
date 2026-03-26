@@ -23,9 +23,11 @@ export function GoogleOAuthCallbackPage() {
 
         const handleCallback = async () => {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-                if (sessionError) throw sessionError
+                const { data: { user }, error: userError } = await supabase.auth.getUser()
+                if (userError) throw userError
 
+                // After OAuth redirect, session is available with provider tokens
+                const { data: { session } } = await supabase.auth.getSession()
                 const providerToken = session?.provider_token ?? null
                 const providerRefreshToken = session?.provider_refresh_token ?? null
 
@@ -41,7 +43,7 @@ export function GoogleOAuthCallbackPage() {
                     ...existingSettings,
                     google_refresh_token: providerRefreshToken,
                     google_access_token: providerToken ?? undefined,
-                    email_from: session?.user?.email ?? existingSettings.email_from
+                    email_from: user?.email ?? existingSettings.email_from
                 })
 
                 setStatus('success')

@@ -8,7 +8,7 @@ import { SwitchingTracker } from './SwitchingTracker'
 import { SwitchingDialog } from './SwitchingDialog'
 import { sendConsentRequest, getAvailableChannels } from '@/features/compliance/lib/consent-notification'
 import type { Customer, SupplyPoint, TariffVersion, ContractTemplate, SwitchingStatus, Contract, ConsentType } from '@/shared/types'
-import type { Supplier } from '@/types/tariff'
+import type { Supplier } from '@/shared/types'
 
 interface ContractPreviewData {
     id: string;

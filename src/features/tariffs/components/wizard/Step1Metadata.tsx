@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { TariffStructure } from '@/types/tariff';
+import { TariffStructure } from '@/shared/types';
 
 interface Step1Props {
     data: {

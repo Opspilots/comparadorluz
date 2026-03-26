@@ -52,7 +52,14 @@
       "Bash(find /c/Users/pelay/OneDrive/Escritorio/comparadorluz/supabase/migrations -name \"*.sql\" -exec grep -l \"RLS\\\\|ENABLE ROW LEVEL SECURITY\" {})",
       "Bash(sed 's/ *\\(.*//')",
       "Bash(sed 's/.*ALTER TABLE //')",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(npm audit:*)",
+      "Bash(find supabase/migrations -name \"*.sql\" -exec grep -H \"ALTER TABLE companies\" {})",
+      "Bash(npm install:*)",
+      "Bash(grep '\"\"zod\"\"' node_modules/zod/package.json)",
+      "Bash(grep '\"\"version\"\"' node_modules/zod/package.json)",
+      "Bash(npx vitest:*)",
+      "mcp__c393aabe-34a2-413e-96d0-cdf99f2ac9d4__execute_sql"
     ]
   },
   "enableAllProjectMcpServers": true,

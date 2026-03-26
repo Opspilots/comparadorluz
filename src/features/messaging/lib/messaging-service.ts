@@ -167,7 +167,7 @@ export async function getMessages(customerId: string, companyId: string, channel
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPE_PREFIXES = ['image/', 'application/pdf', 'text/', 'application/vnd.', 'application/msword'];
 
-export async function uploadAttachment(file: File) {
+export async function uploadAttachment(file: File, companyId?: string) {
     if (file.size > MAX_FILE_SIZE) {
         throw new Error(`El archivo "${file.name}" es demasiado grande (máx 10 MB)`);
     }
@@ -175,9 +175,12 @@ export async function uploadAttachment(file: File) {
         throw new Error(`Tipo de archivo no permitido: ${file.type}`);
     }
 
+    // Resolve companyId for tenant-scoped storage path
+    const tenantId = companyId || await getUserCompanyId();
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const filePath = `${tenantId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
         .from('message-attachments')

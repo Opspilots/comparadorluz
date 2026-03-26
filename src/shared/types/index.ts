@@ -197,12 +197,34 @@ export interface TariffComponent {
     created_at: string;
 }
 
+export type TariffStructureCode = '2.0TD' | '3.0TD' | '6.1TD' | '6.0' | '3.0A' | '6.1A' | 'RL.1' | 'RL.2' | 'RL.3' | 'RL.4';
+export type SupplyType = 'electricity' | 'gas';
+
+export interface TariffStructure {
+    id: string;
+    code: TariffStructureCode;
+    name: string;
+    energy_periods: number;
+    power_periods: number;
+    default_schedule_template_id?: string;
+}
+
+export interface Supplier {
+    id: string;
+    name: string;
+    is_active: boolean;
+    created_at?: string;
+}
+
+export type TariffCompletionStatus = 'draft' | 'partial' | 'complete';
+
 export interface TariffVersion {
     id: string;
     company_id: string;
     batch_id: string;
     file_id?: string;
-    supplier_name: string; // Matches schema
+    supplier_id?: string;
+    supplier_name?: string; // Legacy — prefer supplier_id
     tariff_name: string;
     tariff_code?: string;
     tariff_type: string;
@@ -214,13 +236,21 @@ export interface TariffVersion {
     automation_source?: string;
     last_synced_at?: string;
     contract_duration?: number | null;
+    completion_status?: TariffCompletionStatus;
     commission_type?: 'percentage' | 'fixed';
     commission_value?: number;
+    source_file_id?: string;
+    name?: string; // Alias used by wizard flow
+    code?: string; // Alias used by wizard flow
+    tariff_structure_id?: string;
     created_at: string;
     updated_at: string;
     tariff_components?: TariffComponent[]; // For joined data
     tariff_rates?: TariffRate[]; // For joined data
+    suppliers?: Supplier; // For joined data
 }
+
+export type TariffRateType = 'energy' | 'power' | 'fixed_fee' | 'discount' | 'tax' | 'reactive' | 'excess_power';
 
 export interface TariffRate {
     id: string;
@@ -232,9 +262,67 @@ export interface TariffRate {
     price_formula?: string;
     index_type?: string;
     margin?: number;
+    confidence_score?: number;
+    source_page?: number;
+    source_bbox?: { x: number; y: number; w: number; h: number };
     contract_duration?: number | null;
     valid_from?: string; // Price validity start
     valid_to?: string;   // Price validity end
+}
+
+export interface TariffSchedule {
+    id: string;
+    tariff_version_id: string;
+    month_mask: number[];
+    day_type_mask: number[];
+    context_calendar?: string;
+    start_hour: string;
+    end_hour: string;
+    period: string;
+}
+
+export interface TariffWizardState {
+    metadata: {
+        supplier_id: string;
+        tariff_structure_id: string;
+        name: string;
+        code: string;
+        is_indexed: boolean;
+        valid_from: string;
+        contract_duration: number | null;
+        commission_type: 'percentage' | 'fixed';
+        commission_value: number;
+    };
+    rates: TariffRate[];
+    schedules: TariffSchedule[];
+    currentStep: number;
+    validationErrors: Record<string, string>;
+}
+
+export interface PriceSet {
+    valid_from?: string;
+    valid_to?: string;
+    contract_duration?: number | null;
+    energy_prices: Array<{ period?: string; price: number }>;
+    power_prices: Array<{ period?: string; price: number; unit?: string }>;
+    fixed_term_prices: Array<{ period?: string; price: number; unit?: string }>;
+}
+
+export interface DetectedTariff {
+    id: string;
+    fileName: string;
+    supplier_name?: string;
+    tariff_name?: string;
+    tariff_structure?: string;
+    supply_type?: 'electricity' | 'gas';
+    contract_duration?: number | null;
+    is_indexed?: boolean;
+    valid_from?: string;
+    valid_to?: string | null;
+    price_sets: PriceSet[];
+    energy_prices: Array<{ period?: string; price: number }>;
+    power_prices: Array<{ period?: string; price: number; unit?: string }>;
+    fixed_term_prices: Array<{ period?: string; price: number; unit?: string }>;
 }
 
 // ============================================================================

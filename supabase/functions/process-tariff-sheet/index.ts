@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
 import { getCorsHeaders } from "../_shared/cors.ts"
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts"
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req)
@@ -56,6 +57,18 @@ serve(async (req: Request) => {
         }
 
         const company_id = userData.company_id
+
+        // Rate limit: max 20 tariff sheet parses per hour per company
+        const rl = await checkRateLimit({
+            action: 'process-tariff-sheet',
+            companyId: company_id,
+            maxRequests: 20,
+            windowSeconds: 3600,
+        })
+        if (!rl.allowed) {
+            return rateLimitResponse(rl, corsHeaders)
+        }
+
         const { file_path, file_id } = await req.json()
 
         if (!file_path) {

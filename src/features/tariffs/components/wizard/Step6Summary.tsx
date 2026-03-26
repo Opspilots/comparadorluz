@@ -1,4 +1,4 @@
-import { TariffWizardState } from '@/types/tariff';
+import { TariffWizardState } from '@/shared/types';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { useState } from 'react';

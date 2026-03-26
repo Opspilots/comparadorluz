@@ -52,7 +52,7 @@ export function rankTariffs(
             else if (c.valid_from && c.valid_from > today) return false;
             else if (c.valid_to && c.valid_to < today) return false;
             // Skip rates with null price (unless they have a formula for indexed tariffs)
-            if (c.price === null && c.price === undefined && !c.price_formula) return false;
+            if ((c.price === null || c.price === undefined) && !c.price_formula) return false;
             return true;
         });
 

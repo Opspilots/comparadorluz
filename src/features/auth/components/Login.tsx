@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
+import { loginSchema, getFirstZodError } from '@/shared/lib/validations'
 import { LandingHeader } from './landing/LandingHeader'
 import { HeroSection } from './landing/HeroSection'
 import { MethodSection } from './landing/MethodSection'
@@ -23,6 +24,13 @@ export function Login() {
         e.preventDefault()
         setLoading(true)
         setMessage(null)
+
+        const validation = loginSchema.safeParse({ email, password })
+        if (!validation.success) {
+            setMessage(getFirstZodError(validation) ?? 'Error de validación')
+            setLoading(false)
+            return
+        }
 
         const { error } = await supabase.auth.signInWithPassword({ email, password })
 

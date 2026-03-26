@@ -12,6 +12,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 import { getCorsHeaders } from "../_shared/cors.ts"
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts"
 
 // Known aggregator/comparison portals that are NOT energy suppliers
 const KNOWN_AGGREGATORS = [
@@ -625,6 +626,18 @@ Deno.serve(async (req: Request) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 401,
             });
+        }
+
+        // Rate limit: max 50 document parses per hour per user
+        // Use user ID as company_id proxy since this function doesn't track companies
+        const rl = await checkRateLimit({
+            action: 'parse-tariff-document',
+            companyId: authUser.id,
+            maxRequests: 50,
+            windowSeconds: 3600,
+        })
+        if (!rl.allowed) {
+            return rateLimitResponse(rl, corsHeaders)
         }
 
         // 2. Parse request body

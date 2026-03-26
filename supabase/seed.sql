@@ -16,6 +16,8 @@ DECLARE
   v_batch_id UUID;
   v_endesa_v1 UUID;
   v_iberdrola_v1 UUID;
+  v_endesa_supplier_id UUID;
+  v_iberdrola_supplier_id UUID;
 BEGIN
   -- Get first company and user
   SELECT id INTO v_company_id FROM public.companies LIMIT 1;
@@ -26,26 +28,37 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Get or create supplier references
+  SELECT id INTO v_endesa_supplier_id FROM public.suppliers WHERE LOWER(name) = 'endesa' AND company_id = v_company_id LIMIT 1;
+  IF v_endesa_supplier_id IS NULL THEN
+    INSERT INTO public.suppliers (company_id, name, is_active) VALUES (v_company_id, 'Endesa', true) RETURNING id INTO v_endesa_supplier_id;
+  END IF;
+
+  SELECT id INTO v_iberdrola_supplier_id FROM public.suppliers WHERE LOWER(name) = 'iberdrola' AND company_id = v_company_id LIMIT 1;
+  IF v_iberdrola_supplier_id IS NULL THEN
+    INSERT INTO public.suppliers (company_id, name, is_active) VALUES (v_company_id, 'Iberdrola', true) RETURNING id INTO v_iberdrola_supplier_id;
+  END IF;
+
   -- Create a published batch
   INSERT INTO public.tariff_batches (company_id, uploaded_by, status, file_count, published_by, published_at)
   VALUES (v_company_id, v_user_id, 'published', 2, v_user_id, now())
   RETURNING id INTO v_batch_id;
 
   -- 1. ENDESA Tariffs
-  INSERT INTO public.tariff_versions (company_id, batch_id, supplier_name, tariff_name, tariff_code, tariff_type, valid_from, is_active)
-  VALUES (v_company_id, v_batch_id, 'Endesa', 'One Luz', 'END-ONE-20', '2.0TD', '2026-01-01', true)
+  INSERT INTO public.tariff_versions (company_id, batch_id, supplier_id, tariff_name, tariff_code, tariff_type, valid_from, is_active)
+  VALUES (v_company_id, v_batch_id, v_endesa_supplier_id, 'One Luz', 'END-ONE-20', '2.0TD', '2026-01-01', true)
   RETURNING id INTO v_endesa_v1;
 
   INSERT INTO public.tariff_components (company_id, tariff_version_id, component_type, period, price_eur_kwh, price_eur_kw_year, fixed_price_eur_month)
-  VALUES 
+  VALUES
     (v_company_id, v_endesa_v1, 'energy_price', 'P1', 0.145, NULL, NULL),
     (v_company_id, v_endesa_v1, 'energy_price', 'P2', 0.120, NULL, NULL),
     (v_company_id, v_endesa_v1, 'power_price', 'P1', NULL, 35.50, NULL),
     (v_company_id, v_endesa_v1, 'fixed_fee', NULL, NULL, NULL, 4.50);
 
   -- 2. IBERDROLA Tariffs
-  INSERT INTO public.tariff_versions (company_id, batch_id, supplier_name, tariff_name, tariff_code, tariff_type, valid_from, is_active)
-  VALUES (v_company_id, v_batch_id, 'Iberdrola', 'Plan Online', 'IBE-ONL-20', '2.0TD', '2026-01-01', true)
+  INSERT INTO public.tariff_versions (company_id, batch_id, supplier_id, tariff_name, tariff_code, tariff_type, valid_from, is_active)
+  VALUES (v_company_id, v_batch_id, v_iberdrola_supplier_id, 'Plan Online', 'IBE-ONL-20', '2.0TD', '2026-01-01', true)
   RETURNING id INTO v_iberdrola_v1;
 
   INSERT INTO public.tariff_components (company_id, tariff_version_id, component_type, period, price_eur_kwh, price_eur_kw_year, fixed_price_eur_month)

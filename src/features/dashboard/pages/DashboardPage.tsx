@@ -43,7 +43,7 @@ export function DashboardPage() {
             })
         } catch (err) {
             console.error('Error fetching dashboard stats:', err)
-            setError('No se pudieron cargar las estadisticas. Comprueba tu conexion.')
+            setError('No se pudieron cargar las estadísticas. Comprueba tu conexión.')
         } finally {
             setLoading(false)
         }
@@ -91,7 +91,7 @@ export function DashboardPage() {
                     <p className="page-subtitle">Resumen general de tu actividad</p>
                 </div>
                 <button className="btn btn-secondary btn-sm">
-                    <Calendar size={14} /> Ultimos 30 dias
+                    <Calendar size={14} /> Últimos 30 días
                 </button>
             </div>
 
@@ -109,7 +109,7 @@ export function DashboardPage() {
                     value={stats.totalContracts}
                     icon={<FileText size={20} />}
                     trend="up"
-                    subtitle="Historico completo"
+                    subtitle="Histórico completo"
                 />
                 <MetricCard
                     title="Contratos Activos"
@@ -139,7 +139,7 @@ export function DashboardPage() {
                                 fontWeight: 600,
                                 color: 'var(--text-main)',
                             }}>
-                                Acciones Rapidas
+                                Acciones Rápidas
                             </div>
                             <div style={{ padding: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                                 <Link to="/comparator" className="btn btn-primary btn-sm">
@@ -175,14 +175,14 @@ export function DashboardPage() {
                                 <Link to="/crm" style={shortcutLinkStyle}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         <Users size={18} color="var(--color-primary)" />
-                                        <span>Gestion de Clientes</span>
+                                        <span>Gestión de Clientes</span>
                                     </div>
                                     <ArrowRight size={16} color="var(--text-muted)" />
                                 </Link>
                                 <Link to="/contracts" style={shortcutLinkStyle}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         <FileText size={18} color="var(--color-primary)" />
-                                        <span>Gestion de Contratos</span>
+                                        <span>Gestión de Contratos</span>
                                     </div>
                                     <ArrowRight size={16} color="var(--text-muted)" />
                                 </Link>

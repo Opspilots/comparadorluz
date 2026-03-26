@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/shared/lib/supabase';
 import { Loader2, Upload } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { DetectedTariff } from '@/types/tariff';
+import { DetectedTariff } from '@/shared/types';
 
 interface Step1UploadProps {
     onTariffsDetected: (newCandidates: DetectedTariff[], file: File) => void;

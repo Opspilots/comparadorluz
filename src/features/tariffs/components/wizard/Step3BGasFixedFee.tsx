@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { TariffRate, TariffStructure, TariffWizardState } from '@/types/tariff';
+import { TariffRate, TariffStructure, TariffWizardState } from '@/shared/types';
 
 interface Step3BGasProps {
     data: TariffWizardState;

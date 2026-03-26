@@ -229,6 +229,7 @@ export function ComparatorForm() {
                 .eq('tariff_type', inputState.tariffType)
                 .lte('valid_from', today)
                 .or(`valid_to.is.null,valid_to.gte.${today}`)
+                .limit(100)
 
             if (error) throw error
 

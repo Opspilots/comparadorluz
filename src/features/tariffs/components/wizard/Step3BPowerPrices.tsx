@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { TariffRate, TariffStructure, TariffWizardState } from '@/types/tariff';
+import { TariffRate, TariffStructure, TariffWizardState } from '@/shared/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 import { Plus, Trash2, Clock } from 'lucide-react';
 import { ValidityPriceGroup } from './ValidityPriceGroup';
