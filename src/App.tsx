@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useState, useEffect, Suspense, lazy } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
@@ -39,7 +39,7 @@ const CommissionerDetailPage = lazy(() => import('@/features/commissioners/pages
 const SuppliersPage = lazy(() => import('@/features/tariffs/pages/SuppliersPage'))
 const CompliancePage = lazy(() => import('@/features/compliance/pages/CompliancePage').then(m => ({ default: m.CompliancePage })))
 
-function PrivateRoute({ children }: { children: JSX.Element }) {
+function PrivateRouteLayout() {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -102,7 +102,11 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
     if (loading) return <div>Cargando...</div>
     if (!session) return <Navigate to="/login" />
 
-    return children
+    return (
+        <MainLayout>
+            <Outlet />
+        </MainLayout>
+    )
 }
 
 function AdminRoute({ children }: { children: JSX.Element }) {
@@ -170,59 +174,53 @@ function App() {
                     <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
-                        <Route path="/*" element={
-                            <PrivateRoute>
-                                <MainLayout>
-                                    <Routes>
-                                        <Route path="/" element={<DashboardPage />} />
-                                        <Route path="/comparator" element={<ComparatorForm />} />
-                                        <Route path="/comparator/history" element={<ComparisonHistory />} />
-                                        <Route path="/settings" element={<SettingsPage />} />
-                                        <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
-                                        <Route path="/crm" element={<CustomerList />} />
-                                        <Route path="/crm/new" element={<CustomerForm />} />
-                                        <Route path="/crm/:id" element={<CustomerDetails />} />
-                                        <Route path="/crm/:id/edit" element={<CustomerForm />} />
-                                        <Route path="/crm/:customerId/contacts/new" element={<ContactForm />} />
-                                        <Route path="/crm/:customerId/supply-points/new" element={<SupplyPointForm />} />
-                                        <Route path="/commissioners" element={<CommissionersPage />} />
-                                        <Route path="/commissioners/:id" element={<CommissionerDetailPage />} />
+                        <Route element={<PrivateRouteLayout />}>
+                            <Route path="/" element={<DashboardPage />} />
+                            <Route path="/comparator" element={<ComparatorForm />} />
+                            <Route path="/comparator/history" element={<ComparisonHistory />} />
+                            <Route path="/settings" element={<SettingsPage />} />
+                            <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
+                            <Route path="/crm" element={<CustomerList />} />
+                            <Route path="/crm/new" element={<CustomerForm />} />
+                            <Route path="/crm/:id" element={<CustomerDetails />} />
+                            <Route path="/crm/:id/edit" element={<CustomerForm />} />
+                            <Route path="/crm/:customerId/contacts/new" element={<ContactForm />} />
+                            <Route path="/crm/:customerId/supply-points/new" element={<SupplyPointForm />} />
+                            <Route path="/commissioners" element={<CommissionersPage />} />
+                            <Route path="/commissioners/:id" element={<CommissionerDetailPage />} />
 
-                                        {/* Tariffs — admin/manager only */}
-                                        <Route path="/admin/tariffs" element={<AdminRoute><TariffDashboard /></AdminRoute>} />
-                                        <Route path="/admin/tariffs/upload" element={<AdminRoute><TariffUploadPage /></AdminRoute>} />
-                                        <Route path="/admin/tariffs/batches/:id" element={<AdminRoute><BatchDetailsPage /></AdminRoute>} />
-                                        <Route path="/admin/tariffs/new" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
-                                        <Route path="/admin/tariffs/:id" element={<AdminRoute><TariffDetailsPage /></AdminRoute>} />
-                                        <Route path="/admin/tariffs/edit/:id" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
-                                        <Route path="/admin/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                                        <Route path="/admin/compliance" element={<AdminRoute><CompliancePage /></AdminRoute>} />
+                            {/* Tariffs — admin/manager only */}
+                            <Route path="/admin/tariffs" element={<AdminRoute><TariffDashboard /></AdminRoute>} />
+                            <Route path="/admin/tariffs/upload" element={<AdminRoute><TariffUploadPage /></AdminRoute>} />
+                            <Route path="/admin/tariffs/batches/:id" element={<AdminRoute><BatchDetailsPage /></AdminRoute>} />
+                            <Route path="/admin/tariffs/new" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
+                            <Route path="/admin/tariffs/:id" element={<AdminRoute><TariffDetailsPage /></AdminRoute>} />
+                            <Route path="/admin/tariffs/edit/:id" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
+                            <Route path="/admin/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+                            <Route path="/admin/compliance" element={<AdminRoute><CompliancePage /></AdminRoute>} />
 
-                                        {/* Messaging */}
-                                        <Route path="/admin/messages" element={<MessagingLayout />}>
-                                            <Route index element={<MessagingPage />} />
-                                            <Route path="campaigns" element={<CampaignsPage />} />
-                                            <Route path="campaigns/new" element={<CampaignForm />} />
-                                            <Route path="campaigns/:id" element={<CampaignForm />} />
-                                            <Route path="campaigns/:id/edit" element={<CampaignForm />} />
-                                            <Route path=":customerId" element={<ConversationPage />} />
-                                        </Route>
-                                        <Route path="/contracts" element={<ContractList />} />
-                                        <Route path="/contracts/template" element={<AdminRoute><ContractTemplateEditor /></AdminRoute>} />
-                                        <Route path="/contracts/new" element={<ContractForm />} />
-                                        <Route path="/contracts/:id" element={<ContractForm />} />
-                                        <Route path="/contracts/:id/view" element={<ContractPreview />} />
-                                        <Route path="*" element={
-                                            <div className="flex flex-col items-center justify-center py-20 text-center">
-                                                <h1 className="text-4xl font-bold text-slate-800 mb-2">404</h1>
-                                                <p className="text-lg text-slate-500 mb-6">Página no encontrada</p>
-                                                <a href="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</a>
-                                            </div>
-                                        } />
-                                    </Routes>
-                                </MainLayout>
-                            </PrivateRoute>
-                        } />
+                            {/* Messaging */}
+                            <Route path="/admin/messages" element={<MessagingLayout />}>
+                                <Route index element={<MessagingPage />} />
+                                <Route path="campaigns" element={<CampaignsPage />} />
+                                <Route path="campaigns/new" element={<CampaignForm />} />
+                                <Route path="campaigns/:id" element={<CampaignForm />} />
+                                <Route path="campaigns/:id/edit" element={<CampaignForm />} />
+                                <Route path=":customerId" element={<ConversationPage />} />
+                            </Route>
+                            <Route path="/contracts" element={<ContractList />} />
+                            <Route path="/contracts/template" element={<AdminRoute><ContractTemplateEditor /></AdminRoute>} />
+                            <Route path="/contracts/new" element={<ContractForm />} />
+                            <Route path="/contracts/:id" element={<ContractForm />} />
+                            <Route path="/contracts/:id/view" element={<ContractPreview />} />
+                            <Route path="*" element={
+                                <div className="flex flex-col items-center justify-center py-20 text-center">
+                                    <h1 className="text-4xl font-bold text-slate-800 mb-2">404</h1>
+                                    <p className="text-lg text-slate-500 mb-6">Página no encontrada</p>
+                                    <a href="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</a>
+                                </div>
+                            } />
+                        </Route>
                     </Routes>
                 </Suspense>
                 </ErrorBoundary>

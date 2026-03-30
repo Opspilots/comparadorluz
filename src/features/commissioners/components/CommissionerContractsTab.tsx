@@ -15,6 +15,11 @@ export function CommissionerContractsTab({ commissionerId }: CommissionerContrac
     useEffect(() => {
         const fetchContracts = async () => {
             setLoading(true)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) { setLoading(false); return }
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) { setLoading(false); return }
+
             const { data, error } = await supabase
                 .from('contracts')
                 .select(`
@@ -25,6 +30,7 @@ export function CommissionerContractsTab({ commissionerId }: CommissionerContrac
                         suppliers (name)
                     )
                 `)
+                .eq('company_id', profile.company_id)
                 .eq('commercial_id', commissionerId)
                 .order('created_at', { ascending: false })
 

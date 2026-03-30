@@ -109,11 +109,16 @@ export function CustomerDetails() {
         queryKey: ['customer-detail', id],
         queryFn: async () => {
             if (!id) throw new Error('No customer ID')
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No autenticado')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('Perfil no encontrado')
+            const companyId = profile.company_id
             const [custRes, contRes, spRes, contrRes] = await Promise.all([
-                supabase.from('customers').select('*').eq('id', id).single(),
-                supabase.from('contacts').select('*').eq('customer_id', id).order('created_at', { ascending: true }),
-                supabase.from('supply_points').select('*').eq('customer_id', id),
-                supabase.from('contracts').select(`*, tariff_versions (tariff_name, suppliers (name))`).eq('customer_id', id).order('created_at', { ascending: false }),
+                supabase.from('customers').select('*').eq('id', id).eq('company_id', companyId).single(),
+                supabase.from('contacts').select('*').eq('customer_id', id).eq('company_id', companyId).order('created_at', { ascending: true }),
+                supabase.from('supply_points').select('*').eq('customer_id', id).eq('company_id', companyId),
+                supabase.from('contracts').select(`*, tariff_versions (tariff_name, suppliers (name))`).eq('customer_id', id).eq('company_id', companyId).order('created_at', { ascending: false }),
             ])
 
             if (custRes.error) throw custRes.error

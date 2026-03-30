@@ -19,6 +19,7 @@ interface AuthModalProps {
     setPassword: (password: string) => void
     loading: boolean
     message: string | null
+    isError?: boolean
     onSubmit: (e: React.FormEvent) => void
     onGoogleLogin: () => void
 }
@@ -34,6 +35,7 @@ export function AuthModal({
     setPassword,
     loading,
     message,
+    isError = false,
     onSubmit,
     onGoogleLogin,
 }: AuthModalProps) {
@@ -103,7 +105,7 @@ export function AuthModal({
                             {message && (
                                 <div
                                     className={`p-3.5 rounded-xl mb-5 text-sm font-medium ${
-                                        message.startsWith('Error')
+                                        isError
                                             ? 'bg-red-50 text-red-800 border border-red-100'
                                             : 'bg-emerald-50 text-emerald-800 border border-emerald-100'
                                     }`}

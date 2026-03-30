@@ -130,6 +130,7 @@ export function DataSubjectRequests({ companyId }: Props) {
             .from('data_subject_requests')
             .update(updateData)
             .eq('id', id)
+            .eq('company_id', companyId)
 
         if (error) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' })

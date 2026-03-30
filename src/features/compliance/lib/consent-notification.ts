@@ -12,7 +12,7 @@ export const CONSENT_LEGAL_TEXTS: Record<ConsentType, { label: string; text: str
     },
     commercial_contact: {
         label: 'Contacto comercial',
-        text: 'De acuerdo con el Real Decreto 88/2026, autorizo el contacto comercial por los medios indicados para recibir información sobre ofertas y servicios energéticos.',
+        text: 'De acuerdo con la Ley 34/2002 (LSSI-CE), Art. 21, autorizo el contacto comercial por los medios indicados para recibir información sobre ofertas y servicios energéticos.',
         required: true,
         docUrl: 'https://www.boe.es/eli/es/lo/2018/12/05/3/con',
         docLabel: 'Ley Orgánica 3/2018 — LOPDGDD',
@@ -277,7 +277,7 @@ function buildConsentEmailHtml(data: {
         </table>
 
         <div style="text-align: center; margin: 28px 0;">
-            <a href="${data.signingUrl}"
+            <a href="${escapeHtml(data.signingUrl)}"
                style="display: inline-block; background: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
                 Revisar y Firmar
             </a>

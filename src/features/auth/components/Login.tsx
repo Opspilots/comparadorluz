@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
-import { loginSchema, getFirstZodError } from '@/shared/lib/validations'
+import { loginSchema, signupSchema, getFirstZodError } from '@/shared/lib/validations'
 import { LandingHeader } from './landing/LandingHeader'
 import { HeroSection } from './landing/HeroSection'
 import { MethodSection } from './landing/MethodSection'
@@ -16,6 +16,7 @@ export function Login() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [message, setMessage] = useState<string | null>(null)
+    const [isError, setIsError] = useState(false)
     const [showAuthModal, setShowAuthModal] = useState(false)
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
@@ -24,9 +25,11 @@ export function Login() {
         e.preventDefault()
         setLoading(true)
         setMessage(null)
+        setIsError(false)
 
         const validation = loginSchema.safeParse({ email, password })
         if (!validation.success) {
+            setIsError(true)
             setMessage(getFirstZodError(validation) ?? 'Error de validación')
             setLoading(false)
             return
@@ -35,8 +38,10 @@ export function Login() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
 
         if (error) {
+            setIsError(true)
             setMessage('Credenciales incorrectas. Comprueba tu email y contraseña.')
         } else {
+            setIsError(false)
             setMessage('Sesion iniciada correctamente.')
             navigate('/')
         }
@@ -47,6 +52,15 @@ export function Login() {
         e.preventDefault()
         setLoading(true)
         setMessage(null)
+        setIsError(false)
+
+        const validation = signupSchema.safeParse({ email, password })
+        if (!validation.success) {
+            setIsError(true)
+            setMessage(getFirstZodError(validation) ?? 'Error de validación')
+            setLoading(false)
+            return
+        }
 
         try {
             const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -69,10 +83,12 @@ export function Login() {
 
             if (rpcError) throw rpcError
 
+            setIsError(false)
             setMessage('Cuenta creada! Se ha configurado tu empresa automaticamente. Ya puedes iniciar sesion.')
             setAuthMode('login')
         } catch (error) {
             const err = error as Error
+            setIsError(true)
             setMessage('No se pudo crear la cuenta. Revisa los datos e intenta de nuevo.')
             console.error(err)
             // Sign out to prevent orphaned auth user without company data
@@ -95,6 +111,7 @@ export function Login() {
             if (error) throw error
         } catch (error) {
             const err = error as Error
+            setIsError(true)
             setMessage('Error al iniciar sesion con Google. Intenta de nuevo.')
             console.error(err)
             setLoading(false)
@@ -130,6 +147,7 @@ export function Login() {
                 setPassword={setPassword}
                 loading={loading}
                 message={message}
+                isError={isError}
                 onSubmit={authMode === 'login' ? handleLogin : handleSignUp}
                 onGoogleLogin={handleGoogleLogin}
             />

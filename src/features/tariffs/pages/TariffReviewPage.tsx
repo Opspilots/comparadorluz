@@ -6,7 +6,7 @@ import { TariffBatch, TariffVersion, TariffRate } from '@/shared/types';
 import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TariffComponentsEditor } from '../components/TariffComponentsEditor';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function TariffReviewPage() {
     const { batchId } = useParams<{ batchId: string }>();
@@ -14,6 +14,16 @@ export default function TariffReviewPage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+    const [companyId, setCompanyId] = useState<string | null>(null);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return;
+            supabase.from('users').select('company_id').eq('id', user.id).maybeSingle().then(({ data: profile }) => {
+                if (profile?.company_id) setCompanyId(profile.company_id);
+            });
+        });
+    }, []);
 
     const { data: batch, isLoading: isBatchLoading } = useQuery({
         queryKey: ['tariff-batch', batchId],
@@ -30,16 +40,17 @@ export default function TariffReviewPage() {
     });
 
     const { data: versions, isLoading: isVersionsLoading } = useQuery({
-        queryKey: ['tariff-batch-versions', batchId],
+        queryKey: ['tariff-batch-versions', batchId, companyId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('tariff_versions')
                 .select('*, tariff_rates(*)')
-                .eq('batch_id', batchId);
+                .eq('batch_id', batchId)
+                .eq('company_id', companyId!);
             if (error) throw error;
             return data as (TariffVersion & { tariff_rates: TariffRate[] })[];
         },
-        enabled: !!batchId
+        enabled: !!batchId && !!companyId
     });
 
     const publishMutation = useMutation({
@@ -51,14 +62,20 @@ export default function TariffReviewPage() {
             if (!currentVersions?.length) throw new Error('No hay versiones cargadas');
 
             // 1. Update batch status
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No autenticado');
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
+            if (!profile?.company_id) throw new Error('Perfil no encontrado');
+
             const { error: batchError } = await supabase
                 .from('tariff_batches')
                 .update({
                     status: 'published',
                     published_at: new Date().toISOString(),
-                    published_by: (await supabase.auth.getUser()).data.user?.id
+                    published_by: user.id
                 })
-                .eq('id', batchId);
+                .eq('id', batchId)
+                .eq('company_id', profile.company_id);
 
             if (batchError) throw batchError;
 
@@ -74,7 +91,8 @@ export default function TariffReviewPage() {
                 const { error: versionError } = await supabase
                     .from('tariff_versions')
                     .update({ is_active: true })
-                    .in('id', idsWithRates);
+                    .in('id', idsWithRates)
+                    .eq('company_id', profile.company_id);
 
                 if (versionError) throw versionError;
             }

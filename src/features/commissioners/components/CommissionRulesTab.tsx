@@ -20,7 +20,19 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
     const { toast } = useToast()
 
+    const [companyId, setCompanyId] = useState<string | null>(null)
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return
+            supabase.from('users').select('company_id').eq('id', user.id).maybeSingle().then(({ data: profile }) => {
+                if (profile?.company_id) setCompanyId(profile.company_id)
+            })
+        })
+    }, [])
+
     const fetchRules = useCallback(async () => {
+        if (!companyId) return
         setLoading(true)
         let query = supabase
             .from('commission_rules')
@@ -28,6 +40,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
                 *,
                 commissioners ( full_name )
             `)
+            .eq('company_id', companyId)
 
         if (commissionerId) {
             query = query.eq('commissioner_id', commissionerId)
@@ -41,17 +54,19 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
             setRules(data || [])
         }
         setLoading(false)
-    }, [commissionerId])
+    }, [commissionerId, companyId])
 
     useEffect(() => {
-        fetchRules()
-    }, [fetchRules])
+        if (companyId) fetchRules()
+    }, [fetchRules, companyId])
 
     const handleToggleActive = async (id: string, currentActive: boolean) => {
+        if (!companyId) return
         const { error } = await supabase
             .from('commission_rules')
             .update({ is_active: !currentActive })
             .eq('id', id)
+            .eq('company_id', companyId)
 
         if (error) {
             toast({ title: 'Error', description: 'No se pudo cambiar el estado de la regla', variant: 'destructive' })
@@ -63,11 +78,13 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
 
     const handleDelete = async () => {
         if (!deleteTarget) return
+        if (!companyId) return
 
         const { error } = await supabase
             .from('commission_rules')
             .delete()
             .eq('id', deleteTarget)
+            .eq('company_id', companyId)
 
         if (error) {
             toast({ title: 'Error', description: 'No se pudo eliminar la regla: ' + error.message, variant: 'destructive' })
@@ -84,6 +101,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
     }
 
     const handleSaveEdit = async (id: string) => {
+        if (!companyId) return
         const pct = parseFloat(editPct)
         if (isNaN(pct) || pct < 0 || pct > 100) {
             toast({ title: 'Error', description: 'El porcentaje debe ser un número entre 0 y 100', variant: 'destructive' })
@@ -94,6 +112,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
             .from('commission_rules')
             .update({ commission_pct: pct })
             .eq('id', id)
+            .eq('company_id', companyId)
 
         if (error) {
             toast({ title: 'Error', description: 'No se pudo actualizar la regla: ' + error.message, variant: 'destructive' })

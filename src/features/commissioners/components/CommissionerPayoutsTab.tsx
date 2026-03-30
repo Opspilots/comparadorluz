@@ -30,9 +30,15 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
     useEffect(() => {
         const fetchPayouts = async () => {
             setLoading(true)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) { setLoading(false); return }
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) { setLoading(false); return }
+
             const { data, error } = await supabase
                 .from('payouts')
                 .select('*')
+                .eq('company_id', profile.company_id)
                 .eq('commissioner_id', commissionerId)
                 .order('period_month', { ascending: false })
 

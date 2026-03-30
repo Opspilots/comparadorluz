@@ -35,7 +35,20 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
   const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString()
   const resetAt = new Date(Date.now() + windowSeconds * 1000).toISOString()
 
-  // Count requests in current window
+  // Insert first, then check count — reduces TOCTOU race window.
+  // If count exceeds limit, we delete the just-inserted row.
+  const { data: inserted, error: insertError } = await supabaseClient
+    .from('rate_limits')
+    .insert({ company_id: companyId, action })
+    .select('id')
+    .single()
+
+  if (insertError) {
+    console.error('Rate limit insert failed:', insertError)
+    return { allowed: false, remaining: 0, resetAt }
+  }
+
+  // Now count all requests in the window (including the one we just inserted)
   const { count, error: countError } = await supabaseClient
     .from('rate_limits')
     .select('*', { count: 'exact', head: true })
@@ -44,23 +57,22 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
     .gte('created_at', windowStart)
 
   if (countError) {
-    console.error('Rate limit check failed:', countError)
-    // Fail closed — deny request on error for safety
+    console.error('Rate limit count failed:', countError)
+    // Fail closed — remove inserted row and deny
+    await supabaseClient.from('rate_limits').delete().eq('id', inserted.id)
     return { allowed: false, remaining: 0, resetAt }
   }
 
   const currentCount = count ?? 0
-  const remaining = Math.max(0, maxRequests - currentCount)
-  const allowed = currentCount < maxRequests
 
-  if (allowed) {
-    // Record this request
-    await supabaseClient
-      .from('rate_limits')
-      .insert({ company_id: companyId, action })
+  if (currentCount > maxRequests) {
+    // Over limit — remove the row we just inserted and deny
+    await supabaseClient.from('rate_limits').delete().eq('id', inserted.id)
+    return { allowed: false, remaining: 0, resetAt }
   }
 
-  return { allowed, remaining, resetAt }
+  const remaining = Math.max(0, maxRequests - currentCount)
+  return { allowed: true, remaining, resetAt }
 }
 
 /**

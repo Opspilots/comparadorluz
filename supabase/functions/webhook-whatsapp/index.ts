@@ -113,11 +113,12 @@ serve(async (req: Request) => {
 
                 // Use parameterized .in() instead of string-concatenated .or()
                 // to prevent PostgREST filter injection
-                const { data: contact } = await supabaseClient
+                const { data: contacts } = await supabaseClient
                     .from('contacts')
                     .select('id, customer_id, company_id')
                     .in('phone', phoneVariants)
-                    .maybeSingle()
+                    .limit(1)
+                const contact = contacts?.[0] ?? null
 
                 if (contact) {
                     const { error: insertError } = await supabaseClient

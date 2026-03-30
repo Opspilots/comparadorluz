@@ -31,18 +31,20 @@ export default function ConversationPage() {
                 .from('customers')
                 .select('id, name')
                 .eq('id', customerId)
+                .eq('company_id', companyId!)
                 .single();
             if (custErr) throw custErr;
 
             const { data: contacts, error: contErr } = await supabase
                 .from('contacts')
                 .select('*')
-                .eq('customer_id', customerId);
+                .eq('customer_id', customerId)
+                .eq('company_id', companyId!);
             if (contErr) throw contErr;
 
             return { customer, contacts: contacts || [] };
         },
-        enabled: !!customerId
+        enabled: !!customerId && !!companyId
     });
 
     // Messages Query - Filtered by active channel AND company
@@ -134,7 +136,8 @@ export default function ConversationPage() {
         syncGmail();
         const interval = setInterval(syncGmail, 60000);
         return () => clearInterval(interval);
-    }, [activeChannel, companyId, customerId, queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- customerId excluded intentionally: sync should only restart on channel/company change, not on customer navigation
+    }, [activeChannel, companyId, queryClient]);
 
     const mutation = useMutation({
         mutationFn: async ({ content, subject, attachments }: { content: string, subject?: string, attachments?: Message['attachments'] }) => {
@@ -208,6 +211,7 @@ export default function ConversationPage() {
                 isLoading={mutation.isPending}
                 channel={activeChannel}
                 disableInput={!selectedContactId || !hasCorrectContactInfo || noContactsForChannel}
+                companyId={companyId}
             />
         </div>
     );

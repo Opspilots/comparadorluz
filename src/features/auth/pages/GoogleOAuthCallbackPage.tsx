@@ -25,9 +25,11 @@ export function GoogleOAuthCallbackPage() {
             try {
                 const { data: { user }, error: userError } = await supabase.auth.getUser()
                 if (userError) throw userError
+                if (!user) throw new Error('No se pudo obtener el usuario autenticado.')
 
                 // After OAuth redirect, session is available with provider tokens
-                const { data: { session } } = await supabase.auth.getSession()
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+                if (sessionError) throw sessionError
                 const providerToken = session?.provider_token ?? null
                 const providerRefreshToken = session?.provider_refresh_token ?? null
 

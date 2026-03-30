@@ -58,6 +58,11 @@ export function ContractList() {
     const { data: contracts = [], isLoading: loading } = useQuery({
         queryKey: ['contracts'],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return []
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) return []
+
             const { data, error } = await supabase
                 .from('contracts')
                 .select(`
@@ -69,6 +74,7 @@ export function ContractList() {
                         suppliers (name)
                     )
                 `)
+                .eq('company_id', profile.company_id)
                 .order('created_at', { ascending: false })
                 .limit(PAGE_SIZE)
 
@@ -84,6 +90,11 @@ export function ContractList() {
     const handleAdvanceSwitching = async (contract: Contract, newStatus: SwitchingStatus) => {
         setSwitchingUpdating(true)
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No autenticado')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('Perfil no encontrado')
+
             const updateData: Record<string, unknown> = {
                 switching_status: newStatus,
             }
@@ -105,6 +116,7 @@ export function ContractList() {
                 .from('contracts')
                 .update(updateData)
                 .eq('id', contract.id)
+                .eq('company_id', profile.company_id)
 
             if (error) throw error
 

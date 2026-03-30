@@ -62,7 +62,8 @@ export async function uploadBatchFile(batchId: string, companyId: string, file: 
             });
 
         if (dbError) {
-            throw new Error(`Database record creation failed: ${dbError.message}`);
+            await supabase.storage.from('tariff-files').remove([storagePath]);
+            throw new Error(`Error al crear registro: ${dbError.message}`);
         }
 
     } catch (error) {
@@ -74,7 +75,7 @@ export async function uploadBatchFile(batchId: string, companyId: string, file: 
 /**
  * Finalizes the batch by updating the file count and setting status to 'processing'.
  */
-export async function finalizeBatch(batchId: string, fileCount: number): Promise<void> {
+export async function finalizeBatch(batchId: string, fileCount: number, companyId: string): Promise<void> {
     const { error } = await supabase
         .from('tariff_batches')
         .update({
@@ -82,7 +83,8 @@ export async function finalizeBatch(batchId: string, fileCount: number): Promise
             updated_at: new Date().toISOString(),
             status: 'processing' // Move directly to processing (mock pipeline will pick this up)
         })
-        .eq('id', batchId);
+        .eq('id', batchId)
+        .eq('company_id', companyId);
 
     if (error) {
         console.error('Error finalizing batch:', error);

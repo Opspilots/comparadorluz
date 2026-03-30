@@ -47,10 +47,10 @@ export function rankTariffs(
     tariffs.forEach((tariff) => {
         // 1a. Filter components by current validity date and exclude null-priced rates
         const allComponents = (tariff.tariff_rates || []).filter(c => {
-            // If component has no validity dates, it's always valid
-            if (!c.valid_from && !c.valid_to) { /* valid */ }
-            else if (c.valid_from && c.valid_from > today) return false;
-            else if (c.valid_to && c.valid_to < today) return false;
+            // Date validity check
+            const dateValid = (!c.valid_from || c.valid_from <= today) && (!c.valid_to || c.valid_to >= today);
+            if (!dateValid) return false;
+
             // Skip rates with null price (unless they have a formula for indexed tariffs)
             if ((c.price === null || c.price === undefined) && !c.price_formula) return false;
             return true;
@@ -137,7 +137,7 @@ export function rankTariffs(
                 const tariffCommissionType = tariff.commission_type || 'percentage';
                 const tariffCommissionValue = tariff.commission_value ?? 0;
                 // Calculate commission on subtotal (pre-tax), not on IVA-inclusive total
-                const commissionBase = calcResult.breakdown?.subtotal ?? calcResult.annual_cost_eur
+                const commissionBase = calcResult.breakdown?.subtotal ?? (calcResult.annual_cost_eur / 1.21)
                 const commissionEur = tariffCommissionType === 'fixed'
                     ? tariffCommissionValue
                     : Math.round((commissionBase * (tariffCommissionValue / 100)) * 100) / 100

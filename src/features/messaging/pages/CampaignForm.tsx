@@ -413,10 +413,10 @@ export function CampaignForm() {
         setLoading(true);
 
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) { setLoading(false); return; }
 
         const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
-        if (!profile) return;
+        if (!profile) { setLoading(false); return; }
 
         const payload = {
             company_id: profile.company_id,
@@ -463,6 +463,7 @@ export function CampaignForm() {
             title: isEditing ? 'Campaña actualizada' : 'Campaña creada',
             description: 'La campaña se ha guardado correctamente.'
         });
+        setLoading(false);
         navigate('/admin/messages/campaigns');
     };
 
