@@ -15,9 +15,15 @@ export function useContractTemplate() {
         setLoading(true)
         setError(null)
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No authenticated user')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('No company_id found')
+
             const { data, error } = await supabase
                 .from('contract_templates')
                 .select('*')
+                .eq('company_id', profile.company_id)
                 .single()
 
             if (error && error.code !== 'PGRST116') throw error
@@ -28,7 +34,7 @@ export function useContractTemplate() {
                 // No template yet — use defaults as a local draft
                 setTemplate({
                     id: '',
-                    company_id: '',
+                    company_id: profile.company_id,
                     ...DEFAULT_CONTRACT_TEMPLATE,
                     created_at: '',
                     updated_at: '',
@@ -50,9 +56,15 @@ export function useContractTemplate() {
         setSaving(true)
         setError(null)
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No authenticated user')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('No company_id found')
+
             const { data: existing } = await supabase
                 .from('contract_templates')
                 .select('id')
+                .eq('company_id', profile.company_id)
                 .single()
 
             if (existing?.id) {

@@ -180,32 +180,7 @@ export function CustomerForm() {
                 assigned_to: assignedTo || null
             }
 
-            let customerId = id;
-            if (isEditing) {
-                const { error } = await supabase
-                    .from('customers')
-                    .update(payload)
-                    .eq('id', id)
-                    .eq('company_id', companyId)
-                if (error) throw error;
-            } else {
-                const { data: newCust, error } = await supabase
-                    .from('customers')
-                    .insert(payload)
-                    .select('id')
-                    .single()
-
-                if (error) {
-                    // Handle unique constraint violation (duplicate CIF within company)
-                    if (error.code === '23505' && error.message?.includes('cif')) {
-                        throw new Error(`Ya existe un cliente con el CIF ${cif}. ¿Quizás quieres editarlo?`)
-                    }
-                    throw error;
-                }
-                customerId = newCust.id;
-            }
-
-            // Validate contacts before saving
+            // Validate contacts BEFORE inserting/updating customer to avoid ghost records
             if (customerType === 'particular') {
                 if (partEmail) {
                     const emailResult = contactSchema.shape.email.safeParse(partEmail)
@@ -236,6 +211,31 @@ export function CustomerForm() {
                         }
                     }
                 }
+            }
+
+            let customerId = id;
+            if (isEditing) {
+                const { error } = await supabase
+                    .from('customers')
+                    .update(payload)
+                    .eq('id', id)
+                    .eq('company_id', companyId)
+                if (error) throw error;
+            } else {
+                const { data: newCust, error } = await supabase
+                    .from('customers')
+                    .insert(payload)
+                    .select('id')
+                    .single()
+
+                if (error) {
+                    // Handle unique constraint violation (duplicate CIF within company)
+                    if (error.code === '23505' && error.message?.includes('cif')) {
+                        throw new Error(`Ya existe un cliente con el CIF ${cif}. ¿Quizás quieres editarlo?`)
+                    }
+                    throw error;
+                }
+                customerId = newCust.id;
             }
 
             // HANDLE CONTACTS (Create or Update)

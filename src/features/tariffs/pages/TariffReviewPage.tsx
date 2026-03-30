@@ -57,7 +57,7 @@ export default function TariffReviewPage() {
         mutationFn: async () => {
             // Read from React Query cache at call time to avoid stale closure
             const currentVersions = queryClient.getQueryData<(TariffVersion & { tariff_rates: TariffRate[] })[]>(
-                ['tariff-batch-versions', batchId]
+                ['tariff-batch-versions', batchId, companyId]
             );
             if (!currentVersions?.length) throw new Error('No hay versiones cargadas');
 

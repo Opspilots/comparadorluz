@@ -41,9 +41,15 @@ export function CustomerList() {
     const { data: customers = [], isLoading: loading } = useQuery({
         queryKey: ['customers'],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('No authenticated user')
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) throw new Error('No company_id found')
+
             const { data, error } = await supabase
                 .from('customers')
                 .select('id, name, cif, status, city, province, customer_type, created_at')
+                .eq('company_id', profile.company_id)
                 .order('created_at', { ascending: false })
                 .limit(PAGE_SIZE)
 

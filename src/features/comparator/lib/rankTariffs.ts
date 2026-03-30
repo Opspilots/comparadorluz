@@ -137,7 +137,10 @@ export function rankTariffs(
                 const tariffCommissionType = tariff.commission_type || 'percentage';
                 const tariffCommissionValue = tariff.commission_value ?? 0;
                 // Calculate commission on subtotal (pre-tax), not on IVA-inclusive total
-                const commissionBase = calcResult.breakdown?.subtotal ?? (calcResult.annual_cost_eur / 1.21)
+                // Residential 2.0TD tariffs (<=10kW) have 10% IVA; all others 21%
+                const isResidential = tariff.tariff_code === '2.0TD' && (input.contracted_power_kw ?? 0) <= 10
+                const ivaDivisor = isResidential ? 1.10 : 1.21
+                const commissionBase = calcResult.breakdown?.subtotal ?? (calcResult.annual_cost_eur / ivaDivisor)
                 const commissionEur = tariffCommissionType === 'fixed'
                     ? tariffCommissionValue
                     : Math.round((commissionBase * (tariffCommissionValue / 100)) * 100) / 100

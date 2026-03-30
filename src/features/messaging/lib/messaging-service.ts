@@ -72,7 +72,7 @@ export async function getConversations(companyId: string, channel?: 'email' | 'w
     // Step 1: Get distinct customer_ids with message counts (lightweight query)
     let countQuery = supabase
         .from('messages')
-        .select('customer_id', { count: 'exact', head: false })
+        .select('customer_id')
         .eq('company_id', companyId);
 
     if (channel) {

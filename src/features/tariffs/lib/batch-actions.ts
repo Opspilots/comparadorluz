@@ -95,6 +95,12 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
             .from('tariff_versions')
             .delete()
             .eq('id', newVersion.id);
+        // Mark the file as errored so the UI reflects the failure
+        await supabase
+            .from('tariff_files')
+            .update({ extraction_status: 'error' })
+            .eq('id', fileId)
+            .eq('company_id', companyId);
         throw ratesError;
     }
 

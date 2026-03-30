@@ -31,8 +31,13 @@ export function normalizeNumber(value: string | number | null | undefined): stri
             str = str.replace(/,/g, '')
         }
     } else if (str.includes(',')) {
-        // Only comma, assume decimal separator (Spain)
-        str = str.replace(',', '.')
+        // Multiple commas with no dots = thousands separators (e.g. "1,234,567")
+        if ((str.match(/,/g) || []).length > 1) {
+            str = str.replace(/,/g, '')
+        } else {
+            // Only one comma, assume decimal separator (Spain)
+            str = str.replace(',', '.')
+        }
     } else if (str.includes('.') && (str.match(/\./g) || []).length > 1) {
         // Multiple dots (1.234.567) -> remove all
         str = str.replace(/\./g, '')

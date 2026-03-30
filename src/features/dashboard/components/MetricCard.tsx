@@ -26,7 +26,7 @@ export function MetricCard({ title, value, previousValue, icon, format = 'number
     }
 
     const calculateChange = () => {
-        if (!previousValue || typeof value !== 'number') return null
+        if (previousValue === null || previousValue === undefined || typeof value !== 'number') return null
 
         const change = ((value - previousValue) / previousValue) * 100
         return change

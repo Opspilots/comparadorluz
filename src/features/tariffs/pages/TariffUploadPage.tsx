@@ -116,13 +116,13 @@ export default function TariffUploadPage() {
             // Fetch file records from the batch to get storage paths and file IDs
             const { data: batchFiles } = await supabase
                 .from('tariff_files')
-                .select('id, file_path')
+                .select('id, storage_path')
                 .eq('batch_id', batchId);
 
             if (batchFiles) {
                 for (const bf of batchFiles) {
                     supabase.functions.invoke('process-tariff-sheet', {
-                        body: { file_path: bf.file_path, file_id: bf.id }
+                        body: { file_path: bf.storage_path, file_id: bf.id }
                     }).catch(err => console.error('OCR processing error:', err));
                 }
             }
