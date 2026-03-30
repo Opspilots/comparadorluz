@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
@@ -6,6 +7,42 @@ import {
     HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield, X
 } from 'lucide-react'
 import { useTour } from '@/features/guide/useTour'
+
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+    const r = parseInt(hex.slice(1, 3), 16) / 255
+    const g = parseInt(hex.slice(3, 5), 16) / 255
+    const b = parseInt(hex.slice(5, 7), 16) / 255
+    const max = Math.max(r, g, b), min = Math.min(r, g, b)
+    const l = (max + min) / 2
+    if (max === min) return { h: 0, s: 0, l: Math.round(l * 100) }
+    const d = max - min
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    let h = 0
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+    else if (max === g) h = ((b - r) / d + 2) / 6
+    else h = ((r - g) / d + 4) / 6
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
+}
+
+function adjustHexLightness(hex: string, targetL: number): string {
+    const { h, s } = hexToHsl(hex)
+    return `hsl(${h}, ${s}%, ${targetL}%)`
+}
+
+function applyBrandingToCSS(primaryHex: string) {
+    const root = document.documentElement
+    const { h, s, l } = hexToHsl(primaryHex)
+
+    // Hex tokens for inline styles
+    root.style.setProperty('--color-primary', primaryHex)
+    root.style.setProperty('--color-primary-hover', adjustHexLightness(primaryHex, Math.max(l - 8, 10)))
+    root.style.setProperty('--primary-light', adjustHexLightness(primaryHex, 96))
+    root.style.setProperty('--primary-subtle', adjustHexLightness(primaryHex, 90))
+
+    // HSL tokens for Tailwind/Shadcn
+    root.style.setProperty('--primary', `${h} ${s}% ${l}%`)
+    root.style.setProperty('--ring', `${h} ${s}% ${l}%`)
+}
 
 const navItems = [
     { id: 'dashboard', label: 'Inicio', path: '/', icon: LayoutDashboard },
@@ -56,6 +93,11 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const companyName = companyData?.name || 'Mi Empresa'
     const primaryColor = companyData?.primary_color || '#2563eb'
     const sidebarBg = companyData?.sidebar_color || '#0f172a'
+
+    // Apply branding colors to global CSS variables
+    useEffect(() => {
+        applyBrandingToCSS(primaryColor)
+    }, [primaryColor])
 
     const handleNavClick = () => {
         if (onMobileClose) onMobileClose()

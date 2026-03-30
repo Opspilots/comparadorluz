@@ -195,6 +195,7 @@ export function mapOcrData(rawData: unknown, suppliers: { id: string, name: stri
             updates.consP5 = ((p5 / totalConsumption) * 100).toFixed(2);
             remaining -= parseFloat(updates.consP5);
         }
+        remaining = Math.max(0, remaining);
         if (p6 > 0) {
             updates.consP6 = remaining.toFixed(2);
         } else if (remaining !== 0 && updates.consP3) {

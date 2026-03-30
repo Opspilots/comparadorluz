@@ -74,6 +74,23 @@ export function BrandingSettingsCard() {
         setError(null)
 
         try {
+            // Check user role before allowing branding update
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                setError('No se pudo verificar tu sesión.')
+                setSaving(false)
+                return
+            }
+            const { data: profile } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', user.id)
+                .maybeSingle()
+            if (!profile || (profile.role !== 'admin' && profile.role !== 'manager')) {
+                setError('No tienes permisos para cambiar estos ajustes. Contacta con un administrador.')
+                setSaving(false)
+                return
+            }
             const { error: updateError } = await supabase
                 .from('companies')
                 .update({

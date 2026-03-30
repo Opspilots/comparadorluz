@@ -152,10 +152,16 @@ export function ComparatorForm() {
     }
 
     const checkExistingClientByCIF = async (cif: string) => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+        if (!profile?.company_id) return
+
         const { data: customerData } = await supabase
             .from('customers')
             .select('*')
             .eq('cif', cif)
+            .eq('company_id', profile.company_id)
             .maybeSingle()
 
         if (customerData) {

@@ -3,6 +3,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import type { CustomerConsent, ConsentType, ConsentRequest, Customer } from '@/shared/types'
 import { sendConsentRequest, getAvailableChannels, CONSENT_LEGAL_TEXTS } from '../lib/consent-notification'
+import { useNavigate } from 'react-router-dom'
 import {
     Search,
     Check,
@@ -20,6 +21,7 @@ import {
     FileSignature,
     ChevronDown,
     ChevronUp,
+    Settings,
 } from 'lucide-react'
 
 const CONSENT_LABELS: Record<ConsentType, { label: string; description: string; required: boolean }> = {
@@ -46,6 +48,7 @@ type ViewMode = 'consents' | 'requests'
 
 export function ConsentManager({ companyId }: Props) {
     const { toast } = useToast()
+    const navigate = useNavigate()
     const [consents, setConsents] = useState<(CustomerConsent & { customers?: Customer })[]>([])
     const [requests, setRequests] = useState<(ConsentRequest & { customers?: Customer })[]>([])
     const [customers, setCustomers] = useState<Customer[]>([])
@@ -55,6 +58,7 @@ export function ConsentManager({ companyId }: Props) {
 
     // Send request form state
     const [showSendForm, setShowSendForm] = useState(false)
+    const [bulkMode, setBulkMode] = useState(false)
     const [sendCustomerId, setSendCustomerId] = useState('')
     const [sendConsentTypes, setSendConsentTypes] = useState<Set<ConsentType>>(new Set(['data_processing', 'commercial_contact', 'switching_authorization']))
     const [sendChannel, setSendChannel] = useState<'email' | 'whatsapp'>('email')
@@ -162,6 +166,42 @@ export function ConsentManager({ companyId }: Props) {
         }
     }
 
+    // ── Bulk send to all customers without consent ──
+    const handleBulkSendRequest = async () => {
+        if (customersWithoutConsent.length === 0 || sendConsentTypes.size === 0) return
+        setSending(true)
+        let sent = 0
+        let failed = 0
+        try {
+            for (const cust of customersWithoutConsent) {
+                try {
+                    const result = await sendConsentRequest({
+                        companyId,
+                        customerId: cust.id,
+                        consentTypes: Array.from(sendConsentTypes),
+                        channel: sendChannel,
+                    })
+                    if (result.sent) sent++
+                    else failed++
+                } catch {
+                    failed++
+                }
+            }
+            toast({
+                title: 'Envío masivo completado',
+                description: `${sent} enviada${sent !== 1 ? 's' : ''} correctamente${failed > 0 ? `, ${failed} fallida${failed !== 1 ? 's' : ''}` : ''}.`,
+                variant: failed > 0 ? 'destructive' : undefined,
+            })
+            setShowSendForm(false)
+            setBulkMode(false)
+            load()
+        } catch (err) {
+            toast({ title: 'Error en envío masivo', description: (err as Error).message, variant: 'destructive' })
+        } finally {
+            setSending(false)
+        }
+    }
+
     // ── Resend ──
     const handleResend = async (req: ConsentRequest & { customers?: Customer }) => {
         setSending(true)
@@ -239,17 +279,31 @@ export function ConsentManager({ companyId }: Props) {
                             (obligatorio RGPD Art. 6)
                         </span>
                     </div>
-                    {hasAnyChannel && (
+                    {hasAnyChannel ? (
                         <button
-                            onClick={() => setShowSendForm(true)}
+                            onClick={() => { setBulkMode(true); setShowSendForm(true) }}
                             style={{
                                 padding: '0.375rem 0.75rem', borderRadius: 6,
                                 background: '#d97706', color: '#fff', border: 'none',
                                 fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', gap: 4,
+                                whiteSpace: 'nowrap',
                             }}
                         >
-                            <Send size={11} /> Enviar solicitud
+                            <Send size={11} /> Enviar a todos ({customersWithoutConsent.length})
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => navigate('/settings')}
+                            style={{
+                                padding: '0.375rem 0.75rem', borderRadius: 6,
+                                background: '#2563eb', color: '#fff', border: 'none',
+                                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            <Settings size={11} /> Configurar Email
                         </button>
                     )}
                 </div>
@@ -300,9 +354,9 @@ export function ConsentManager({ companyId }: Props) {
                             }}
                         />
                     </div>
-                    {hasAnyChannel && (
+                    {hasAnyChannel ? (
                         <button
-                            onClick={() => setShowSendForm(true)}
+                            onClick={() => { setBulkMode(false); setSendCustomerId(''); setShowSendForm(true) }}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '0.375rem',
                                 padding: '0.4rem 0.75rem', borderRadius: 8,
@@ -311,6 +365,18 @@ export function ConsentManager({ companyId }: Props) {
                             }}
                         >
                             <Send size={13} /> Enviar Solicitud
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => navigate('/settings')}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                padding: '0.4rem 0.75rem', borderRadius: 8,
+                                background: '#2563eb', color: '#fff', border: 'none',
+                                fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                            }}
+                        >
+                            <Settings size={13} /> Configurar Email
                         </button>
                     )}
                 </div>
@@ -325,7 +391,7 @@ export function ConsentManager({ companyId }: Props) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
                         <Send size={16} color="#15803d" />
                         <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>
-                            Enviar Solicitud de Consentimiento
+                            {bulkMode ? 'Envío Masivo de Consentimiento' : 'Enviar Solicitud de Consentimiento'}
                         </span>
                         <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                             — Se enviará un enlace seguro para firmar digitalmente
@@ -333,21 +399,43 @@ export function ConsentManager({ companyId }: Props) {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                        {/* Customer */}
+                        {/* Customer / Bulk info */}
                         <div>
-                            <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
-                                Cliente *
-                            </label>
-                            <select
-                                value={sendCustomerId}
-                                onChange={e => setSendCustomerId(e.target.value)}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8125rem', background: '#fff' }}
-                            >
-                                <option value="">Seleccionar cliente...</option>
-                                {customers.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} ({c.cif})</option>
-                                ))}
-                            </select>
+                            {bulkMode ? (
+                                <>
+                                    <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
+                                        Destinatarios
+                                    </label>
+                                    <div style={{
+                                        padding: '0.5rem 0.75rem', borderRadius: 6,
+                                        background: '#fef9c3', border: '1px solid #fde68a',
+                                        fontSize: '0.8125rem', color: '#92400e', fontWeight: 600,
+                                    }}>
+                                        {customersWithoutConsent.length} cliente{customersWithoutConsent.length !== 1 ? 's' : ''} sin consentimiento
+                                    </div>
+                                    <div style={{ marginTop: 6, maxHeight: 100, overflowY: 'auto', fontSize: '0.75rem', color: '#64748b' }}>
+                                        {customersWithoutConsent.map(c => (
+                                            <div key={c.id}>{c.name} ({c.cif})</div>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
+                                        Cliente *
+                                    </label>
+                                    <select
+                                        value={sendCustomerId}
+                                        onChange={e => setSendCustomerId(e.target.value)}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8125rem', background: '#fff' }}
+                                    >
+                                        <option value="">Seleccionar cliente...</option>
+                                        {customers.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name} ({c.cif})</option>
+                                        ))}
+                                    </select>
+                                </>
+                            )}
                         </div>
 
                         {/* Channel */}
@@ -483,25 +571,42 @@ export function ConsentManager({ companyId }: Props) {
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                         <button
-                            onClick={() => setShowSendForm(false)}
+                            onClick={() => { setShowSendForm(false); setBulkMode(false) }}
                             style={{ padding: '0.4rem 0.75rem', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: '0.8125rem', color: '#64748b', cursor: 'pointer' }}
                         >
                             Cancelar
                         </button>
-                        <button
-                            onClick={handleSendRequest}
-                            disabled={!sendCustomerId || sendConsentTypes.size === 0 || sending}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                padding: '0.4rem 0.875rem', borderRadius: 6, border: 'none',
-                                background: '#15803d', color: '#fff', fontSize: '0.8125rem',
-                                fontWeight: 600, cursor: !sendCustomerId || sendConsentTypes.size === 0 || sending ? 'not-allowed' : 'pointer',
-                                opacity: !sendCustomerId || sendConsentTypes.size === 0 || sending ? 0.6 : 1,
-                            }}
-                        >
-                            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                            {sending ? 'Enviando...' : `Enviar por ${sendChannel === 'email' ? 'Email' : 'WhatsApp'}`}
-                        </button>
+                        {bulkMode ? (
+                            <button
+                                onClick={handleBulkSendRequest}
+                                disabled={customersWithoutConsent.length === 0 || sendConsentTypes.size === 0 || sending}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    padding: '0.4rem 0.875rem', borderRadius: 6, border: 'none',
+                                    background: '#d97706', color: '#fff', fontSize: '0.8125rem',
+                                    fontWeight: 600, cursor: customersWithoutConsent.length === 0 || sendConsentTypes.size === 0 || sending ? 'not-allowed' : 'pointer',
+                                    opacity: customersWithoutConsent.length === 0 || sendConsentTypes.size === 0 || sending ? 0.6 : 1,
+                                }}
+                            >
+                                {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                                {sending ? 'Enviando...' : `Enviar a ${customersWithoutConsent.length} por ${sendChannel === 'email' ? 'Email' : 'WhatsApp'}`}
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSendRequest}
+                                disabled={!sendCustomerId || sendConsentTypes.size === 0 || sending}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    padding: '0.4rem 0.875rem', borderRadius: 6, border: 'none',
+                                    background: '#15803d', color: '#fff', fontSize: '0.8125rem',
+                                    fontWeight: 600, cursor: !sendCustomerId || sendConsentTypes.size === 0 || sending ? 'not-allowed' : 'pointer',
+                                    opacity: !sendCustomerId || sendConsentTypes.size === 0 || sending ? 0.6 : 1,
+                                }}
+                            >
+                                {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                                {sending ? 'Enviando...' : `Enviar por ${sendChannel === 'email' ? 'Email' : 'WhatsApp'}`}
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

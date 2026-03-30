@@ -20,31 +20,34 @@ export async function publishBatchFile(fileId: string, companyId: string, userId
         .from('tariff_files')
         .select('*, tariff_batches(id)')
         .eq('id', fileId)
+        .eq('company_id', companyId)
         .single();
 
     if (fetchError || !file) throw new Error('Archivo no encontrado');
     if (!file.extracted_data) throw new Error('No hay datos extraídos para publicar');
 
     const data = file.extracted_data as unknown as ExtractedTariffData;
-    const batchId = file.batch_id || file.tariff_batches?.id;
+    const batchId = file.batch_id || file.tariff_batches?.id || null;
 
     // Idempotency check: avoid duplicate versions from retries
-    const { data: existingVersion } = await supabase
-        .from('tariff_versions')
-        .select('id')
-        .eq('company_id', companyId)
-        .eq('batch_id', batchId || '')
-        .eq('tariff_name', data.tariff_name)
-        .eq('supplier_name', data.supplier_name)
-        .maybeSingle();
+    if (batchId) {
+        const { data: existingVersion } = await supabase
+            .from('tariff_versions')
+            .select('id')
+            .eq('company_id', companyId)
+            .eq('batch_id', batchId)
+            .eq('tariff_name', data.tariff_name)
+            .eq('supplier_name', data.supplier_name)
+            .maybeSingle();
 
-    if (existingVersion) {
-        // Already published — update file status and return existing version
-        await supabase
-            .from('tariff_files')
-            .update({ status: 'published' })
-            .eq('id', fileId);
-        return existingVersion.id;
+        if (existingVersion) {
+            // Already published — update file status and return existing version
+            await supabase
+                .from('tariff_files')
+                .update({ status: 'published' })
+                .eq('id', fileId);
+            return existingVersion.id;
+        }
     }
 
     // 2. Create Tariff Version

@@ -110,7 +110,7 @@ export default function TariffUploadPage() {
 
             // 3. Finalize Batch
             const successCount = newFilesState.filter(f => f.status === 'completed').length;
-            await finalizeBatch(batchId, successCount);
+            await finalizeBatch(batchId, successCount, userData!.company_id);
 
             // 4. Trigger real OCR processing via Edge Function for each uploaded file
             // Fetch file records from the batch to get storage paths and file IDs

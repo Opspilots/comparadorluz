@@ -12,6 +12,7 @@ interface ChatWindowProps {
     isLoading?: boolean;
     channel: 'email' | 'whatsapp';
     disableInput?: boolean;
+    companyId?: string;
 }
 
 const STYLES = {
@@ -100,7 +101,7 @@ const STYLES = {
     }
 };
 
-export function ChatWindow({ customerName, customerContact, messages, onSendMessage, isLoading, channel, disableInput = false }: ChatWindowProps) {
+export function ChatWindow({ customerName, customerContact, messages, onSendMessage, isLoading, channel, disableInput = false, companyId }: ChatWindowProps) {
     const [newMessage, setNewMessage] = useState('');
     const [subject, setSubject] = useState('');
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -136,7 +137,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
             const attachments: Message['attachments'] = [];
 
             for (const file of selectedFiles) {
-                const uploaded = await uploadAttachment(file);
+                const uploaded = await uploadAttachment(file, companyId);
                 attachments.push(uploaded);
             }
 

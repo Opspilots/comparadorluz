@@ -23,6 +23,17 @@ function bytesToBase64Url(bytes: Uint8Array): string {
         .replace(/=+$/, '')
 }
 
+/** Encode a UTF-8 string to standard base64 (RFC 2045, with padding) */
+function toStandardBase64(str: string): string {
+    const bytes = new TextEncoder().encode(str)
+    return base64Encode(bytes)
+}
+
+/** Encode raw bytes to standard base64 (RFC 2045, with padding) */
+function bytesToStandardBase64(bytes: Uint8Array): string {
+    return base64Encode(bytes)
+}
+
 /** Build a RFC 2045 multipart/mixed MIME message with optional attachments */
 async function buildMimeEmail(
     from: string,
@@ -32,7 +43,10 @@ async function buildMimeEmail(
     attachments?: { name: string; url: string; type: string; size: number }[]
 ): Promise<string> {
     const boundary = `boundary_${crypto.randomUUID().replace(/-/g, '')}`
-    const encodedSubject = `=?utf-8?B?${toBase64Url(subject).replace(/-/g, '+').replace(/_/g, '/')}?=`
+    // For RFC 2047 encoded-word, use standard base64 (not base64url) to preserve padding
+    const subjectBytes = new TextEncoder().encode(subject)
+    const subjectBinaryStr = Array.from(subjectBytes).map(b => String.fromCharCode(b)).join('')
+    const encodedSubject = `=?utf-8?B?${btoa(subjectBinaryStr)}?=`
 
     const headers = [
         `MIME-Version: 1.0`,
@@ -48,7 +62,7 @@ async function buildMimeEmail(
         headers.push(`Content-Type: text/html; charset=utf-8`)
         headers.push(`Content-Transfer-Encoding: base64`)
         headers.push('')
-        headers.push(toBase64Url(htmlBody).replace(/-/g, '+').replace(/_/g, '/'))
+        headers.push(toStandardBase64(htmlBody))
         return headers.join('\r\n')
     }
 
@@ -59,7 +73,7 @@ async function buildMimeEmail(
     headers.push(`Content-Type: text/html; charset=utf-8`)
     headers.push(`Content-Transfer-Encoding: base64`)
     headers.push('')
-    headers.push(toBase64Url(htmlBody).replace(/-/g, '+').replace(/_/g, '/'))
+    headers.push(toStandardBase64(htmlBody))
 
     const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024 // 25 MB
     const allowedUrlPrefix = `${Deno.env.get('SUPABASE_URL') ?? ''}/storage/v1/object/`
@@ -80,7 +94,7 @@ async function buildMimeEmail(
                 continue
             }
             const fileBytes = new Uint8Array(await response.arrayBuffer())
-            const fileBase64 = bytesToBase64Url(fileBytes).replace(/-/g, '+').replace(/_/g, '/')
+            const fileBase64 = bytesToStandardBase64(fileBytes)
 
             // Sanitize filename for Content-Disposition
             const safeName = att.name.replace(/["\r\n]/g, '_')

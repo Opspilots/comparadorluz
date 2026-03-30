@@ -44,6 +44,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
 
             if (!user) {
                 setError('No hay usuario autenticado')
+                setSaving(false)
                 return
             }
 
@@ -54,6 +55,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
                 .maybeSingle()
             if (!profile) {
                 setError('Perfil de empresa no encontrado')
+                setSaving(false)
                 return
             }
 

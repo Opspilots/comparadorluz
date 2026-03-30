@@ -17,38 +17,44 @@ export function RecentActivity() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        const fetchActivity = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+                const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+                if (!profile?.company_id) return
+
+                // Fetch recent contracts
+                const { data: contracts } = await supabase
+                    .from('contracts')
+                    .select('id, created_at, status, customers(name)')
+                    .eq('company_id', profile.company_id)
+                    .order('created_at', { ascending: false })
+                    .limit(5)
+
+                if (contracts) {
+                    const items: ActivityItem[] = (contracts as { id: string, status: string, created_at: string, customers: { name?: string } | null }[]).map((c) => {
+                        const customerName = c.customers?.name || 'Cliente desconocido';
+                        return {
+                            id: c.id,
+                            type: 'contract',
+                            title: `Contrato para ${customerName}`,
+                            subtitle: `Estado: ${c.status}`,
+                            date: c.created_at,
+                            status: c.status
+                        };
+                    });
+                    setActivities(items)
+                }
+            } catch (error) {
+                console.error('Error fetching activity:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
+
         fetchActivity()
     }, [])
-
-    const fetchActivity = async () => {
-        try {
-            // Fetch recent contracts
-            const { data: contracts } = await supabase
-                .from('contracts')
-                .select('id, created_at, status, customers(name)')
-                .order('created_at', { ascending: false })
-                .limit(5)
-
-            if (contracts) {
-                const items: ActivityItem[] = (contracts as { id: string, status: string, created_at: string, customers: { name?: string } | null }[]).map((c) => {
-                    const customerName = c.customers?.name || 'Cliente desconocido';
-                    return {
-                        id: c.id,
-                        type: 'contract',
-                        title: `Contrato para ${customerName}`,
-                        subtitle: `Estado: ${c.status}`,
-                        date: c.created_at,
-                        status: c.status
-                    };
-                });
-                setActivities(items)
-            }
-        } catch (error) {
-            console.error('Error fetching activity:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
 
     if (loading) {
         return <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Cargando actividad...</div>

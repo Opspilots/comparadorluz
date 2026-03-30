@@ -247,7 +247,7 @@ export function CustomerForm() {
                 // IMPROVEMENT: If isEditing, we should update the existing contact.
 
                 // Fetch existing primary contact to update it
-                const { data: existingContacts } = await supabase.from('contacts').select('id').eq('customer_id', customerId).limit(1);
+                const { data: existingContacts } = await supabase.from('contacts').select('id').eq('customer_id', customerId).eq('company_id', companyId).limit(1);
 
                 if (partEmail || partPhone) {
                     const contactPayload = {
@@ -262,7 +262,7 @@ export function CustomerForm() {
                     };
 
                     if (existingContacts && existingContacts.length > 0) {
-                        const { error: contactError } = await supabase.from('contacts').update(contactPayload).eq('id', existingContacts[0].id);
+                        const { error: contactError } = await supabase.from('contacts').update(contactPayload).eq('id', existingContacts[0].id).eq('company_id', companyId);
                         if (contactError) throw contactError;
                     } else {
                         const { error: contactError } = await supabase.from('contacts').insert(contactPayload);
@@ -312,7 +312,7 @@ export function CustomerForm() {
 
                     if (!contact.isNew) {
                         // key is the actual contact ID
-                        const { error: contactError } = await supabase.from('contacts').update(payload).eq('id', key);
+                        const { error: contactError } = await supabase.from('contacts').update(payload).eq('id', key).eq('company_id', companyId);
                         if (contactError) throw contactError;
                     } else {
                         const { error: contactError } = await supabase.from('contacts').insert(payload);

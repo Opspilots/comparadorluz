@@ -14,10 +14,16 @@ export function DashboardChart() {
     const fetchData = useCallback(async () => {
         setLoading(true)
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) return
+
             // The table name is directly derived from chartType
             const { data: result, error } = await supabase
                 .from(chartType) // Changed from 'table' to 'chartType'
                 .select('created_at')
+                .eq('company_id', profile.company_id)
                 .order('created_at', { ascending: true })
 
             if (error) throw error
