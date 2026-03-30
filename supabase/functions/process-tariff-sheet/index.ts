@@ -87,7 +87,7 @@ serve(async (req: Request) => {
 
         // 1. Download file from Storage
         const { data: fileData, error: downloadError } = await supabase.storage
-            .from('tariff-pdfs')
+            .from('tariff-files')
             .download(file_path)
 
         if (downloadError) {

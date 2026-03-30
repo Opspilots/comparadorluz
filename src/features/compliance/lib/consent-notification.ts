@@ -128,7 +128,7 @@ export async function sendConsentRequest(data: SendConsentRequestData): Promise<
 
         // 4. Generate token and build legal text
         const token = crypto.randomUUID()
-        const signingUrl = `${window.location.origin}/consent/sign/${token}`
+        const signingUrl = `${import.meta.env.VITE_APP_URL || window.location.origin}/consent/sign/${token}`
 
         const legalText = data.consentTypes.map(ct => {
             const info = CONSENT_LEGAL_TEXTS[ct]

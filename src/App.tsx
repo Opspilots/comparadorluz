@@ -46,7 +46,11 @@ function PrivateRouteLayout() {
     useEffect(() => {
         let cancelled = false
 
+        let initInFlight = false
         const initSession = async (s: Session | null) => {
+            if (initInFlight) return
+            initInFlight = true
+            try {
             if (s?.user) {
                 // Check if user has a profile in public.users
                 const { data: profile } = await supabase
@@ -85,6 +89,9 @@ function PrivateRouteLayout() {
             if (cancelled) return
             setSession(s)
             setLoading(false)
+            } finally {
+                initInFlight = false
+            }
         }
 
         // Use only onAuthStateChange — it fires INITIAL_SESSION on mount.
@@ -174,12 +181,12 @@ function App() {
                     <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
+                        <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
                         <Route element={<PrivateRouteLayout />}>
                             <Route path="/" element={<DashboardPage />} />
                             <Route path="/comparator" element={<ComparatorForm />} />
                             <Route path="/comparator/history" element={<ComparisonHistory />} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
                             <Route path="/crm" element={<CustomerList />} />
                             <Route path="/crm/new" element={<CustomerForm />} />
                             <Route path="/crm/:id" element={<CustomerDetails />} />
@@ -213,14 +220,14 @@ function App() {
                             <Route path="/contracts/new" element={<ContractForm />} />
                             <Route path="/contracts/:id" element={<ContractForm />} />
                             <Route path="/contracts/:id/view" element={<ContractPreview />} />
-                            <Route path="*" element={
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
-                                    <h1 className="text-4xl font-bold text-slate-800 mb-2">404</h1>
-                                    <p className="text-lg text-slate-500 mb-6">Página no encontrada</p>
-                                    <a href="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</a>
-                                </div>
-                            } />
                         </Route>
+                        <Route path="*" element={
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <h1 className="text-4xl font-bold text-slate-800 mb-2">404</h1>
+                                <p className="text-lg text-slate-500 mb-6">Página no encontrada</p>
+                                <a href="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</a>
+                            </div>
+                        } />
                     </Routes>
                 </Suspense>
                 </ErrorBoundary>

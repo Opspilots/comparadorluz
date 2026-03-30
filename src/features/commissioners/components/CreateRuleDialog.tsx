@@ -46,31 +46,36 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
                     }
 
                     if (userProfile) setCompanyId(userProfile.company_id)
+
+                    const cid = userProfile?.company_id
+                    if (!cid) throw new Error('No company_id found')
+
+                    // 2. Fetch Commissioners
+                    const { data: commissionersData, error: commissionersError } = await supabase
+                        .from('commissioners')
+                        .select('id, full_name')
+                        .eq('is_active', true)
+                        .eq('company_id', cid)
+                        .order('full_name')
+
+                    if (commissionersError) {
+                        throw commissionersError
+                    }
+                    if (commissionersData) setCommissioners(commissionersData as { id: string; full_name: string }[])
+
+                    // 3. Fetch Suppliers
+                    const { data: suppliersData, error: suppliersError } = await supabase
+                        .from('suppliers')
+                        .select('name')
+                        .eq('is_active', true)
+                        .eq('company_id', cid)
+                        .order('name')
+
+                    if (suppliersError) {
+                        throw suppliersError
+                    }
+                    if (suppliersData) setSuppliers(suppliersData)
                 }
-
-                // 2. Fetch Commissioners
-                const { data: commissionersData, error: commissionersError } = await supabase
-                    .from('commissioners')
-                    .select('id, full_name')
-                    .eq('is_active', true)
-                    .order('full_name')
-
-                if (commissionersError) {
-                    throw commissionersError
-                }
-                if (commissionersData) setCommissioners(commissionersData as { id: string; full_name: string }[])
-
-                // 3. Fetch Suppliers
-                const { data: suppliersData, error: suppliersError } = await supabase
-                    .from('suppliers')
-                    .select('name')
-                    .eq('is_active', true)
-                    .order('name')
-
-                if (suppliersError) {
-                    throw suppliersError
-                }
-                if (suppliersData) setSuppliers(suppliersData)
 
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : 'Error al cargar datos del formulario')

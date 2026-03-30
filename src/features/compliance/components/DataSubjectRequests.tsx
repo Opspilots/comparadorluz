@@ -373,7 +373,7 @@ export function DataSubjectRequests({ companyId }: Props) {
                                             </div>
                                         )}
                                         {/* Action buttons */}
-                                        {!['completed', 'rejected'].includes(req.status) && (
+                                        {!['completed', 'rejected', 'extended'].includes(req.status) && (
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                                                 {req.status === 'pending' && (
                                                     <button onClick={() => updateStatus(req.id, 'in_progress')}

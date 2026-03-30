@@ -20,11 +20,19 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
         const fetchStats = async () => {
             setLoading(true)
 
+            // Fetch company_id for tenant scoping
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) { setLoading(false); return }
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+            if (!profile?.company_id) { setLoading(false); return }
+            const companyId = profile.company_id
+
             // 1. Fetch Commissions (Commission Events)
             const { data: commissions, error: commError } = await supabase
                 .from('commission_events')
                 .select('amount_eur, status')
                 .eq('commissioner_id', commissionerId)
+                .eq('company_id', companyId)
 
             if (commError) {
                 console.error('Error fetching commissions:', commError)
@@ -35,6 +43,7 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
                 .from('contracts')
                 .select('*', { count: 'exact', head: true })
                 .eq('commercial_id', commissionerId)
+                .eq('company_id', companyId)
 
             if (contractError) {
                 console.error('Error fetching contracts:', contractError)

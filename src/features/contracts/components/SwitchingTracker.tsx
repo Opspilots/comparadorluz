@@ -141,6 +141,7 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
                 .from('contracts')
                 .update(updateData)
                 .eq('id', contract.id)
+                .eq('company_id', contract.company_id)
 
             if (error) throw error
 
