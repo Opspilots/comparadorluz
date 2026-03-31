@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { ContractTemplate } from '@/shared/types'
-import { DEFAULT_CONTRACT_TEMPLATE } from '../components/ContractDocument'
+import { DEFAULT_CONTRACT_TEMPLATE } from '../lib/contract-defaults'
 
 type TemplateFields = Omit<ContractTemplate, 'id' | 'company_id' | 'created_at' | 'updated_at'>
 

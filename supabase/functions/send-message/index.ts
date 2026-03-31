@@ -15,14 +15,6 @@ function toBase64Url(str: string): string {
         .replace(/=+$/, '')
 }
 
-/** Encode raw bytes to base64url */
-function bytesToBase64Url(bytes: Uint8Array): string {
-    return base64Encode(bytes)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '')
-}
-
 /** Encode a UTF-8 string to standard base64 (RFC 2045, with padding) */
 function toStandardBase64(str: string): string {
     const bytes = new TextEncoder().encode(str)

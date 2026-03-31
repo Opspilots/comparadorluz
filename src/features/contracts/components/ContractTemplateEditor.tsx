@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { PDFViewer } from '@react-pdf/renderer'
 import { Save, RotateCcw, Eye, RefreshCw, Palette, AlignLeft, FileText, Type } from 'lucide-react'
-import { ContractDocument, DEFAULT_CONTRACT_TEMPLATE } from './ContractDocument'
+import { ContractDocument } from './ContractDocument'
+import { DEFAULT_CONTRACT_TEMPLATE } from '../lib/contract-defaults'
 import { useContractTemplate } from '../hooks/useContractTemplate'
 import { ContractTemplate } from '@/shared/types'
 

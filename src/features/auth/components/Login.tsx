@@ -19,7 +19,7 @@ export function Login() {
     const [isError, setIsError] = useState(false)
     const [showAuthModal, setShowAuthModal] = useState(false)
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
-    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -129,11 +129,7 @@ export function Login() {
             <LandingHeader onOpenAuth={openAuth} />
             <HeroSection onOpenAuth={openAuth} />
             <MethodSection />
-            <PricingSection
-                billingCycle={billingCycle}
-                setBillingCycle={setBillingCycle}
-                onOpenAuth={openAuth}
-            />
+            <PricingSection onOpenAuth={openAuth} />
             <CTASection onOpenAuth={openAuth} />
             <LandingFooter />
             <AuthModal

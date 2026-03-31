@@ -365,14 +365,18 @@ export async function parseInvoiceLocally(file: File): Promise<ParsedInvoiceData
             if (powerPeriods.P6) result.power_p6 = powerPeriods.P6
         }
 
-        // Consumption periods
+        // Consumption periods — convert raw kWh to percentages (0-100)
         const consPeriods = extractConsumptionPeriods(text)
-        if (consPeriods.P1) result.p1_consumption_pct = consPeriods.P1
-        if (consPeriods.P2) result.p2_consumption_pct = consPeriods.P2
-        if (consPeriods.P3) result.p3_consumption_pct = consPeriods.P3
-        if (consPeriods.P4) result.p4_consumption_pct = consPeriods.P4
-        if (consPeriods.P5) result.p5_consumption_pct = consPeriods.P5
-        if (consPeriods.P6) result.p6_consumption_pct = consPeriods.P6
+        const consTotal = (consPeriods.P1 ?? 0) + (consPeriods.P2 ?? 0) + (consPeriods.P3 ?? 0)
+            + (consPeriods.P4 ?? 0) + (consPeriods.P5 ?? 0) + (consPeriods.P6 ?? 0)
+        if (consTotal > 0) {
+            if (consPeriods.P1) result.p1_consumption_pct = Math.round((consPeriods.P1 / consTotal) * 10000) / 100
+            if (consPeriods.P2) result.p2_consumption_pct = Math.round((consPeriods.P2 / consTotal) * 10000) / 100
+            if (consPeriods.P3) result.p3_consumption_pct = Math.round((consPeriods.P3 / consTotal) * 10000) / 100
+            if (consPeriods.P4) result.p4_consumption_pct = Math.round((consPeriods.P4 / consTotal) * 10000) / 100
+            if (consPeriods.P5) result.p5_consumption_pct = Math.round((consPeriods.P5 / consTotal) * 10000) / 100
+            if (consPeriods.P6) result.p6_consumption_pct = Math.round((consPeriods.P6 / consTotal) * 10000) / 100
+        }
 
         // Total cost
         const totalCost = extractTotalCost(text)

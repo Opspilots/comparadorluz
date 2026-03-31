@@ -92,7 +92,7 @@ const STYLES = {
     },
     formCard: {
         background: '#ffffff',
-        borderRadius: '16px',
+        borderRadius: '14px',
         border: '1px solid #e2e8f0',
         padding: '1.75rem',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
@@ -350,35 +350,49 @@ export function CampaignForm() {
     useEffect(() => {
         const fetchCampaign = async () => {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('campaigns')
-                .select('*')
-                .eq('id', id)
-                .single();
+            try {
+                const companyId = await getUserCompanyId();
+                if (!companyId) {
+                    toast({ title: 'Error', description: 'No se pudo obtener la empresa del usuario', variant: 'destructive' });
+                    navigate('/admin/messages/campaigns');
+                    return;
+                }
+                const { data, error } = await supabase
+                    .from('campaigns')
+                    .select('*')
+                    .eq('id', id)
+                    .eq('company_id', companyId)
+                    .single();
 
-            if (error) {
-                toast({ title: 'Error', description: 'Error al cargar la campaña', variant: 'destructive' });
+                if (error) {
+                    toast({ title: 'Error', description: 'Error al cargar la campaña', variant: 'destructive' });
+                    navigate('/admin/messages/campaigns');
+                    return;
+                }
+
+                if (data) {
+                    setName(data.name);
+                    setChannel(data.channel || 'email');
+                    setSubject(data.subject || '');
+                    setBody(data.body || '');
+                    if (data.filters) {
+                        setCustomerType(data.filters.customer_type || 'all');
+                        setCustomerStatus(data.filters.status || 'all');
+                    }
+                    if (data.scheduled_at) {
+                        // Format for datetime-local input: YYYY-MM-DDThh:mm
+                        const date = new Date(data.scheduled_at);
+                        const isoString = date.toISOString().slice(0, 16);
+                        setScheduledAt(isoString);
+                    }
+                }
+            } catch (err) {
+                console.error('Error al cargar campaña:', err);
+                toast({ title: 'Error', description: 'Error inesperado al cargar la campaña', variant: 'destructive' });
                 navigate('/admin/messages/campaigns');
-                return;
+            } finally {
+                setLoading(false);
             }
-
-            if (data) {
-                setName(data.name);
-                setChannel(data.channel || 'email');
-                setSubject(data.subject || '');
-                setBody(data.body || '');
-                if (data.filters) {
-                    setCustomerType(data.filters.customer_type || 'all');
-                    setCustomerStatus(data.filters.status || 'all');
-                }
-                if (data.scheduled_at) {
-                    // Format for datetime-local input: YYYY-MM-DDThh:mm
-                    const date = new Date(data.scheduled_at);
-                    const isoString = date.toISOString().slice(0, 16);
-                    setScheduledAt(isoString);
-                }
-            }
-            setLoading(false);
         };
 
         if (isEditing) {
@@ -388,28 +402,49 @@ export function CampaignForm() {
 
     useEffect(() => {
         const estimateRecipients = async () => {
-            const companyId = await getUserCompanyId();
-            let query = supabase.from('customers').select('id', { count: 'exact', head: true }).eq('company_id', companyId);
+            try {
+                const companyId = await getUserCompanyId();
+                let query = supabase.from('customers').select('id', { count: 'exact', head: true }).eq('company_id', companyId);
 
-            if (customerType !== 'all') {
-                query = query.eq('customer_type', customerType);
-            }
-            if (customerStatus !== 'all') {
-                query = query.eq('status', customerStatus);
-            }
+                if (customerType !== 'all') {
+                    query = query.eq('customer_type', customerType);
+                }
+                if (customerStatus !== 'all') {
+                    query = query.eq('status', customerStatus);
+                }
 
-            const { count, error } = await query;
-            if (!error) {
-                setRecipientCount(count);
+                const { count, error } = await query;
+                if (!error) {
+                    setRecipientCount(count);
+                }
+            } catch (err) {
+                console.error('Error al estimar destinatarios:', err);
+                setRecipientCount(null);
+                toast({ title: 'Error', description: 'No se pudo estimar el número de destinatarios', variant: 'destructive' });
             }
         };
 
         if (step === 2) {
             estimateRecipients();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [customerType, customerStatus, step]);
 
     const handleSave = async (targetStatus: Campaign['status'] = 'draft') => {
+        // Validation
+        if (!name.trim()) {
+            toast({ title: 'Campo requerido', description: 'El nombre de la campaña es obligatorio', variant: 'destructive' });
+            return;
+        }
+        if (!body.trim()) {
+            toast({ title: 'Campo requerido', description: 'El contenido del mensaje es obligatorio', variant: 'destructive' });
+            return;
+        }
+        if (channel === 'email' && !subject.trim()) {
+            toast({ title: 'Campo requerido', description: 'El asunto es obligatorio para campañas de email', variant: 'destructive' });
+            return;
+        }
+
         setLoading(true);
 
         const { data: { user } } = await supabase.auth.getUser();
@@ -430,7 +465,6 @@ export function CampaignForm() {
                 customer_type: customerType,
                 status: customerStatus
             },
-            created_by: user.id
         };
 
         let result;
@@ -445,7 +479,7 @@ export function CampaignForm() {
         } else {
             result = await supabase
                 .from('campaigns')
-                .insert(payload)
+                .insert({ ...payload, created_by: user.id })
                 .select()
                 .single();
         }
@@ -474,7 +508,7 @@ export function CampaignForm() {
             <p style={STYLES.label}>Canal de envío</p>
             <div style={STYLES.channelGrid}>
                 <div
-                    style={STYLES.channelCard(channel === 'email', '#0ea5e9')}
+                    style={STYLES.channelCard(channel === 'email', '#2563eb')}
                     onClick={() => setChannel('email')}
                     onMouseEnter={e => {
                         if (channel !== 'email') (e.currentTarget.style.borderColor = '#93c5fd');
@@ -484,12 +518,12 @@ export function CampaignForm() {
                     }}
                 >
                     {channel === 'email' && (
-                        <div style={{ ...STYLES.channelCheck, background: '#0ea5e9' }}>
+                        <div style={{ ...STYLES.channelCheck, background: '#2563eb' }}>
                             <Check style={{ width: 14, height: 14, color: '#fff' }} />
                         </div>
                     )}
                     <div style={STYLES.channelIconWrapper(channel === 'email', '#dbeafe')}>
-                        <Mail style={{ width: 24, height: 24, color: channel === 'email' ? '#0ea5e9' : '#94a3b8' }} />
+                        <Mail style={{ width: 24, height: 24, color: channel === 'email' ? '#2563eb' : '#94a3b8' }} />
                     </div>
                     <p style={STYLES.channelName(channel === 'email')}>Email</p>
                     <p style={STYLES.channelDesc}>Envío masivo por correo electrónico con asunto personalizado</p>
@@ -597,6 +631,9 @@ export function CampaignForm() {
                         <SelectContent>
                             <SelectItem value="all">Todos</SelectItem>
                             <SelectItem value="prospecto">Prospecto</SelectItem>
+                            <SelectItem value="contactado">Contactado</SelectItem>
+                            <SelectItem value="propuesta">Propuesta</SelectItem>
+                            <SelectItem value="negociacion">Negociación</SelectItem>
                             <SelectItem value="cliente">Cliente</SelectItem>
                             <SelectItem value="perdido">Perdido</SelectItem>
                         </SelectContent>
@@ -654,7 +691,7 @@ export function CampaignForm() {
                     </div>
                     <div style={STYLES.reviewItem}>
                         <p style={STYLES.reviewItemLabel}>Destinatarios</p>
-                        <p style={{ ...STYLES.reviewItemValue, color: '#0ea5e9', fontWeight: 700, fontSize: '1.125rem' }}>
+                        <p style={{ ...STYLES.reviewItemValue, color: '#2563eb', fontWeight: 700, fontSize: '1.125rem' }}>
                             {recipientCount ?? '—'}
                         </p>
                     </div>
@@ -662,8 +699,8 @@ export function CampaignForm() {
             </div>
 
             {/* Scheduling Section */}
-            <div style={{ ...STYLES.reviewCard, marginBottom: '1.5rem', borderLeft: '4px solid #0ea5e9' }}>
-                <p style={{ ...STYLES.reviewLabel, color: '#0ea5e9', marginBottom: '0.5rem' }}>Programación del Envío</p>
+            <div style={{ ...STYLES.reviewCard, marginBottom: '1.5rem', borderLeft: '4px solid #2563eb' }}>
+                <p style={{ ...STYLES.reviewLabel, color: '#2563eb', marginBottom: '0.5rem' }}>Programación del Envío</p>
                 <div style={STYLES.formGroup}>
                     <label style={STYLES.label}>Fecha y Hora de Envío</label>
                     <Input
@@ -727,7 +764,7 @@ export function CampaignForm() {
     if (loading && isEditing) {
         return (
             <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                <Loader2 style={{ width: 32, height: 32, animation: 'spin 1s linear infinite', color: '#0ea5e9' }} />
+                <Loader2 style={{ width: 32, height: 32, animation: 'spin 1s linear infinite', color: '#2563eb' }} />
             </div>
         );
     }
@@ -741,7 +778,7 @@ export function CampaignForm() {
                         style={STYLES.backBtn}
                         onClick={() => navigate('/admin/messages/campaigns')}
                         onMouseEnter={e => { (e.currentTarget.style.background = '#f8fafc'); }}
-                        onMouseLeave={e => { (e.currentTarget.style.background = '#fff'); }}
+                        onMouseLeave={e => { (e.currentTarget.style.background = 'var(--surface)'); }}
                     >
                         <ArrowLeft style={{ width: 18, height: 18, color: '#475569' }} />
                     </button>

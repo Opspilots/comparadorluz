@@ -69,33 +69,41 @@ interface ConversationMessage {
 }
 
 export async function getConversations(companyId: string, channel?: 'email' | 'whatsapp', page = 0, pageSize = 50): Promise<Conversation[]> {
-    // Step 1: Get distinct customer_ids with message counts (lightweight query)
-    let countQuery = supabase
+    // Step 1: Get paginated distinct customer_ids using a server-side
+    // distinct query ordered by latest message. This avoids fetching all rows.
+    let distinctQuery = supabase
         .from('messages')
-        .select('customer_id')
-        .eq('company_id', companyId);
+        .select('customer_id, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
 
     if (channel) {
-        countQuery = countQuery.eq('channel', channel);
+        distinctQuery = distinctQuery.eq('channel', channel);
     }
 
-    const { data: allMessages, error: countError } = await countQuery;
-    if (countError) throw countError;
+    // Fetch a limited window — enough to extract distinct customers for the page.
+    // We over-fetch rows (not customers) to account for multiple messages per customer.
+    const fetchLimit = (page + 1) * pageSize * 10;
+    distinctQuery = distinctQuery.limit(fetchLimit);
 
-    // Group by customer_id in JS to get counts and determine page
-    const customerCounts = new Map<string, number>();
-    allMessages?.forEach((msg: { customer_id: string }) => {
-        if (!msg.customer_id) return;
-        customerCounts.set(msg.customer_id, (customerCounts.get(msg.customer_id) || 0) + 1);
+    const { data: recentMessages, error: distinctError } = await distinctQuery;
+    if (distinctError) throw distinctError;
+
+    // Deduplicate to get ordered distinct customer_ids
+    const seenCustomers = new Set<string>();
+    const orderedCustomerIds: string[] = [];
+    recentMessages?.forEach((msg: { customer_id: string }) => {
+        if (!msg.customer_id || seenCustomers.has(msg.customer_id)) return;
+        seenCustomers.add(msg.customer_id);
+        orderedCustomerIds.push(msg.customer_id);
     });
 
-    const customerIds = Array.from(customerCounts.keys());
-    const pagedIds = customerIds.slice(page * pageSize, (page + 1) * pageSize);
-
+    const pagedIds = orderedCustomerIds.slice(page * pageSize, (page + 1) * pageSize);
     if (pagedIds.length === 0) return [];
 
-    // Step 2: Get the last message per customer for this page
-    let query = supabase
+    // Step 2: Get the last message + customer info for paged customers,
+    // plus per-customer counts via a parallel count query.
+    let detailQuery = supabase
         .from('messages')
         .select(`
             customer_id,
@@ -113,12 +121,35 @@ export async function getConversations(companyId: string, channel?: 'email' | 'w
         .order('created_at', { ascending: false });
 
     if (channel) {
-        query = query.eq('channel', channel);
+        detailQuery = detailQuery.eq('channel', channel);
     }
 
-    const { data, error } = await query;
+    // Run detail query and per-customer count queries in parallel
+    const countPromises = pagedIds.map(async (customerId) => {
+        let cq = supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('company_id', companyId)
+            .eq('customer_id', customerId);
+        if (channel) {
+            cq = cq.eq('channel', channel);
+        }
+        const { count, error } = await cq;
+        return { customerId, count: error ? 1 : (count ?? 1) };
+    });
 
+    const [detailResult, ...countResults] = await Promise.all([
+        detailQuery,
+        ...countPromises
+    ]);
+
+    const { data, error } = detailResult;
     if (error) throw error;
+
+    const customerCounts = new Map<string, number>();
+    countResults.forEach(({ customerId, count }) => {
+        customerCounts.set(customerId, count);
+    });
 
     const conversationsMap = new Map<string, Conversation>();
 

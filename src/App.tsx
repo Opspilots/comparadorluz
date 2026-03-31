@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { useState, useEffect, Suspense, lazy } from 'react'
+import { useState, useEffect, useRef, Suspense, lazy } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
 import { MainLayout } from '@/shared/components/layout/MainLayout'
@@ -42,14 +42,14 @@ const CompliancePage = lazy(() => import('@/features/compliance/pages/Compliance
 function PrivateRouteLayout() {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
+    const initInFlightRef = useRef(false)
 
     useEffect(() => {
         let cancelled = false
 
-        let initInFlight = false
         const initSession = async (s: Session | null) => {
-            if (initInFlight) return
-            initInFlight = true
+            if (initInFlightRef.current) return
+            initInFlightRef.current = true
             try {
             if (s?.user) {
                 // Check if user has a profile in public.users
@@ -90,7 +90,7 @@ function PrivateRouteLayout() {
             setSession(s)
             setLoading(false)
             } finally {
-                initInFlight = false
+                initInFlightRef.current = false
             }
         }
 
