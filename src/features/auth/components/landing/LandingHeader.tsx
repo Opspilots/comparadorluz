@@ -6,7 +6,7 @@ interface LandingHeaderProps {
 }
 
 const navLinks = [
-    { label: 'Método', href: '#metodo' },
+    { label: 'Funcionalidades', href: '#funcionalidades' },
     { label: 'Precios', href: '#precios' },
     { label: 'Contacto', href: '#contacto' },
 ]

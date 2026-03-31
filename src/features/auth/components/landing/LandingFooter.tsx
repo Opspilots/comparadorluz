@@ -17,12 +17,9 @@ export function LandingFooter() {
                     <p className="text-[#94a3b8] text-sm">
                         CRM para asesores energéticos. Compara tarifas, gestiona clientes y cierra contratos con IA.
                     </p>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm text-[#94a3b8]">Hecho en España 🇪🇸</span>
-                        <span className="text-[#94a3b8] text-sm">
-                            &copy; {new Date().getFullYear()} EnergyDeal CRM
-                        </span>
-                    </div>
+                    <span className="text-[#94a3b8] text-sm">
+                        &copy; {new Date().getFullYear()} EnergyDeal CRM
+                    </span>
                 </div>
             </div>
         </footer>

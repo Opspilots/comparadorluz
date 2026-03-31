@@ -1,73 +1,75 @@
-import { Upload, BarChart3, TrendingDown, FileSignature } from 'lucide-react'
-
-const steps = [
+const features = [
     {
-        step: '01',
-        title: 'Carga Inteligente',
-        desc: 'Nuestra IA lee cualquier factura en segundos, sin errores manuales.',
-        icon: Upload,
+        title: 'Comparador inteligente',
+        description:
+            'Sube una factura y compara automaticamente contra todas las tarifas del mercado. Encuentra el mejor precio para tus clientes en segundos.',
+        image: '/screenshots/comparator.png',
+        alt: 'Comparador de tarifas energeticas con formulario de carga de factura, CUPS y periodos',
+        imagePosition: 'right' as const,
     },
     {
-        step: '02',
-        title: 'Análisis Profundo',
-        desc: 'Comparamos contra +200 comercializadoras en tiempo real.',
-        icon: BarChart3,
+        title: 'CRM y contratos integrados',
+        description:
+            'Gestiona clientes, genera contratos y haz seguimiento de cada operacion desde una unica plataforma.',
+        image: '/screenshots/crm.png',
+        alt: 'Lista de clientes del CRM con CIF, estado y acciones disponibles',
+        imagePosition: 'left' as const,
     },
     {
-        step: '03',
-        title: 'Optimización',
-        desc: 'Generamos la propuesta más económica para tu cliente.',
-        icon: TrendingDown,
-    },
-    {
-        step: '04',
-        title: 'Cierre Digital',
-        desc: 'Firma y envío de contrato automático desde el CRM.',
-        icon: FileSignature,
+        title: 'Comunicacion centralizada',
+        description:
+            'Contacta a tus clientes por email o WhatsApp sin salir del CRM. Historial completo de cada conversacion.',
+        image: '/screenshots/messaging.png',
+        alt: 'Interfaz de mensajeria con email y WhatsApp integrados',
+        imagePosition: 'right' as const,
     },
 ]
 
 export function MethodSection() {
     return (
-        <section id="metodo" className="py-24 lg:py-32 px-[5%] bg-[#0f172a] relative overflow-hidden">
+        <section id="funcionalidades" className="py-24 lg:py-32 px-[5%] bg-[#0f172a] relative overflow-hidden">
             {/* Subtle glow */}
             <div className="absolute -top-[10%] left-[10%] w-[300px] h-[300px] bg-emerald-500/[0.03] blur-[100px] rounded-full" />
 
             <div className="max-w-[1200px] mx-auto relative z-10">
-                <h2 className="text-center text-3xl sm:text-4xl lg:text-[3.5rem] font-black mb-16 lg:mb-20 tracking-[-0.04em] text-gradient-fade leading-tight">
-                    Nuestro Método de 4 pasos
+                <h2 className="text-center text-3xl sm:text-4xl lg:text-[3.5rem] font-black mb-6 tracking-[-0.04em] text-gradient-fade leading-tight">
+                    Todo lo que necesitas para cerrar mas operaciones
                 </h2>
+                <p className="text-center text-lg text-slate-400 max-w-[600px] mx-auto mb-16 lg:mb-20">
+                    Herramientas disenadas para que los asesores energeticos trabajen mas rapido y con menos esfuerzo.
+                </p>
 
-                <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 stagger-children">
-                    {/* Connecting dotted line (desktop only) */}
-                    <div className="hidden lg:block absolute top-[3.5rem] left-[12%] right-[12%] border-t-2 border-dashed border-white/[0.08]" />
-
-                    {steps.map((item, i) => {
-                        const Icon = item.icon
-                        return (
-                            <div
-                                key={i}
-                                className="relative text-left landing-hover-lift"
-                            >
-                                {/* Step number circle with gradient */}
-                                <div className="relative z-10 w-[4.5rem] h-[4.5rem] rounded-full bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] flex items-center justify-center mb-5 shadow-[0_8px_24px_rgba(37,99,235,0.25)]">
-                                    <span className="text-white text-xl font-black font-mono">{item.step}</span>
-                                </div>
-
-                                {/* Icon */}
-                                <div className="mb-3">
-                                    <Icon className="w-6 h-6 text-blue-400/70" strokeWidth={2} />
-                                </div>
-
-                                <h3 className="text-xl lg:text-2xl font-extrabold text-white mb-3">
-                                    {item.title}
+                <div className="flex flex-col gap-20 lg:gap-28">
+                    {features.map((feature, i) => (
+                        <div
+                            key={i}
+                            className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center ${
+                                feature.imagePosition === 'left' ? 'lg:[direction:rtl]' : ''
+                            }`}
+                        >
+                            {/* Text */}
+                            <div className={feature.imagePosition === 'left' ? 'lg:[direction:ltr]' : ''}>
+                                <h3 className="text-2xl lg:text-3xl font-extrabold text-white mb-4 tracking-[-0.02em]">
+                                    {feature.title}
                                 </h3>
-                                <p className="text-slate-400 text-base lg:text-lg leading-relaxed">
-                                    {item.desc}
+                                <p className="text-lg text-slate-400 leading-relaxed">
+                                    {feature.description}
                                 </p>
                             </div>
-                        )
-                    })}
+
+                            {/* Screenshot */}
+                            <div className={feature.imagePosition === 'left' ? 'lg:[direction:ltr]' : ''}>
+                                <div className="rounded-xl border border-white/10 shadow-2xl overflow-hidden">
+                                    <img
+                                        src={feature.image}
+                                        alt={feature.alt}
+                                        className="w-full h-auto block"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </section>

@@ -69,7 +69,7 @@ BEGIN
     (v_company_id, v_iberdrola_v1, 'fixed_fee', NULL, NULL, NULL, 5.00);
 
   -- 3. Default Commission Rule for the admin
-  INSERT INTO public.commission_rules (company_id, user_id, commission_pct, valid_from, is_active)
+  INSERT INTO public.commission_rules (company_id, commissioner_id, commission_pct, valid_from, is_active)
   VALUES (v_company_id, v_user_id, 15.00, '2026-01-01', true);
 
 END $$;

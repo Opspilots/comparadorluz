@@ -26,17 +26,18 @@ export default function TariffReviewPage() {
     }, []);
 
     const { data: batch, isLoading: isBatchLoading } = useQuery({
-        queryKey: ['tariff-batch', batchId],
+        queryKey: ['tariff-batch', batchId, companyId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('tariff_batches')
                 .select('*')
                 .eq('id', batchId)
+                .eq('company_id', companyId!)
                 .single();
             if (error) throw error;
             return data as TariffBatch;
         },
-        enabled: !!batchId
+        enabled: !!batchId && !!companyId
     });
 
     const { data: versions, isLoading: isVersionsLoading } = useQuery({

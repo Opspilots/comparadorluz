@@ -193,16 +193,18 @@ export default function TariffDashboard() {
     const companyId = userProfile?.company_id ?? null;
 
     const { data: suppliers } = useQuery({
-        queryKey: ['suppliers'],
+        queryKey: ['suppliers', companyId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('suppliers')
                 .select('id, name')
                 .eq('is_active', true)
+                .or(`company_id.eq.${companyId},is_global.eq.true`)
                 .order('name');
             if (error) throw error;
             return data;
-        }
+        },
+        enabled: !!companyId
     });
 
     const { data: tariffs, isLoading } = useQuery({

@@ -172,9 +172,9 @@ export function ConsentSignPage() {
         try {
             const signatureData = canvasRef.current?.toDataURL('image/png') || ''
 
-            // IP should be resolved server-side in the RPC to avoid third-party
-            // client-side requests and GDPR concerns with external services.
-            const clientIp = 'server-side'
+            // IP is captured server-side by the RPC function from request headers.
+            // The parameter is kept for backward compatibility but ignored by the server.
+            const clientIp = ''
 
             // Use secure RPC — validates token, checks expiry, and does all writes atomically
             const { data: result, error: rpcErr } = await supabase
