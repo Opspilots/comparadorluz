@@ -139,11 +139,13 @@ export function ContractForm() {
 
             } catch (err) {
                 console.error('Error fetching form data:', err)
+                toast({ title: 'Error', description: 'Error al cargar los datos del formulario', variant: 'destructive' })
             } finally {
                 setPageLoading(false)
             }
         }
         fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.state, id])
 
     // Load supply points when customer changes

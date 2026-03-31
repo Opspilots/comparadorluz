@@ -132,7 +132,7 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                         try {
                             for (const extractedData of extractedDataArray) {
                                 // Find supplier and structure
-                                const { data: suppliers } = await supabase.from('suppliers').select('id, name');
+                                const { data: suppliers } = await supabase.from('suppliers').select('id, name').or(`company_id.eq.${companyId},is_global.eq.true`);
                                 const supplierNameLower = (extractedData.supplier_name || '').toLowerCase();
                                 let supplierId = null;
                                 if (suppliers && supplierNameLower) {

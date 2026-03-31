@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Send, Phone, Mail, User, Paperclip, X, FileIcon, Download, FileText } from 'lucide-react';
+import { Input } from '@/shared/components/ui/input';
 import { Message, uploadAttachment } from '../lib/messaging-service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,7 +26,7 @@ const STYLES = {
     },
     header: {
         padding: '1rem',
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '1px solid #e2e8f0',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -55,7 +56,7 @@ const STYLES = {
         flexDirection: 'column' as const,
         gap: '1rem',
         backgroundColor: 'transparent',
-        backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)',
         backgroundSize: '20px 20px'
     },
     emptyState: {
@@ -68,7 +69,7 @@ const STYLES = {
     },
     inputArea: {
         padding: '1rem',
-        borderTop: '1px solid #e5e7eb',
+        borderTop: '1px solid #e2e8f0',
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(8px)',
         boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.05)'
@@ -97,7 +98,7 @@ const STYLES = {
         borderRadius: '0.5rem',
         fontSize: '0.75rem',
         marginBottom: '0.5rem',
-        border: '1px solid #e5e7eb'
+        border: '1px solid #e2e8f0'
     }
 };
 
@@ -337,20 +338,12 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
 
                 {channel === 'email' && (
                     <div style={{ marginBottom: '0.75rem' }}>
-                        <input
+                        <Input
                             placeholder="Asunto del correo..."
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
                             disabled={isLoading || isUploading || disableInput}
-                            style={{
-                                width: '100%',
-                                height: '36px',
-                                fontSize: '13px',
-                                borderRadius: '0.5rem',
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                padding: '0 0.75rem'
-                            }}
+                            className="h-9 text-[13px] rounded-lg bg-slate-50 border-[#e2e8f0]"
                         />
                     </div>
                 )}
@@ -385,20 +378,12 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
                     />
 
                     <div style={{ flex: 1, position: 'relative' }}>
-                        <input
+                        <Input
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder={disableInput ? "Selecciona un contacto..." : "Escribe un mensaje..."}
                             onKeyDown={handleKeyDown}
-                            style={{
-                                width: '100%',
-                                backgroundColor: '#f9fafb',
-                                border: '1px solid #e5e7eb',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.75rem',
-                                transition: 'all 0.2s',
-                                fontSize: '14px'
-                            }}
+                            className="h-9 bg-slate-50 border-[#e2e8f0] rounded-[10px] text-sm px-4"
                             disabled={isLoading || isUploading || disableInput}
                         />
                     </div>

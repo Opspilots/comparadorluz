@@ -94,25 +94,25 @@ serve(async (req: Request) => {
             }
         }
 
-        // 1. Fetch companies that have Gmail Connected (google_refresh_token exists)
+        // 1. Fetch companies that have Gmail connected (OAuth tokens in secure table)
         let query = supabaseClient
-            .from('companies')
-            .select('id, messaging_settings')
-            .not('messaging_settings->google_refresh_token', 'is', null)
+            .from('company_oauth_tokens')
+            .select('company_id, refresh_token, email')
+            .eq('provider', 'google')
 
         if (requestCompanyId) {
-            query = query.eq('id', requestCompanyId)
+            query = query.eq('company_id', requestCompanyId)
         }
 
-        const { data: companies, error: cmpError } = await query
+        const { data: oauthTokens, error: cmpError } = await query
 
         if (cmpError) throw cmpError;
 
         let totalSynced = 0;
 
-        for (const company of companies || []) {
-            const settings = company.messaging_settings;
-            if (!settings.google_refresh_token) continue;
+        for (const tokenRow of oauthTokens || []) {
+            const company = { id: tokenRow.company_id };
+            if (!tokenRow.refresh_token) continue;
 
             try {
                 // 2. Refresh Google Access Token
@@ -122,7 +122,7 @@ serve(async (req: Request) => {
                     body: new URLSearchParams({
                         client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
                         client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
-                        refresh_token: settings.google_refresh_token,
+                        refresh_token: tokenRow.refresh_token,
                         grant_type: 'refresh_token'
                     })
                 });

@@ -75,19 +75,31 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
     const [structures, setStructures] = useState<TariffStructure[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [unknownSupplier, setUnknownSupplier] = useState<string | null>(null);
+    const [companyId, setCompanyId] = useState<string | null>(null);
     const { toast } = useToast();
     const navigate = useNavigate();
 
+    // Fetch current user's company_id
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return;
+            supabase.from('users').select('company_id').eq('id', user.id).maybeSingle().then(({ data: profile }) => {
+                if (profile?.company_id) setCompanyId(profile.company_id);
+            });
+        });
+    }, []);
+
     // Fetch structures and suppliers on mount
     useEffect(() => {
+        if (!companyId) return;
         Promise.all([
             supabase.from('tariff_structures').select('*'),
-            supabase.from('suppliers').select('id, name, is_active').eq('is_active', true)
+            supabase.from('suppliers').select('id, name, is_active').eq('is_active', true).or(`company_id.eq.${companyId},is_global.eq.true`)
         ]).then(([structs, supps]) => {
             if (structs.data) setStructures(structs.data);
             if (supps.data) setSuppliers(supps.data as Supplier[]);
         });
-    }, []);
+    }, [companyId]);
 
     // Load existing tariff if ID is present
     useEffect(() => {

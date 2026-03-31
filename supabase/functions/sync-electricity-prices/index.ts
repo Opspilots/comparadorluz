@@ -66,19 +66,27 @@ serve(async (req: Request) => {
             // Log count
             console.log(`Received ${values.length} values for ${indicator.name}`)
 
-            // Upsert prices
-            const priceEntries = values.map((val: { value: number; datetime: string; datetime_end: string }) => ({
-                indicator_id: indicator.id,
-                indicator_name: indicator.name,
-                price: val.value,
-                valid_from: val.datetime,
-                valid_to: val.datetime_end,
-                unit: data.indicator.short_name
-            }))
+            // Upsert prices into market_prices table
+            // (electricity_market_prices was dropped and replaced by market_prices in 20260312200000)
+            const priceEntries = values.map((val: { value: number; datetime: string; datetime_end: string }) => {
+                const dt = new Date(val.datetime)
+                const madridDate = dt.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' }) // YYYY-MM-DD
+                const madridHour = parseInt(dt.toLocaleString('en-US', { timeZone: 'Europe/Madrid', hour: 'numeric', hour12: false }), 10)
+                const priceType = [1013, 1014, 1015].includes(indicator.id) ? 'pvpc' : 'pool'
+                return {
+                    price_date: madridDate,
+                    hour: madridHour,
+                    price_type: priceType,
+                    price_eur_mwh: val.value,
+                    geo_id: 'peninsular',
+                    source: 'esios',
+                    indicator_id: indicator.id,
+                }
+            })
 
             const { error } = await supabase
-                .from('electricity_market_prices')
-                .upsert(priceEntries, { onConflict: 'indicator_id, valid_from' })
+                .from('market_prices')
+                .upsert(priceEntries, { onConflict: 'price_date,hour,price_type,geo_id' })
 
             if (error) console.error(`Error upserting ${indicator.name}:`, error)
             results.push({ indicator: indicator.name, count: values.length })

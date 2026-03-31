@@ -13,6 +13,9 @@ export interface Company {
     email: string;
     phone?: string;
     address?: string;
+    logo_url?: string;
+    primary_color?: string;
+    sidebar_color?: string;
     status: 'active' | 'suspended' | 'cancelled';
     subscription_tier?: string;
     created_at: string;

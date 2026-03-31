@@ -15,14 +15,6 @@ function toBase64Url(str: string): string {
         .replace(/=+$/, '')
 }
 
-/** Encode raw bytes to base64url */
-function bytesToBase64Url(bytes: Uint8Array): string {
-    return base64Encode(bytes)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '')
-}
-
 /** Encode a UTF-8 string to standard base64 (RFC 2045, with padding) */
 function toStandardBase64(str: string): string {
     const bytes = new TextEncoder().encode(str)
@@ -203,8 +195,19 @@ serve(async (req: Request) => {
 
         // 2. Route by channel
         if (message.channel === 'email') {
-            const refreshToken = settings.google_refresh_token
-            const emailFrom = settings.email_from
+            // Read OAuth tokens from secure table (service role bypasses RLS)
+            const { data: oauthToken, error: oauthError } = await supabaseClient
+                .from('company_oauth_tokens')
+                .select('refresh_token, access_token, email')
+                .eq('company_id', verifiedCompanyId)
+                .single()
+
+            if (oauthError || !oauthToken) {
+                throw new Error('Credenciales de Google (Gmail) no configuradas')
+            }
+
+            const refreshToken = oauthToken.refresh_token
+            const emailFrom = oauthToken.email || settings.email_from
             if (!refreshToken || !emailFrom) throw new Error('Credenciales de Google (Gmail) no configuradas')
 
             // 1. Get Access Token

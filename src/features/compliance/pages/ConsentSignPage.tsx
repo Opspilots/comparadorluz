@@ -172,17 +172,9 @@ export function ConsentSignPage() {
         try {
             const signatureData = canvasRef.current?.toDataURL('image/png') || ''
 
-            // Resolve client IP for audit trail (eIDAS compliance)
-            let clientIp = 'unknown'
-            try {
-                const ipRes = await fetch('https://api.ipify.org?format=json')
-                if (ipRes.ok) {
-                    const ipData = await ipRes.json()
-                    clientIp = ipData.ip || 'unknown'
-                }
-            } catch {
-                // IP resolution failure should not block consent signing
-            }
+            // IP is captured server-side by the RPC function from request headers.
+            // The parameter is kept for backward compatibility but ignored by the server.
+            const clientIp = ''
 
             // Use secure RPC — validates token, checks expiry, and does all writes atomically
             const { data: result, error: rpcErr } = await supabase

@@ -26,12 +26,23 @@ export function ComparatorForm() {
     const [suppliers, setSuppliers] = useState<{ id: string, name: string }[]>([])
     const [usedMarketPrices, setUsedMarketPrices] = useState(false)
     const [consumptionFromDatadis, setConsumptionFromDatadis] = useState(false)
+    const [companyId, setCompanyId] = useState<string | null>(null)
     const { toast } = useToast()
+
+    // Fetch current user's company_id
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return
+            supabase.from('users').select('company_id').eq('id', user.id).maybeSingle().then(({ data: profile }) => {
+                if (profile?.company_id) setCompanyId(profile.company_id)
+            })
+        })
+    }, [])
 
     // Auto-fill consumption from Datadis when CUPS is entered
     useEffect(() => {
         const cups = state.cups?.trim()
-        if (!cups || cups.length < 20) {
+        if (!cups || cups.length < 20 || !companyId) {
             setConsumptionFromDatadis(false)
             return
         }
@@ -43,6 +54,7 @@ export function ComparatorForm() {
                     .from('consumption_data')
                     .select('date, consumption_kwh')
                     .eq('cups', cups)
+                    .eq('company_id', companyId)
                     .order('date', { ascending: false })
                     .limit(365)
 
@@ -71,12 +83,18 @@ export function ComparatorForm() {
         }, 800)
 
         return () => { cancelled = true; clearTimeout(timer) }
-    }, [state.cups, state.consumption, updateState])
+    }, [state.cups, state.consumption, updateState, companyId])
 
     const fetchSuppliers = useCallback(async () => {
-        const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
+        if (!companyId) return
+        const { data } = await supabase
+            .from('suppliers')
+            .select('id, name')
+            .eq('is_active', true)
+            .or(`company_id.eq.${companyId},is_global.eq.true`)
+            .order('name')
         setSuppliers(data || [])
-    }, [])
+    }, [companyId])
 
     useEffect(() => {
         fetchSuppliers()

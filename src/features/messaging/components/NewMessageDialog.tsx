@@ -44,7 +44,7 @@ export function NewMessageDialog({ open, onOpenChange }: NewMessageDialogProps) 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             autoFocus
-                            className="pl-9 h-10 rounded-lg border-slate-200 bg-slate-50 text-sm"
+                            className="pl-9 h-9 rounded-lg border-slate-200 bg-slate-50 text-sm"
                         />
                     </div>
 

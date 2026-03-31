@@ -1,8 +1,7 @@
-import { Check } from 'lucide-react'
+import { useState } from 'react'
+import { Check, Zap } from 'lucide-react'
 
 interface PricingSectionProps {
-    billingCycle: 'monthly' | 'yearly'
-    setBillingCycle: (cycle: 'monthly' | 'yearly') => void
     onOpenAuth: (mode: 'login' | 'signup') => void
 }
 
@@ -27,15 +26,17 @@ const tiers = [
         name: 'Profesional',
         monthly: 49,
         yearly: 44,
-        features: ['Todo ilimitado', 'IA & OCR sin limites', 'Soporte 24/7 VIP', 'Analitica Avanzada', 'API access'],
+        features: ['Todo ilimitado', 'IA y OCR sin limites', 'Soporte 24/7 VIP', 'Analitica Avanzada', 'Acceso API'],
         cta: 'Plan Profesional',
         highlight: true,
     },
 ]
 
-export function PricingSection({ billingCycle, setBillingCycle, onOpenAuth }: PricingSectionProps) {
+export function PricingSection({ onOpenAuth }: PricingSectionProps) {
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+
     return (
-        <section className="py-24 lg:py-32 px-[5%] text-center bg-[#f8fafc]">
+        <section id="precios" className="py-24 lg:py-32 px-[5%] text-center bg-[#f8fafc]">
             <div className="max-w-[1200px] mx-auto">
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4 tracking-[-0.03em] text-[#0f172a]">
                     Elige tu plan
@@ -68,50 +69,56 @@ export function PricingSection({ billingCycle, setBillingCycle, onOpenAuth }: Pr
                 </div>
 
                 {/* Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-7 items-start">
                     {tiers.map((tier, i) => (
                         <div
                             key={i}
-                            className={`relative rounded-[24px] p-8 lg:p-10 text-left landing-hover-lift ${
+                            className={`rounded-[20px] text-left transition-all duration-300 ${
                                 tier.highlight
-                                    ? 'bg-white border-2 border-[#2563eb] shadow-[0_30px_60px_rgba(37,99,235,0.12)] z-10 scale-[1.02]'
-                                    : 'bg-white border border-[#e2e8f0] shadow-[0_20px_40px_rgba(0,0,0,0.03)]'
+                                    ? 'bg-[#0f172a] text-white shadow-[0_30px_60px_rgba(0,0,0,0.15)] md:-mt-4 md:mb-[-16px]'
+                                    : 'bg-white border border-[#e2e8f0] shadow-[0_4px_20px_rgba(0,0,0,0.04)]'
                             }`}
                         >
+                            {/* Header */}
                             {tier.highlight && (
-                                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563eb] text-white px-4 py-1 rounded-full text-xs font-extrabold tracking-wide">
-                                    RECOMENDADO
+                                <div className="bg-[#2563eb] rounded-t-[20px] px-8 py-3 flex items-center justify-center gap-2">
+                                    <Zap className="w-4 h-4 text-white" fill="white" />
+                                    <span className="text-white text-sm font-bold tracking-wide uppercase">Mas popular</span>
                                 </div>
                             )}
 
-                            <h3 className="text-xl font-extrabold mb-4 text-[#0f172a]">{tier.name}</h3>
+                            <div className="p-8 lg:p-10">
+                                <h3 className={`text-xl font-extrabold mb-4 ${tier.highlight ? 'text-white' : 'text-[#0f172a]'}`}>
+                                    {tier.name}
+                                </h3>
 
-                            <div className="mb-6">
-                                <span className="text-5xl lg:text-[3.8rem] font-black tracking-[-0.02em] text-[#0f172a]">
-                                    {billingCycle === 'monthly' ? tier.monthly : tier.yearly}€
-                                </span>
-                                <span className="text-lg text-[#64748b] font-medium ml-1">/mes</span>
+                                <div className="mb-6">
+                                    <span className={`text-5xl lg:text-[3.5rem] font-black tracking-[-0.02em] ${tier.highlight ? 'text-white' : 'text-[#0f172a]'}`}>
+                                        {billingCycle === 'monthly' ? tier.monthly : tier.yearly}&euro;
+                                    </span>
+                                    <span className={`text-lg font-medium ml-1 ${tier.highlight ? 'text-white/60' : 'text-[#64748b]'}`}>/mes</span>
+                                </div>
+
+                                <ul className="space-y-3 mb-8">
+                                    {tier.features.map((feature, idx) => (
+                                        <li key={idx} className="flex items-center gap-3">
+                                            <Check className={`w-4 h-4 flex-shrink-0 ${tier.highlight ? 'text-emerald-400' : 'text-emerald-500'}`} strokeWidth={3} />
+                                            <span className={tier.highlight ? 'text-white/80' : 'text-[#0f172a]/80'}>{feature}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <button
+                                    onClick={() => onOpenAuth('signup')}
+                                    className={`w-full py-3.5 rounded-xl font-extrabold text-base cursor-pointer transition-all duration-200 border-none ${
+                                        tier.highlight
+                                            ? 'bg-[#2563eb] text-white shadow-[0_10px_20px_rgba(37,99,235,0.3)] hover:bg-[#1d4ed8]'
+                                            : 'bg-[#f1f5f9] text-[#0f172a] hover:bg-[#e2e8f0]'
+                                    }`}
+                                >
+                                    {tier.cta}
+                                </button>
                             </div>
-
-                            <ul className="space-y-3 mb-8">
-                                {tier.features.map((feature, idx) => (
-                                    <li key={idx} className="flex items-center gap-3">
-                                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" strokeWidth={3} />
-                                        <span className="text-[#0f172a]/80">{feature}</span>
-                                    </li>
-                                ))}
-                            </ul>
-
-                            <button
-                                onClick={() => onOpenAuth('signup')}
-                                className={`w-full py-3.5 rounded-xl font-extrabold text-base cursor-pointer transition-all duration-200 border-none ${
-                                    tier.highlight
-                                        ? 'bg-[#2563eb] text-white shadow-[0_10px_20px_rgba(37,99,235,0.2)] hover:bg-[#1d4ed8]'
-                                        : 'bg-[#f1f5f9] text-[#0f172a] hover:bg-[#e2e8f0]'
-                                }`}
-                            >
-                                {tier.cta}
-                            </button>
                         </div>
                     ))}
                 </div>

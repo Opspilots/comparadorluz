@@ -479,6 +479,17 @@ tbody tr:hover {
   }
 }
 
+@keyframes growUp {
+  from {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+  to {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+}
+
 @keyframes fadeInScale {
   from {
     opacity: 0;
@@ -982,3 +993,44 @@ tbody tr:hover {
     transform: translateX(0);
   }
 }
+
+/* ============================================================
+   Landing page animations
+   ============================================================ */
+@keyframes floatCard {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float-card { animation: floatCard 3s ease-in-out infinite; }
+
+@keyframes glowLine {
+  0% { transform: translateX(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(100vw); opacity: 0; }
+}
+.animate-glow-line { animation: glowLine 8s ease-in-out infinite; }
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.04; }
+  50% { opacity: 0.08; }
+}
+.animate-grid-pulse { animation: gridPulse 4s ease-in-out infinite; }
+
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.animate-pulse-ring { animation: pulseRing 2s ease-out infinite; }
+
+@keyframes scanLine {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+.animate-scan-line { animation: scanLine 3s linear infinite; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
