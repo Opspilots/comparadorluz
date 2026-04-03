@@ -6,6 +6,7 @@ import { LandingHeader } from './landing/LandingHeader'
 import { HeroSection } from './landing/HeroSection'
 import { MethodSection } from './landing/MethodSection'
 import { PricingSection } from './landing/PricingSection'
+import { StatsSection } from './landing/StatsSection'
 import { CTASection } from './landing/CTASection'
 import { LandingFooter } from './landing/LandingFooter'
 import { AuthModal } from './landing/AuthModal'
@@ -129,6 +130,7 @@ export function Login() {
             <LandingHeader onOpenAuth={openAuth} />
             <HeroSection onOpenAuth={openAuth} />
             <MethodSection />
+            <StatsSection />
             <PricingSection onOpenAuth={openAuth} />
             <CTASection onOpenAuth={openAuth} />
             <LandingFooter />

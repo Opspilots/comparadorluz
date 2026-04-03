@@ -1,75 +1,129 @@
+import { useEffect, useRef, useState } from 'react'
+
 const features = [
     {
-        title: 'Comparador inteligente',
-        description:
-            'Sube una factura y compara automaticamente contra todas las tarifas del mercado. Encuentra el mejor precio para tus clientes en segundos.',
+        title: 'Comparador de tarifas',
+        desc: 'Sube la factura y obtiene la mejor oferta del mercado en segundos. Sin copiar datos a mano.',
         image: '/screenshots/comparator.png',
-        alt: 'Comparador de tarifas energeticas con formulario de carga de factura, CUPS y periodos',
-        imagePosition: 'right' as const,
+        alt: 'Comparador de tarifas energeticas de EnergyDeal',
+        glowColor: 'rgba(59,130,246,0.08)',
+        span: 'lg:col-span-7',
     },
     {
-        title: 'CRM y contratos integrados',
-        description:
-            'Gestiona clientes, genera contratos y haz seguimiento de cada operacion desde una unica plataforma.',
+        title: 'CRM de clientes',
+        desc: 'Toda tu cartera organizada. Busca por CIF, filtra por estado, accede al historial completo.',
         image: '/screenshots/crm.png',
-        alt: 'Lista de clientes del CRM con CIF, estado y acciones disponibles',
-        imagePosition: 'left' as const,
+        alt: 'CRM de gestion de clientes energeticos',
+        glowColor: 'rgba(16,185,129,0.08)',
+        span: 'lg:col-span-5',
     },
     {
-        title: 'Comunicacion centralizada',
-        description:
-            'Contacta a tus clientes por email o WhatsApp sin salir del CRM. Historial completo de cada conversacion.',
+        title: 'Gestion de contratos',
+        desc: 'Contratos vinculados a comparativas con CUPS, tarifa y valor mensual. De pendiente a firmado.',
+        image: '/screenshots/contracts.png',
+        alt: 'Gestion de contratos energeticos',
+        glowColor: 'rgba(245,158,11,0.08)',
+        span: 'lg:col-span-5',
+    },
+    {
+        title: 'Mensajeria integrada',
+        desc: 'Email y WhatsApp desde la misma plataforma. Sin cambiar de herramienta, sin perder contexto.',
         image: '/screenshots/messaging.png',
-        alt: 'Interfaz de mensajeria con email y WhatsApp integrados',
-        imagePosition: 'right' as const,
+        alt: 'Mensajeria integrada con email y WhatsApp',
+        glowColor: 'rgba(168,85,247,0.08)',
+        span: 'lg:col-span-7',
     },
 ]
 
+function useInView(threshold = 0.1) {
+    const ref = useRef<HTMLDivElement>(null)
+    const [visible, setVisible] = useState(false)
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([e]) => { if (e.isIntersecting) setVisible(true) },
+            { threshold }
+        )
+        if (ref.current) observer.observe(ref.current)
+        return () => observer.disconnect()
+    }, [threshold])
+    return { ref, visible }
+}
+
 export function MethodSection() {
+    const header = useInView(0.2)
+
     return (
-        <section id="funcionalidades" className="py-24 lg:py-32 px-[5%] bg-[#0f172a] relative overflow-hidden">
-            {/* Subtle glow */}
-            <div className="absolute -top-[10%] left-[10%] w-[300px] h-[300px] bg-emerald-500/[0.03] blur-[100px] rounded-full" />
+        <section id="funcionalidades" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: '#050508' }}>
+            {/* Top divider */}
+            <div className="landing-divider absolute top-0 left-[10%] right-[10%]" />
+
+            {/* Ambient glow */}
+            <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-500/[0.04] rounded-full blur-[150px] pointer-events-none" />
 
             <div className="max-w-[1200px] mx-auto relative z-10">
-                <h2 className="text-center text-3xl sm:text-4xl lg:text-[3.5rem] font-black mb-6 tracking-[-0.04em] text-gradient-fade leading-tight">
-                    Todo lo que necesitas para cerrar mas operaciones
-                </h2>
-                <p className="text-center text-lg text-slate-400 max-w-[600px] mx-auto mb-16 lg:mb-20">
-                    Herramientas disenadas para que los asesores energeticos trabajen mas rapido y con menos esfuerzo.
-                </p>
+                {/* Header */}
+                <div
+                    ref={header.ref}
+                    className={`text-center mb-16 lg:mb-20 transition-all duration-700 ${
+                        header.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                    }`}
+                >
+                    <span className="inline-block text-[13px] font-medium text-blue-400/80 tracking-widest uppercase mb-5">
+                        Funcionalidades
+                    </span>
+                    <h2
+                        className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold tracking-[-0.03em] leading-tight"
+                        style={{ textWrap: 'balance' } as React.CSSProperties}
+                    >
+                        <span className="text-white">Herramientas disenadas para </span>
+                        <span className="landing-gradient-text">cerrar operaciones</span>
+                    </h2>
+                </div>
 
-                <div className="flex flex-col gap-20 lg:gap-28">
-                    {features.map((feature, i) => (
-                        <div
-                            key={i}
-                            className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center ${
-                                feature.imagePosition === 'left' ? 'lg:[direction:rtl]' : ''
-                            }`}
-                        >
-                            {/* Text */}
-                            <div className={feature.imagePosition === 'left' ? 'lg:[direction:ltr]' : ''}>
-                                <h3 className="text-2xl lg:text-3xl font-extrabold text-white mb-4 tracking-[-0.02em]">
-                                    {feature.title}
-                                </h3>
-                                <p className="text-lg text-slate-400 leading-relaxed">
-                                    {feature.description}
-                                </p>
-                            </div>
+                {/* Bento grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {features.map((feat, i) => {
+                        const card = useInView(0.08)
+                        return (
+                            <div
+                                key={i}
+                                ref={card.ref}
+                                className={`${feat.span} landing-card-premium rounded-2xl overflow-hidden group transition-all duration-700 ${
+                                    card.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                                }`}
+                                style={{ transitionDelay: `${i * 120}ms` }}
+                            >
+                                {/* Text content */}
+                                <div className="p-6 lg:p-7">
+                                    <h3 className="text-lg font-bold text-white mb-1.5 tracking-[-0.01em]">
+                                        {feat.title}
+                                    </h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed max-w-[380px]">
+                                        {feat.desc}
+                                    </p>
+                                </div>
 
-                            {/* Screenshot */}
-                            <div className={feature.imagePosition === 'left' ? 'lg:[direction:ltr]' : ''}>
-                                <div className="rounded-xl border border-white/10 shadow-2xl overflow-hidden">
-                                    <img
-                                        src={feature.image}
-                                        alt={feature.alt}
-                                        className="w-full h-auto block"
-                                        loading="lazy"
+                                {/* Screenshot */}
+                                <div className="relative px-4 pb-0">
+                                    {/* Glow behind */}
+                                    <div
+                                        className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-[80%] h-[120px] rounded-full blur-[60px] pointer-events-none"
+                                        style={{ background: feat.glowColor }}
                                     />
+                                    <div className="relative rounded-t-lg overflow-hidden border border-white/[0.06] border-b-0">
+                                        <img
+                                            src={feat.image}
+                                            alt={feat.alt}
+                                            className="w-full h-auto block transition-transform duration-700 group-hover:scale-[1.015]"
+                                            loading="lazy"
+                                        />
+                                        {/* Top shine */}
+                                        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </div>
         </section>
