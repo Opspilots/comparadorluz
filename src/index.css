@@ -1209,3 +1209,61 @@ html {
 }
 .faq-answer.open { grid-template-rows: 1fr; }
 .faq-answer > div { overflow: hidden; }
+
+/* ============================================================
+   SPOTLIGHT CARD — cursor-tracked radial glow
+   ============================================================ */
+.spotlight-card {
+  position: relative;
+  background: rgba(255,255,255,0.018);
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: border-color 0.35s ease, background 0.35s ease;
+  overflow: hidden;
+}
+.spotlight-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    320px circle at var(--sx, 50%) var(--sy, 50%),
+    rgba(37,99,235,0.08) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.spotlight-card:hover {
+  border-color: rgba(255,255,255,0.11);
+  background: rgba(255,255,255,0.025);
+}
+.spotlight-card:hover::after { opacity: 1; }
+
+/* ============================================================
+   MOCKUP CONTAINER — dark glass base for UI previews
+   ============================================================ */
+.mockup-container {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+}
+
+/* ============================================================
+   BTN DIRECTIONAL — fill enters from mouse direction
+   ============================================================ */
+.btn-directional {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+.btn-directional::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: -1;
+}
+.btn-directional:hover::before { transform: translateX(0); }

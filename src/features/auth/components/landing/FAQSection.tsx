@@ -1,19 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Plus, Minus } from 'lucide-react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
 
-function useInView(threshold = 0.1) {
-    const ref = useRef<HTMLDivElement>(null)
-    const [visible, setVisible] = useState(false)
-    useEffect(() => {
-        const obs = new IntersectionObserver(
-            ([e]) => { if (e.isIntersecting) setVisible(true) },
-            { threshold }
-        )
-        if (ref.current) obs.observe(ref.current)
-        return () => obs.disconnect()
-    }, [threshold])
-    return { ref, visible }
-}
+gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 const faqs = [
     {
@@ -52,19 +43,30 @@ const faqs = [
 
 export function FAQSection() {
     const [open, setOpen] = useState<number | null>(0)
-    const { ref, visible } = useInView(0.05)
+    const sectionRef = useRef<HTMLElement>(null)
+
+    useGSAP(() => {
+        gsap.from('.faq-header', {
+            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            scrollTrigger: { trigger: '.faq-header', start: 'top 85%', once: true },
+        })
+        gsap.from('.faq-container', {
+            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            scrollTrigger: { trigger: '.faq-container', start: 'top 88%', once: true },
+        })
+    }, { scope: sectionRef })
 
     return (
-        <section id="faq" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="faq" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div className="max-w-[800px] mx-auto">
-                <div className="text-center mb-14">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/80 tracking-[0.14em] uppercase mb-5">
+                <div className="faq-header text-center mb-14">
+                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
                         Preguntas Frecuentes sobre EnergyDeal CRM
                     </span>
                     <h2
-                        className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold text-white tracking-[-0.03em]"
+                        className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em]"
                         style={{ textWrap: 'balance' } as React.CSSProperties}
                     >
                         Todo lo que necesitas
@@ -74,8 +76,7 @@ export function FAQSection() {
                 </div>
 
                 <div
-                    ref={ref}
-                    className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                    className="faq-container"
                     style={{ border: '1px solid rgba(255,255,255,0.065)', borderRadius: '16px', overflow: 'hidden' }}
                 >
                     {faqs.map((faq, i) => (

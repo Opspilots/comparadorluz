@@ -1,19 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Mail, MessageCircle, Globe, Shield, Zap, FileText, Link2, BookOpen } from 'lucide-react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
 
-function useInView(threshold = 0.1) {
-    const ref = useRef<HTMLDivElement>(null)
-    const [visible, setVisible] = useState(false)
-    useEffect(() => {
-        const obs = new IntersectionObserver(
-            ([e]) => { if (e.isIntersecting) setVisible(true) },
-            { threshold }
-        )
-        if (ref.current) obs.observe(ref.current)
-        return () => obs.disconnect()
-    }, [threshold])
-    return { ref, visible }
-}
+gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 const integrations = [
     { name: 'Gmail', icon: Mail, color: '#ea4335', desc: 'Sincroniza emails' },
@@ -29,23 +20,27 @@ const integrations = [
 const tickerItems = [...integrations, ...integrations]
 
 export function IntegrationsSection() {
-    const { ref, visible } = useInView(0.15)
+    const sectionRef = useRef<HTMLElement>(null)
+
+    useGSAP(() => {
+        gsap.from('.integrations-header', {
+            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            scrollTrigger: { trigger: '.integrations-header', start: 'top 85%', once: true },
+        })
+    }, { scope: sectionRef })
 
     return (
-        <section id="integraciones" className="relative py-24 lg:py-32 overflow-hidden" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="integraciones" className="relative py-24 lg:py-32 overflow-hidden" style={{ background: '#020209' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             {/* Header */}
             <div className="max-w-[1100px] mx-auto px-[5%] mb-14">
-                <div
-                    ref={ref}
-                    className={`text-center transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-                >
-                    <span className="inline-block text-[11px] font-bold text-blue-400/80 tracking-[0.14em] uppercase mb-5">
+                <div className="integrations-header text-center">
+                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
                         Integraciones
                     </span>
                     <h2
-                        className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold text-white tracking-[-0.03em]"
+                        className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em]"
                         style={{ textWrap: 'balance' } as React.CSSProperties}
                     >
                         Conectado con las herramientas

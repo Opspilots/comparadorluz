@@ -1,19 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Mail, Phone, MapPin, ArrowRight, CheckCircle2 } from 'lucide-react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
 
-function useInView(threshold = 0.1) {
-    const ref = useRef<HTMLDivElement>(null)
-    const [visible, setVisible] = useState(false)
-    useEffect(() => {
-        const obs = new IntersectionObserver(
-            ([e]) => { if (e.isIntersecting) setVisible(true) },
-            { threshold }
-        )
-        if (ref.current) obs.observe(ref.current)
-        return () => obs.disconnect()
-    }, [threshold])
-    return { ref, visible }
-}
+gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 interface FormState {
     nombre: string
@@ -23,15 +14,25 @@ interface FormState {
 }
 
 export function ContactSection() {
-    const { ref, visible } = useInView(0.05)
+    const sectionRef = useRef<HTMLElement>(null)
     const [form, setForm] = useState<FormState>({ nombre: '', email: '', empresa: '', mensaje: '' })
     const [sending, setSending] = useState(false)
     const [sent, setSent] = useState(false)
 
+    useGSAP(() => {
+        gsap.from('.contact-left', {
+            opacity: 0, x: -24, duration: 0.7, ease: 'power3.out',
+            scrollTrigger: { trigger: '.contact-left', start: 'top 85%', once: true },
+        })
+        gsap.from('.contact-right', {
+            opacity: 0, x: 24, duration: 0.7, ease: 'power3.out',
+            scrollTrigger: { trigger: '.contact-right', start: 'top 85%', once: true },
+        })
+    }, { scope: sectionRef })
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setSending(true)
-        // TODO: conectar a Supabase edge function o servicio de email
         await new Promise(r => setTimeout(r, 1200))
         setSending(false)
         setSent(true)
@@ -43,16 +44,13 @@ export function ContactSection() {
     }
 
     return (
-        <section id="contacto" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="contacto" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
-            <div
-                ref={ref}
-                className={`max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-            >
+            <div className="max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
                 {/* Left: info */}
-                <div>
-                    <span className="inline-block text-[11px] font-bold text-blue-400/80 tracking-[0.14em] uppercase mb-5">
+                <div className="contact-left">
+                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
                         Contacto
                     </span>
                     <h2
@@ -93,7 +91,13 @@ export function ContactSection() {
                 </div>
 
                 {/* Right: form */}
-                <div className="glass-card-v2 rounded-2xl p-7 lg:p-8">
+                <div
+                    className="contact-right rounded-2xl p-7 lg:p-8"
+                    style={{
+                        background: 'rgba(255,255,255,0.022)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                >
                     {sent ? (
                         <div className="flex flex-col items-center justify-center h-full text-center py-10">
                             <CheckCircle2 className="w-14 h-14 text-emerald-400 mb-5" strokeWidth={1.5} />
@@ -153,7 +157,7 @@ export function ContactSection() {
                             <button
                                 type="submit"
                                 disabled={sending}
-                                className="group w-full inline-flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-[#2563eb] text-white font-bold text-[14px] cursor-pointer border-none transition-all duration-300 hover:bg-[#3b82f6] landing-glow-blue disabled:opacity-60 disabled:cursor-not-allowed"
+                                className="group w-full inline-flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-[#2563eb] text-white font-bold text-[14px] cursor-pointer border-none transition-all duration-300 hover:bg-[#3b82f6] landing-glow-blue disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
                             >
                                 {sending ? 'Enviando...' : 'Enviar mensaje'}
                                 {!sending && (
