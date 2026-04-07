@@ -4,6 +4,8 @@ import { Send, Phone, Mail, User, Paperclip, X, FileIcon, Download, FileText } f
 import { Input } from '@/shared/components/ui/input';
 import { Message, uploadAttachment } from '../lib/messaging-service';
 import { useToast } from '@/hooks/use-toast';
+import { useTrackUsage } from '@/features/billing/hooks/useTrackUsage';
+import { useUsageGuard } from '@/features/billing/hooks/useUsageGuard';
 
 interface ChatWindowProps {
     customerName: string;
@@ -110,6 +112,8 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
+    const trackUsage = useTrackUsage();
+    const { checkUsage } = useUsageGuard();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -132,6 +136,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
 
     const handleSend = async () => {
         if (!newMessage.trim() && selectedFiles.length === 0) return;
+        if (!checkUsage('messages_sent')) return;
 
         setIsUploading(true);
         try {
@@ -143,6 +148,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
             }
 
             onSendMessage(newMessage, channel === 'email' ? subject : undefined, attachments.length > 0 ? attachments : undefined);
+            trackUsage('messages_sent');
 
             setNewMessage('');
             setSubject('');

@@ -3,6 +3,8 @@ import { supabase } from '@/shared/lib/supabase'
 import { X } from 'lucide-react'
 import type { ComparisonResult } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
+import { useTrackUsage } from '@/features/billing/hooks/useTrackUsage'
+import { useUsageGuard } from '@/features/billing/hooks/useUsageGuard'
 
 interface SaveComparisonDialogProps {
     isOpen: boolean
@@ -27,10 +29,14 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
     const { toast } = useToast()
+    const trackUsage = useTrackUsage()
+    const { checkUsage } = useUsageGuard()
 
     if (!isOpen) return null
 
     const handleSave = async () => {
+        if (!checkUsage('comparisons')) return
+
         if (!name.trim()) {
             setError('Por favor ingresa un nombre para la comparativa')
             return
@@ -77,6 +83,7 @@ export function SaveComparisonDialog({ isOpen, onClose, comparisonData, customer
 
             if (insertError) throw insertError
 
+            trackUsage('comparisons')
             toast({ title: 'Comparativa guardada', description: 'La comparativa se ha guardado exitosamente.' })
             onClose()
             setName('')

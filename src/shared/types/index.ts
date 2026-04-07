@@ -18,6 +18,13 @@ export interface Company {
     sidebar_color?: string;
     status: 'active' | 'suspended' | 'cancelled';
     subscription_tier?: string;
+    // Billing
+    plan_id?: string;
+    stripe_customer_id?: string;
+    stripe_subscription_id?: string;
+    billing_interval?: BillingInterval;
+    plan_expires_at?: string;
+    trial_ends_at?: string;
     created_at: string;
     updated_at: string;
 }
@@ -805,4 +812,66 @@ export interface Campaign {
     template_id?: string;
     created_at: string;
     updated_at: string;
+}
+
+// ============================================================================
+// Billing & Subscription
+// ============================================================================
+
+export type PlanTier = 'free' | 'standard' | 'professional' | 'early_adopter'
+export type BillingInterval = 'monthly' | 'yearly'
+
+export interface PlanLimits {
+    max_users: number              // -1 = unlimited
+    max_supply_points: number      // -1 = unlimited
+    ai_uses_per_month: number      // -1 = unlimited
+    comparisons_per_month: number  // -1 = unlimited
+    messages_per_month: number     // -1 = unlimited
+    max_customers: number          // -1 = unlimited
+}
+
+export interface PlanFeatures {
+    crm: boolean
+    comparator: boolean
+    messaging: boolean
+    commissioners: boolean
+    compliance: boolean
+    pdf_reports: boolean
+    api_access: boolean
+    advanced_analytics: boolean
+    tariff_upload: boolean
+}
+
+export interface Plan {
+    id: string
+    name: PlanTier
+    display_name: string
+    price_monthly: number
+    price_yearly: number
+    stripe_price_monthly_id?: string
+    stripe_price_yearly_id?: string
+    limits: PlanLimits
+    features: PlanFeatures
+    is_active: boolean
+    sort_order: number
+    created_at: string
+}
+
+export interface UsageTracking {
+    id: string
+    company_id: string
+    feature_key: string
+    period_start: string
+    count: number
+    created_at: string
+    updated_at: string
+}
+
+export interface CompanyBilling {
+    plan_id?: string
+    stripe_customer_id?: string
+    stripe_subscription_id?: string
+    billing_interval: BillingInterval
+    plan_expires_at?: string
+    trial_ends_at?: string
 }

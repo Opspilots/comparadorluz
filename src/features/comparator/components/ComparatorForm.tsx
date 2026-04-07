@@ -9,12 +9,14 @@ import { SaveComparisonDialog } from './SaveComparisonDialog'
 import { useToast } from '@/hooks/use-toast'
 import { GAS_CONSTANTS } from '@/shared/constants'
 import { Zap, Flame, TrendingUp, Database } from 'lucide-react'
+import { usePlan } from '@/features/billing/hooks/usePlan'
 
 import { mapOcrData } from '../lib/ocrMapper'
 
 export function ComparatorForm() {
     const navigate = useNavigate()
     const [searching, setSearching] = useState(false)
+    const { canUseMore } = usePlan()
 
     // Use persistence hook
     const { state, updateState, clearState } = useComparatorState()
@@ -191,6 +193,16 @@ export function ComparatorForm() {
 
     const handleCompare = async (e?: React.FormEvent) => {
         if (e) e.preventDefault()
+
+        if (!canUseMore('comparisons', 'comparisons_per_month')) {
+            toast({
+                title: 'Límite de comparaciones alcanzado',
+                description: 'Has alcanzado el máximo de comparaciones de tu plan. Actualiza tu plan para continuar.',
+                variant: 'destructive',
+            })
+            return
+        }
+
         setSearching(true)
 
         try {

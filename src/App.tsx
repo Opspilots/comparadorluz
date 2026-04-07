@@ -8,6 +8,7 @@ import { Toaster } from '@/shared/components/ui/toaster'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { Login } from '@/features/auth/components/Login'
 import { ConsentSignPage } from '@/features/compliance/pages/ConsentSignPage'
+import { FeatureGate } from '@/features/billing/components/FeatureGate'
 
 // Lazy-loaded route components (code splitting)
 const TariffDashboard = lazy(() => import('@/features/tariffs/pages/TariffDashboard'))
@@ -38,6 +39,8 @@ const CommissionersPage = lazy(() => import('@/features/commissioners/pages/Comm
 const CommissionerDetailPage = lazy(() => import('@/features/commissioners/pages/CommissionerDetailPage').then(m => ({ default: m.CommissionerDetailPage })))
 const SuppliersPage = lazy(() => import('@/features/tariffs/pages/SuppliersPage'))
 const CompliancePage = lazy(() => import('@/features/compliance/pages/CompliancePage').then(m => ({ default: m.CompliancePage })))
+const SubscriptionPage = lazy(() => import('@/features/billing/pages/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })))
+const AdminPlansPage = lazy(() => import('@/features/billing/pages/AdminPlansPage').then(m => ({ default: m.AdminPlansPage })))
 
 function PrivateRouteLayout() {
     const [session, setSession] = useState<Session | null>(null)
@@ -184,30 +187,32 @@ function App() {
                         <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
                         <Route element={<PrivateRouteLayout />}>
                             <Route path="/" element={<DashboardPage />} />
-                            <Route path="/comparator" element={<ComparatorForm />} />
-                            <Route path="/comparator/history" element={<ComparisonHistory />} />
+                            <Route path="/comparator" element={<FeatureGate feature="comparator"><ComparatorForm /></FeatureGate>} />
+                            <Route path="/comparator/history" element={<FeatureGate feature="comparator"><ComparisonHistory /></FeatureGate>} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/crm" element={<CustomerList />} />
-                            <Route path="/crm/new" element={<CustomerForm />} />
-                            <Route path="/crm/:id" element={<CustomerDetails />} />
-                            <Route path="/crm/:id/edit" element={<CustomerForm />} />
-                            <Route path="/crm/:customerId/contacts/new" element={<ContactForm />} />
-                            <Route path="/crm/:customerId/supply-points/new" element={<SupplyPointForm />} />
-                            <Route path="/commissioners" element={<CommissionersPage />} />
-                            <Route path="/commissioners/:id" element={<CommissionerDetailPage />} />
+                            <Route path="/settings/subscription" element={<SubscriptionPage />} />
+                            <Route path="/admin/plans" element={<AdminRoute><AdminPlansPage /></AdminRoute>} />
+                            <Route path="/crm" element={<FeatureGate feature="crm"><CustomerList /></FeatureGate>} />
+                            <Route path="/crm/new" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
+                            <Route path="/crm/:id" element={<FeatureGate feature="crm"><CustomerDetails /></FeatureGate>} />
+                            <Route path="/crm/:id/edit" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
+                            <Route path="/crm/:customerId/contacts/new" element={<FeatureGate feature="crm"><ContactForm /></FeatureGate>} />
+                            <Route path="/crm/:customerId/supply-points/new" element={<FeatureGate feature="crm"><SupplyPointForm /></FeatureGate>} />
+                            <Route path="/commissioners" element={<FeatureGate feature="commissioners"><CommissionersPage /></FeatureGate>} />
+                            <Route path="/commissioners/:id" element={<FeatureGate feature="commissioners"><CommissionerDetailPage /></FeatureGate>} />
 
                             {/* Tariffs — admin/manager only */}
                             <Route path="/admin/tariffs" element={<AdminRoute><TariffDashboard /></AdminRoute>} />
-                            <Route path="/admin/tariffs/upload" element={<AdminRoute><TariffUploadPage /></AdminRoute>} />
+                            <Route path="/admin/tariffs/upload" element={<AdminRoute><FeatureGate feature="tariff_upload"><TariffUploadPage /></FeatureGate></AdminRoute>} />
                             <Route path="/admin/tariffs/batches/:id" element={<AdminRoute><BatchDetailsPage /></AdminRoute>} />
                             <Route path="/admin/tariffs/new" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
                             <Route path="/admin/tariffs/:id" element={<AdminRoute><TariffDetailsPage /></AdminRoute>} />
                             <Route path="/admin/tariffs/edit/:id" element={<AdminRoute><TariffEditorPage /></AdminRoute>} />
                             <Route path="/admin/suppliers" element={<AdminRoute><SuppliersPage /></AdminRoute>} />
-                            <Route path="/admin/compliance" element={<AdminRoute><CompliancePage /></AdminRoute>} />
+                            <Route path="/admin/compliance" element={<AdminRoute><FeatureGate feature="compliance"><CompliancePage /></FeatureGate></AdminRoute>} />
 
                             {/* Messaging */}
-                            <Route path="/admin/messages" element={<MessagingLayout />}>
+                            <Route path="/admin/messages" element={<FeatureGate feature="messaging"><MessagingLayout /></FeatureGate>}>
                                 <Route index element={<MessagingPage />} />
                                 <Route path="campaigns" element={<CampaignsPage />} />
                                 <Route path="campaigns/new" element={<CampaignForm />} />

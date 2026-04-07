@@ -4,9 +4,12 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import {
     LayoutDashboard, Users, FileText, Scale, FileSignature,
-    HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield, X
+    HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield, X, CreditCard, Lock
 } from 'lucide-react'
+import type { PlanFeatures } from '@/shared/types'
 import { useTour } from '@/features/guide/useTour'
+import { usePlan } from '@/features/billing/hooks/usePlan'
+import { PLAN_DISPLAY, PLAN_COLORS } from '@/features/billing/lib/plans'
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
     const r = parseInt(hex.slice(1, 3), 16) / 255
@@ -44,16 +47,22 @@ function applyBrandingToCSS(primaryHex: string) {
     root.style.setProperty('--ring', `${h} ${s}% ${l}%`)
 }
 
-const navItems = [
+const navItems: {
+    id: string
+    label: string
+    path: string
+    icon: typeof LayoutDashboard
+    gate?: keyof PlanFeatures
+}[] = [
     { id: 'dashboard', label: 'Inicio', path: '/', icon: LayoutDashboard },
-    { id: 'crm', label: 'CRM / Clientes', path: '/crm', icon: Users },
+    { id: 'crm', label: 'CRM / Clientes', path: '/crm', icon: Users, gate: 'crm' },
     { id: 'tariffs', label: 'Tarifario', path: '/admin/tariffs', icon: FileText },
     { id: 'suppliers', label: 'Comercializadoras', path: '/admin/suppliers', icon: Building2 },
-    { id: 'comparator', label: 'Comparador', path: '/comparator', icon: Scale },
+    { id: 'comparator', label: 'Comparador', path: '/comparator', icon: Scale, gate: 'comparator' },
     { id: 'contracts', label: 'Contratos', path: '/contracts', icon: FileSignature },
-    { id: 'messaging', label: 'Mensajería', path: '/admin/messages', icon: MessageSquare },
-    { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: Wallet },
-    { id: 'compliance', label: 'Cumplimiento', path: '/admin/compliance', icon: Shield },
+    { id: 'messaging', label: 'Mensajería', path: '/admin/messages', icon: MessageSquare, gate: 'messaging' },
+    { id: 'commissioners', label: 'Comisionados', path: '/commissioners', icon: Wallet, gate: 'commissioners' },
+    { id: 'compliance', label: 'Cumplimiento', path: '/admin/compliance', icon: Shield, gate: 'compliance' },
 ]
 
 interface SidebarProps {
@@ -64,6 +73,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const location = useLocation()
     const { startTour } = useTour()
+    const { tier, canUseFeature } = usePlan()
 
     const { data: companyData } = useQuery({
         queryKey: ['company-branding'],
@@ -213,11 +223,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     const isActive = location.pathname === item.path ||
                         (item.path !== '/' && location.pathname.startsWith(item.path))
                     const Icon = item.icon
+                    const isLocked = item.gate ? !canUseFeature(item.gate) : false
 
                     return (
                         <Link
                             key={item.id}
-                            to={item.path}
+                            to={isLocked ? '/settings/subscription' : item.path}
                             onClick={handleNavClick}
                             style={{
                                 display: 'flex',
@@ -225,13 +236,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                                 gap: '0.625rem',
                                 padding: '0.5625rem 0.75rem',
                                 borderRadius: '7px',
-                                color: isActive ? 'white' : 'rgba(255,255,255,0.5)',
+                                color: isLocked
+                                    ? 'rgba(255,255,255,0.2)'
+                                    : isActive ? 'white' : 'rgba(255,255,255,0.5)',
                                 textDecoration: 'none',
-                                fontWeight: isActive ? 600 : 500,
+                                fontWeight: isActive && !isLocked ? 600 : 500,
                                 fontSize: '0.875rem',
                                 letterSpacing: '-0.01em',
                                 transition: 'all 0.15s ease',
-                                background: isActive
+                                background: isActive && !isLocked
                                     ? 'rgba(255,255,255,0.1)'
                                     : 'transparent',
                                 position: 'relative',
@@ -239,7 +252,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                             className="sidebar-nav-item"
                         >
                             {/* Active accent bar */}
-                            {isActive && (
+                            {isActive && !isLocked && (
                                 <span style={{
                                     position: 'absolute',
                                     left: 0,
@@ -255,10 +268,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                                 size={17}
                                 style={{
                                     flexShrink: 0,
-                                    color: isActive ? primaryColor : 'inherit',
+                                    color: isLocked
+                                        ? 'rgba(255,255,255,0.2)'
+                                        : isActive ? primaryColor : 'inherit',
                                 }}
                             />
                             {item.label}
+                            {isLocked && (
+                                <Lock size={12} style={{ marginLeft: 'auto', flexShrink: 0, opacity: 0.5 }} />
+                            )}
                         </Link>
                     )
                 })}
@@ -272,6 +290,39 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 flexDirection: 'column',
                 gap: '2px',
             }}>
+                {/* Plan indicator */}
+                <Link
+                    to="/settings/subscription"
+                    onClick={handleNavClick}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '7px',
+                        textDecoration: 'none',
+                        marginBottom: '2px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <CreditCard size={14} style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
+                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', fontWeight: 500 }}>Plan</span>
+                    </div>
+                    <span style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        padding: '2px 7px',
+                        borderRadius: '999px',
+                        background: PLAN_COLORS[tier].bg,
+                        color: PLAN_COLORS[tier].text,
+                        border: `1px solid ${PLAN_COLORS[tier].border}`,
+                    }}>
+                        {PLAN_DISPLAY[tier]}
+                    </span>
+                </Link>
+
                 <Link
                     to="/settings"
                     onClick={handleNavClick}

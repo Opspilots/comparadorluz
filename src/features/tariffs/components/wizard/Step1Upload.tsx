@@ -5,6 +5,8 @@ import { supabase } from '@/shared/lib/supabase';
 import { Loader2, Upload } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { DetectedTariff } from '@/shared/types';
+import { useTrackUsage } from '@/features/billing/hooks/useTrackUsage';
+import { useUsageGuard } from '@/features/billing/hooks/useUsageGuard';
 
 interface Step1UploadProps {
     onTariffsDetected: (newCandidates: DetectedTariff[], file: File) => void;
@@ -13,6 +15,8 @@ interface Step1UploadProps {
 
 export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadProps) {
     const { toast } = useToast();
+    const trackUsage = useTrackUsage();
+    const { checkUsage } = useUsageGuard();
     const [processing, setProcessing] = useState(false);
 
     // Local Image Compression Utility
@@ -89,6 +93,8 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
     };
 
     const processFile = async (f: File) => {
+        if (!checkUsage('ai_uses')) return;
+
         setProcessing(true);
         try {
             if (!f.type.includes('pdf') && !f.type.includes('image')) {
@@ -134,6 +140,8 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
 
             const extracted = await fnResponse.json();
             if (!extracted) throw new Error("No se recibieron datos de la IA");
+
+            trackUsage('ai_uses');
 
             const rawTariffs = extracted.tariffs && Array.isArray(extracted.tariffs) ? extracted.tariffs : [extracted];
             const newCandidates: DetectedTariff[] = [];
