@@ -7,4 +7,4 @@ Disallow: /commissioners
 Disallow: /contracts
 Disallow: /settings
 
-Sitemap: https://comparadorluz.vercel.app/sitemap.xml
+Sitemap: https://energydeal.es/sitemap.xml

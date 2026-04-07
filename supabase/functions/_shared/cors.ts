@@ -1,5 +1,7 @@
 // Production origins are always allowed; localhost only in development
 const PRODUCTION_ORIGINS = [
+  'https://energydeal.es',
+  'https://www.energydeal.es',
   'https://comparadorluz.vercel.app',
 ]
 
