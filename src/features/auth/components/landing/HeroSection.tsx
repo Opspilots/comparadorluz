@@ -1,113 +1,118 @@
 import { useEffect, useState } from 'react'
-import { Search, Users, FileSignature, MessageSquare } from 'lucide-react'
+import { ArrowRight, Zap } from 'lucide-react'
 
 interface HeroSectionProps {
     onOpenAuth: (mode: 'login' | 'signup') => void
 }
 
-const capabilities = [
-    { icon: Search, label: 'Comparador', desc: 'Todas las tarifas del mercado' },
-    { icon: Users, label: 'CRM', desc: 'Clientes y suministros' },
-    { icon: FileSignature, label: 'Contratos', desc: 'Firma y seguimiento' },
-    { icon: MessageSquare, label: 'Mensajeria', desc: 'Email y WhatsApp' },
-]
-
 export function HeroSection({ onOpenAuth }: HeroSectionProps) {
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
-        const t = setTimeout(() => setMounted(true), 100)
+        const t = setTimeout(() => setMounted(true), 80)
         return () => clearTimeout(t)
     }, [])
 
     return (
-        <section className="relative min-h-screen hero-dark overflow-hidden flex flex-col items-center justify-center px-[5%]">
-            {/* Grid pattern */}
-            <div className="absolute inset-0 energy-grid opacity-[0.03]" />
-
-            {/* Horizontal glow line */}
-            <div className="absolute top-[45%] left-0 w-full h-px">
-                <div className="h-px w-1/3 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent animate-glow-line" />
+        <section
+            className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center px-[5%]"
+            style={{ background: '#020209' }}
+        >
+            {/* Floating orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div
+                    className="orb-float-1 absolute top-[-15%] left-[5%] w-[700px] h-[700px] rounded-full"
+                    style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.13) 0%, transparent 65%)', filter: 'blur(40px)' }}
+                />
+                <div
+                    className="orb-float-2 absolute top-[15%] right-[-8%] w-[550px] h-[550px] rounded-full"
+                    style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.09) 0%, transparent 65%)', filter: 'blur(40px)' }}
+                />
+                <div
+                    className="orb-float-3 absolute bottom-[0%] left-[15%] w-[450px] h-[450px] rounded-full"
+                    style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 65%)', filter: 'blur(50px)' }}
+                />
             </div>
 
+            {/* Dot grid */}
+            <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, rgba(148,163,184,0.55) 1px, transparent 1px)',
+                    backgroundSize: '36px 36px',
+                    opacity: 0.025,
+                }}
+            />
+
             {/* Content */}
-            <div className="relative z-10 text-center max-w-4xl mx-auto pt-24 pb-16">
+            <div className="relative z-10 text-center max-w-[940px] mx-auto pt-32 pb-20">
                 {/* Eyebrow */}
                 <div
-                    className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full mb-12 border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm transition-all duration-1000 ${
-                        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}
+                    className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full mb-10 border border-white/[0.06] bg-white/[0.025] backdrop-blur-sm transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 >
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[13px] font-medium text-slate-400 tracking-wide">
-                        CRM para asesores energeticos
+                    <span className="text-[11px] font-semibold text-slate-400 tracking-[0.08em] uppercase">
+                        Software CRM para asesores energéticos
                     </span>
                 </div>
 
-                {/* Headline */}
+                {/* H1 — SEO optimizado */}
                 <h1
-                    className={`text-[clamp(2.2rem,6vw,5rem)] font-extrabold leading-[1.05] tracking-[-0.04em] mb-8 transition-all duration-1000 delay-150 ${
-                        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-                    }`}
+                    className={`text-[clamp(2.2rem,6vw,5.4rem)] font-extrabold leading-[1.04] tracking-[-0.04em] mb-6 transition-all duration-700 delay-[80ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                     style={{ textWrap: 'balance' } as React.CSSProperties}
                 >
-                    <span className="text-white">Compara. Contrata. Cobra.</span>
+                    <span className="text-white">El CRM para Asesores Energéticos</span>
                     <br />
-                    <span className="landing-gradient-text">Todo desde un solo lugar.</span>
+                    <span className="gradient-text-bp">que Cierra más Contratos</span>
                 </h1>
 
-                {/* Subheadline */}
+                {/* Subheadline — SEO keywords naturales */}
                 <p
-                    className={`text-lg sm:text-xl text-slate-400 max-w-[600px] mx-auto mb-12 leading-relaxed transition-all duration-1000 delay-300 ${
-                        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-                    }`}
+                    className={`text-base sm:text-[1.1rem] text-slate-400 max-w-[620px] mx-auto mb-10 leading-relaxed transition-all duration-700 delay-[160ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
                     style={{ textWrap: 'pretty' } as React.CSSProperties}
                 >
-                    La plataforma que unifica todas tus herramientas para que dediques el tiempo a vender, no a gestionar.
+                    Compara tarifas de luz y gas en tiempo real, gestiona tu cartera de clientes con CIF y CUPS, controla comisiones y comunícate por email y WhatsApp — todo en una plataforma diseñada para asesores y corredurías.
                 </p>
 
                 {/* CTAs */}
                 <div
-                    className={`flex flex-col sm:flex-row gap-4 justify-center mb-20 transition-all duration-1000 delay-[450ms] ${
-                        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-                    }`}
+                    className={`flex flex-col sm:flex-row gap-3 justify-center mb-16 transition-all duration-700 delay-[240ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
                 >
                     <button
                         onClick={() => onOpenAuth('signup')}
-                        className="relative px-8 py-4 text-[15px] rounded-xl bg-[#2563eb] text-white border-none font-bold cursor-pointer landing-glow-blue transition-all duration-300 hover:bg-[#3b82f6]"
+                        className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-[#2563eb] text-white font-bold text-[14px] cursor-pointer border-none transition-all duration-300 hover:bg-[#3b82f6] landing-glow-blue"
                     >
-                        Empezar gratis
+                        Empezar gratis — sin tarjeta
+                        <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} />
                     </button>
-                    <button
-                        onClick={() => onOpenAuth('login')}
-                        className="px-8 py-4 text-[15px] rounded-xl bg-white/[0.04] text-slate-300 border border-white/[0.08] font-bold cursor-pointer backdrop-blur-sm hover:bg-white/[0.07] hover:text-white hover:border-white/[0.15] transition-all duration-300"
+                    <a
+                        href="#como-funciona"
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-white/[0.04] text-slate-300 border border-white/[0.08] font-semibold text-[14px] cursor-pointer backdrop-blur-sm hover:bg-white/[0.07] hover:text-white hover:border-white/[0.15] transition-all duration-300"
                     >
-                        Ya tengo cuenta
-                    </button>
+                        <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} />
+                        Ver cómo funciona
+                    </a>
                 </div>
 
-                {/* Capability pills */}
+                {/* Trust indicators */}
                 <div
-                    className={`grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-[800px] mx-auto transition-all duration-1000 delay-[600ms] ${
-                        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    }`}
+                    className={`flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-10 gap-y-3 transition-all duration-700 delay-[320ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 >
-                    {capabilities.map((cap, i) => (
-                        <div
-                            key={i}
-                            className="landing-card-premium rounded-xl p-4 flex flex-col items-center gap-2.5 cursor-default group"
-                        >
-                            <div className="w-9 h-9 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.12] flex items-center justify-center group-hover:bg-blue-500/[0.15] transition-colors duration-300">
-                                <cap.icon className="w-[18px] h-[18px] text-blue-400" strokeWidth={1.8} />
-                            </div>
-                            <span className="text-white font-semibold text-sm">{cap.label}</span>
-                            <span className="text-slate-500 text-xs text-center leading-snug">{cap.desc}</span>
+                    {[
+                        { v: '200+', l: 'Tarifas en la base de datos' },
+                        { v: '< 2 min', l: 'Por comparativa' },
+                        { v: 'Gratis', l: 'Para empezar' },
+                    ].map((s, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                            <span className="text-white font-bold text-base tracking-tight">{s.v}</span>
+                            <span className="text-slate-600 text-sm">{s.l}</span>
+                            {i < 2 && <div className="w-px h-3.5 bg-white/10 hidden sm:block" />}
                         </div>
                     ))}
                 </div>
             </div>
 
             {/* Bottom fade */}
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#050508] to-transparent pointer-events-none z-20" />
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#020209] to-transparent pointer-events-none z-20" />
         </section>
     )
 }

@@ -4,9 +4,15 @@ import { supabase } from '@/shared/lib/supabase'
 import { loginSchema, signupSchema, getFirstZodError } from '@/shared/lib/validations'
 import { LandingHeader } from './landing/LandingHeader'
 import { HeroSection } from './landing/HeroSection'
-import { MethodSection } from './landing/MethodSection'
-import { PricingSection } from './landing/PricingSection'
 import { StatsSection } from './landing/StatsSection'
+import { FeaturesSection } from './landing/FeaturesSection'
+import { HowItWorksSection } from './landing/HowItWorksSection'
+import { IntegrationsSection } from './landing/IntegrationsSection'
+import { TestimonialsSection } from './landing/TestimonialsSection'
+import { PricingSection } from './landing/PricingSection'
+import { BlogSection } from './landing/BlogSection'
+import { FAQSection } from './landing/FAQSection'
+import { ContactSection } from './landing/ContactSection'
 import { CTASection } from './landing/CTASection'
 import { LandingFooter } from './landing/LandingFooter'
 import { AuthModal } from './landing/AuthModal'
@@ -126,12 +132,18 @@ export function Login() {
     }
 
     return (
-        <div className="min-h-screen overflow-x-hidden scroll-smooth">
+        <div className="min-h-screen overflow-x-hidden scroll-smooth" style={{ background: '#020209' }}>
             <LandingHeader onOpenAuth={openAuth} />
             <HeroSection onOpenAuth={openAuth} />
-            <MethodSection />
             <StatsSection />
+            <FeaturesSection />
+            <HowItWorksSection />
+            <IntegrationsSection />
+            <TestimonialsSection />
             <PricingSection onOpenAuth={openAuth} />
+            <BlogSection />
+            <FAQSection />
+            <ContactSection />
             <CTASection onOpenAuth={openAuth} />
             <LandingFooter />
             <AuthModal

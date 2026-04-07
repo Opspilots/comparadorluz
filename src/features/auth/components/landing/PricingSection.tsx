@@ -50,7 +50,7 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
     }, [])
 
     return (
-        <section id="precios" className="py-24 lg:py-32 px-[5%] bg-white relative">
+        <section id="precios" className="py-24 lg:py-32 px-[5%] relative" style={{ background: '#f8fafc' }}>
             <div
                 ref={ref}
                 className={`max-w-[1100px] mx-auto transition-all duration-700 ${

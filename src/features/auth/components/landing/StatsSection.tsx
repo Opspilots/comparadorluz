@@ -1,30 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 
 const stats = [
-    { value: 200, suffix: '+', label: 'Tarifas comparables' },
-    { value: 2, suffix: 'min', label: 'Por comparativa' },
-    { value: 1, suffix: '', label: 'Plataforma para todo', prefix: 'Solo ' },
+    { value: 200, suffix: '+', label: 'Tarifas comparables', prefix: '' },
+    { value: 2, suffix: ' min', label: 'Por comparativa', prefix: '< ' },
+    { value: 98, suffix: '%', label: 'Datos cifrados (RGPD)', prefix: '' },
     { value: 0, suffix: '', label: 'Coste para empezar', prefix: '' },
 ]
 
-function AnimatedCounter({ value, suffix, prefix, visible }: { value: number; suffix: string; prefix?: string; visible: boolean }) {
+function AnimatedCounter({ value, suffix, prefix, visible }: { value: number; suffix: string; prefix: string; visible: boolean }) {
     const [count, setCount] = useState(0)
 
     useEffect(() => {
         if (!visible) return
         if (value === 0) { setCount(0); return }
 
-        let start = 0
-        const duration = 1800
+        let current = 0
+        const duration = 1600
         const step = 16
         const increment = value / (duration / step)
         const timer = setInterval(() => {
-            start += increment
-            if (start >= value) {
+            current += increment
+            if (current >= value) {
                 setCount(value)
                 clearInterval(timer)
             } else {
-                setCount(Math.floor(start))
+                setCount(Math.floor(current))
             }
         }, step)
         return () => clearInterval(timer)
@@ -51,14 +51,12 @@ export function StatsSection() {
     }, [])
 
     return (
-        <section className="relative py-20 px-[5%] overflow-hidden" style={{ background: '#050508' }}>
-            <div className="landing-divider absolute top-0 left-[10%] right-[10%]" />
+        <section className="relative py-20 px-[5%] overflow-hidden" style={{ background: '#020209' }}>
+            <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div
                 ref={ref}
-                className={`max-w-[1000px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4 transition-all duration-700 ${
-                    visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                }`}
+                className={`max-w-[1000px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
             >
                 {stats.map((stat, i) => (
                     <div key={i} className="text-center" style={{ transitionDelay: `${i * 100}ms` }}>
@@ -70,7 +68,7 @@ export function StatsSection() {
                                 visible={visible}
                             />
                         </div>
-                        <div className="text-sm text-slate-500 font-medium">{stat.label}</div>
+                        <div className="text-sm text-slate-600 font-medium">{stat.label}</div>
                     </div>
                 ))}
             </div>

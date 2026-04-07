@@ -1087,3 +1087,125 @@ html {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+
+/* ============================================================
+   LANDING V2 — Ultra Dark Enhanced System
+   ============================================================ */
+
+/* Floating orb animations */
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(80px, -55px) scale(1.07); }
+  50% { transform: translate(-45px, 90px) scale(0.95); }
+  75% { transform: translate(55px, 30px) scale(1.03); }
+}
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(-75px, 55px) scale(1.05); }
+  65% { transform: translate(70px, -80px) scale(0.97); }
+}
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(55px, 60px) scale(0.97); }
+  80% { transform: translate(-58px, -48px) scale(1.04); }
+}
+.orb-float-1 { animation: orbFloat1 14s ease-in-out infinite; }
+.orb-float-2 { animation: orbFloat2 19s ease-in-out infinite; }
+.orb-float-3 { animation: orbFloat3 24s ease-in-out infinite; }
+
+/* Blue-Purple gradient text */
+.gradient-text-bp {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 55%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass card for landing v2 */
+.glass-card-v2 {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid rgba(255,255,255,0.065);
+  transition: background 0.35s ease, border-color 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+}
+.glass-card-v2:hover {
+  background: rgba(255,255,255,0.032);
+  border-color: rgba(255,255,255,0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+}
+
+/* V2 Divider */
+.divider-v2 {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.2), rgba(124,58,237,0.12), transparent);
+}
+
+/* Integration badge */
+.integration-badge {
+  background: rgba(255,255,255,0.024);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+.integration-badge:hover {
+  background: rgba(255,255,255,0.048);
+  border-color: rgba(255,255,255,0.13);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
+
+/* Ticker animation */
+@keyframes tickerMove {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: tickerMove 28s linear infinite;
+  will-change: transform;
+}
+.ticker-track:hover { animation-play-state: paused; }
+
+/* Contact form inputs */
+.contact-input {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #e2e8f0;
+  outline: none;
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  font-family: inherit;
+  resize: vertical;
+}
+.contact-input:focus {
+  border-color: rgba(37,99,235,0.5);
+  background: rgba(37,99,235,0.04);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.contact-input::placeholder { color: rgba(148,163,184,0.45); }
+
+/* Blog card tag */
+.blog-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* FAQ grid-rows transition */
+.faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.faq-answer.open { grid-template-rows: 1fr; }
+.faq-answer > div { overflow: hidden; }
