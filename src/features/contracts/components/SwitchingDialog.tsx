@@ -71,13 +71,14 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
 
             const { data: profile } = await supabase
                 .from('users')
-                .select('role')
+                .select('role, company_id')
                 .eq('id', user.id)
                 .maybeSingle()
 
             if (profile?.role !== 'admin' && profile?.role !== 'manager') {
                 throw new Error('Solo administradores y managers pueden iniciar traspasos')
             }
+            if (!profile?.company_id) throw new Error('Perfil de empresa no encontrado')
 
             // Update this contract's switching status
             const { error: updateErr } = await supabase
@@ -88,6 +89,7 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
                     switching_notes: switchingNotes || null,
                 })
                 .eq('id', contract.id)
+                .eq('company_id', profile.company_id)
 
             if (updateErr) throw updateErr
 

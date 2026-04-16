@@ -172,7 +172,7 @@ export function CustomerDetails() {
                 <div style={{ display: 'grid', gap: '2rem' }}>
 
                     {/* Section: Contracts */}
-                    <section className="card">
+                    <section className="card-padded">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
 
                         </div>
@@ -188,7 +188,7 @@ export function CustomerDetails() {
                                                 <span style={badgeStyle(contract.status)}>{contract.status}</span>
                                             </div>
                                             <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                                                {(contract.tariff_versions as unknown as { suppliers?: { name: string } })?.suppliers?.name || 'Comercializadora desconocida'} - {contract.tariff_versions?.tariff_name}
+                                                {contract.tariff_versions?.suppliers?.name || 'Comercializadora desconocida'} - {contract.tariff_versions?.tariff_name}
                                             </div>
                                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                                 Firmado el: {contract.signed_at || 'Pendiente'} | Valor: {contract.annual_value_eur?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
@@ -204,7 +204,7 @@ export function CustomerDetails() {
                     </section>
 
                     {/* Section: Supply Points */}
-                    <section className="card tour-customer-supply-points">
+                    <section className="card-padded tour-customer-supply-points">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
 
                         </div>

@@ -160,10 +160,17 @@ export function ContractForm() {
             setHasBonaSocial(false)
             return
         }
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profileData } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+        const companyId = profileData?.company_id
+        if (!companyId) return
+
         const { data, error } = await supabase
             .from('supply_points')
             .select('*')
             .eq('customer_id', custId)
+            .eq('company_id', companyId)
             .order('created_at')
         if (!error) {
             setSupplyPoints(data || [])

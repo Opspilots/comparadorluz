@@ -20,10 +20,11 @@ export function useCustomerSearch(searchTerm: string, limit: number = 10) {
 
             const companyId = await getUserCompanyId();
 
+            const safeTerm = searchTerm.replace(/[(),]/g, '').trim()
             const { data, error } = await supabase
                 .from('customers')
                 .select('id, name, cif')
-                .or(`name.ilike.*${searchTerm}*,cif.ilike.*${searchTerm}*`)
+                .or(`name.ilike.*${safeTerm}*,cif.ilike.*${safeTerm}*`)
                 .eq('company_id', companyId)
                 .order('name')
                 .limit(limit);

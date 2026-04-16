@@ -446,59 +446,64 @@ export function CampaignForm() {
         }
 
         setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
+            if (!profile) return;
 
-        const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
-        if (!profile) { setLoading(false); return; }
+            const payload = {
+                company_id: profile.company_id,
+                name,
+                channel,
+                subject: channel === 'email' ? subject : null,
+                body,
+                status: targetStatus,
+                scheduled_at: targetStatus === 'scheduled' && scheduledAt ? new Date(scheduledAt).toISOString() : null,
+                filters: {
+                    customer_type: customerType,
+                    status: customerStatus
+                },
+            };
 
-        const payload = {
-            company_id: profile.company_id,
-            name,
-            channel,
-            subject: channel === 'email' ? subject : null,
-            body,
-            status: targetStatus,
-            scheduled_at: targetStatus === 'scheduled' && scheduledAt ? new Date(scheduledAt).toISOString() : null,
-            filters: {
-                customer_type: customerType,
-                status: customerStatus
-            },
-        };
+            let result;
+            if (isEditing) {
+                result = await supabase
+                    .from('campaigns')
+                    .update(payload)
+                    .eq('id', id)
+                    .eq('company_id', profile.company_id)
+                    .select()
+                    .single();
+            } else {
+                result = await supabase
+                    .from('campaigns')
+                    .insert({ ...payload, created_by: user.id })
+                    .select()
+                    .single();
+            }
 
-        let result;
-        if (isEditing) {
-            result = await supabase
-                .from('campaigns')
-                .update(payload)
-                .eq('id', id)
-                .eq('company_id', profile.company_id)
-                .select()
-                .single();
-        } else {
-            result = await supabase
-                .from('campaigns')
-                .insert({ ...payload, created_by: user.id })
-                .select()
-                .single();
-        }
+            const { error } = result;
 
-        const { error } = result;
+            if (error) {
+                console.error(error);
+                toast({ title: 'Error', description: 'Error al guardar la campaña', variant: 'destructive' });
+                return;
+            }
 
-        if (error) {
-            console.error(error);
-            toast({ title: 'Error', description: 'Error al guardar la campaña', variant: 'destructive' });
+            toast({
+                title: isEditing ? 'Campaña actualizada' : 'Campaña creada',
+                description: 'La campaña se ha guardado correctamente.'
+            });
+            navigate('/admin/messages/campaigns');
+        } catch (err: unknown) {
+            console.error('Error saving campaign:', err);
+            const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Error inesperado';
+            toast({ title: 'Error', description: msg, variant: 'destructive' });
+        } finally {
             setLoading(false);
-            return;
         }
-
-        toast({
-            title: isEditing ? 'Campaña actualizada' : 'Campaña creada',
-            description: 'La campaña se ha guardado correctamente.'
-        });
-        setLoading(false);
-        navigate('/admin/messages/campaigns');
     };
 
     // ─── Step 1: Channel + Content ─────────────────────────────

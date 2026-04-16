@@ -53,22 +53,28 @@ export function DataSubjectRequests({ companyId }: Props) {
 
     const load = useCallback(async () => {
         setLoading(true)
-        const [requestsRes, customersRes] = await Promise.all([
-            supabase
-                .from('data_subject_requests')
-                .select('*, customers(id, name, cif)')
-                .eq('company_id', companyId)
-                .order('created_at', { ascending: false }),
-            supabase
-                .from('customers')
-                .select('id, name, cif')
-                .eq('company_id', companyId)
-                .order('name'),
-        ])
-        setRequests((requestsRes.data || []) as DataSubjectRequest[])
-        setCustomers((customersRes.data || []) as Customer[])
-        setLoading(false)
-    }, [companyId])
+        try {
+            const [requestsRes, customersRes] = await Promise.all([
+                supabase
+                    .from('data_subject_requests')
+                    .select('*, customers(id, name, cif)')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('customers')
+                    .select('id, name, cif')
+                    .eq('company_id', companyId)
+                    .order('name'),
+            ])
+            setRequests((requestsRes.data || []) as DataSubjectRequest[])
+            setCustomers((customersRes.data || []) as Customer[])
+        } catch (err) {
+            console.error('Error loading data subject requests:', err)
+            toast({ title: 'Error', description: 'No se pudieron cargar las solicitudes.', variant: 'destructive' })
+        } finally {
+            setLoading(false)
+        }
+    }, [companyId, toast])
 
     useEffect(() => { load() }, [load])
 

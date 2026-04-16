@@ -8,7 +8,6 @@ import { StatsSection } from './landing/StatsSection'
 import { FeaturesSection } from './landing/FeaturesSection'
 import { HowItWorksSection } from './landing/HowItWorksSection'
 import { IntegrationsSection } from './landing/IntegrationsSection'
-import { TestimonialsSection } from './landing/TestimonialsSection'
 import { PricingSection } from './landing/PricingSection'
 import { BlogSection } from './landing/BlogSection'
 import { FAQSection } from './landing/FAQSection'
@@ -139,7 +138,6 @@ export function Login() {
             <FeaturesSection />
             <HowItWorksSection />
             <IntegrationsSection />
-            <TestimonialsSection />
             <PricingSection onOpenAuth={openAuth} />
             <BlogSection />
             <FAQSection />

@@ -9,6 +9,8 @@ import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { Login } from '@/features/auth/components/Login'
 import { ConsentSignPage } from '@/features/compliance/pages/ConsentSignPage'
 import { FeatureGate } from '@/features/billing/components/FeatureGate'
+import { LegalPage } from '@/features/landing/pages/LegalPage'
+import { BlogPage } from '@/features/landing/pages/BlogPage'
 
 // Lazy-loaded route components (code splitting)
 const TariffDashboard = lazy(() => import('@/features/tariffs/pages/TariffDashboard'))
@@ -183,6 +185,9 @@ function App() {
                 <Suspense fallback={<LoadingFallback />}>
                     <Routes>
                         <Route path="/login" element={<Login />} />
+                        <Route path="/blog" element={<BlogPage />} />
+                        <Route path="/blog/:slug" element={<BlogPage />} />
+                        <Route path="/legal/:page" element={<LegalPage />} />
                         <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
                         <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
                         <Route element={<PrivateRouteLayout />}>

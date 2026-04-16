@@ -256,6 +256,11 @@ export function useTariffCandidates(
     const quickUpdate = async (candidate: DetectedTariff, existingVersionId: string): Promise<void> => {
         setProcessing(true);
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No autenticado');
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
+            if (!profile?.company_id) throw new Error('Perfil no encontrado');
+
             const { validFrom, validTo } = computeVersionDateRange(candidate);
 
             await supabase.from('tariff_rates').delete().eq('tariff_version_id', existingVersionId);
@@ -275,7 +280,8 @@ export function useTariffCandidates(
                     is_active: true,
                     completion_status: 'complete'
                 })
-                .eq('id', existingVersionId);
+                .eq('id', existingVersionId)
+                .eq('company_id', profile.company_id);
 
             if (vError) throw vError;
 
@@ -301,6 +307,11 @@ export function useTariffCandidates(
         const processedIds = new Set<string>();
 
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No autenticado');
+            const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle();
+            if (!profile?.company_id) throw new Error('Perfil no encontrado');
+
             for (const { candidate, existingVersionId } of pairs) {
                 const { validFrom, validTo } = computeVersionDateRange(candidate);
 
@@ -321,7 +332,8 @@ export function useTariffCandidates(
                         is_active: true,
                         completion_status: 'complete'
                     })
-                    .eq('id', existingVersionId);
+                    .eq('id', existingVersionId)
+                    .eq('company_id', profile.company_id);
 
                 if (vError) throw vError;
                 processedIds.add(candidate.id);

@@ -22,6 +22,11 @@ interface SipsSupplyData {
 }
 
 async function importSipsData(supplyPointId: string, data: SipsSupplyData): Promise<{ ok: boolean; error?: string }> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ok: false, error: 'No autenticado' }
+    const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
+    if (!profile?.company_id) return { ok: false, error: 'Perfil no encontrado' }
+
     const { error } = await supabase
         .from('supply_points')
         .update({
@@ -39,6 +44,7 @@ async function importSipsData(supplyPointId: string, data: SipsSupplyData): Prom
             sips_imported_at: new Date().toISOString(),
         })
         .eq('id', supplyPointId)
+        .eq('company_id', profile.company_id)
 
     if (error) return { ok: false, error: error.message }
     return { ok: true }

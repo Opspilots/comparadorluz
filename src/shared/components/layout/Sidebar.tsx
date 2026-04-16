@@ -12,6 +12,7 @@ import { usePlan } from '@/features/billing/hooks/usePlan'
 import { PLAN_DISPLAY, PLAN_COLORS } from '@/features/billing/lib/plans'
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return { h: 221, s: 83, l: 53 }
     const r = parseInt(hex.slice(1, 3), 16) / 255
     const g = parseInt(hex.slice(3, 5), 16) / 255
     const b = parseInt(hex.slice(5, 7), 16) / 255
@@ -217,7 +218,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '2px',
-                overflowY: 'auto',
+                overflowY: 'hidden',
             }}>
                 {navItems.map((item) => {
                     const isActive = location.pathname === item.path ||

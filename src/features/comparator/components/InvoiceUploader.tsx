@@ -62,13 +62,15 @@ export function InvoiceUploader({ onDataExtracted, supplyType = 'electricity' }:
             if (error) {
                 console.error('Edge Function error:', error)
                 if (error.context && error.context instanceof Response) {
+                    let parsedMessage: string | undefined
                     try {
                         const errorBody = await error.context.text()
-                        const parsedError = JSON.parse(errorBody)
-                        throw new Error(parsedError.error || error.message)
-                    } catch (err: unknown) {
-                        console.error('Failed to parse error body:', err)
+                        const parsed = JSON.parse(errorBody)
+                        parsedMessage = parsed.error || error.message
+                    } catch {
+                        // JSON parsing failed — fall through to throw original error
                     }
+                    if (parsedMessage) throw new Error(parsedMessage)
                 }
                 throw error
             }

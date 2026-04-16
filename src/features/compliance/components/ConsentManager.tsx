@@ -68,37 +68,43 @@ export function ConsentManager({ companyId }: Props) {
 
     const load = useCallback(async () => {
         setLoading(true)
-        const [consentsRes, requestsRes, customersRes, companyRes] = await Promise.all([
-            supabase
-                .from('customer_consents')
-                .select('*, customers(id, name, cif)')
-                .eq('company_id', companyId)
-                .is('revoked_at', null)
-                .order('created_at', { ascending: false }),
-            supabase
-                .from('consent_requests')
-                .select('*, customers(id, name, cif)')
-                .eq('company_id', companyId)
-                .order('created_at', { ascending: false }),
-            supabase
-                .from('customers')
-                .select('id, name, cif')
-                .eq('company_id', companyId)
-                .order('name'),
-            supabase
-                .from('companies')
-                .select('messaging_settings')
-                .eq('id', companyId)
-                .single(),
-        ])
-        setConsents((consentsRes.data || []) as (CustomerConsent & { customers?: Customer })[])
-        setRequests((requestsRes.data || []) as (ConsentRequest & { customers?: Customer })[])
-        setCustomers((customersRes.data || []) as Customer[])
-        setAvailableChannels(getAvailableChannels(
-            (companyRes.data?.messaging_settings as Record<string, unknown>) || null
-        ))
-        setLoading(false)
-    }, [companyId])
+        try {
+            const [consentsRes, requestsRes, customersRes, companyRes] = await Promise.all([
+                supabase
+                    .from('customer_consents')
+                    .select('*, customers(id, name, cif)')
+                    .eq('company_id', companyId)
+                    .is('revoked_at', null)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('consent_requests')
+                    .select('*, customers(id, name, cif)')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('customers')
+                    .select('id, name, cif')
+                    .eq('company_id', companyId)
+                    .order('name'),
+                supabase
+                    .from('companies')
+                    .select('messaging_settings')
+                    .eq('id', companyId)
+                    .single(),
+            ])
+            setConsents((consentsRes.data || []) as (CustomerConsent & { customers?: Customer })[])
+            setRequests((requestsRes.data || []) as (ConsentRequest & { customers?: Customer })[])
+            setCustomers((customersRes.data || []) as Customer[])
+            setAvailableChannels(getAvailableChannels(
+                (companyRes.data?.messaging_settings as Record<string, unknown>) || null
+            ))
+        } catch (err) {
+            console.error('Error loading consent data:', err)
+            toast({ title: 'Error', description: 'No se pudieron cargar los datos de consentimiento.', variant: 'destructive' })
+        } finally {
+            setLoading(false)
+        }
+    }, [companyId, toast])
 
     useEffect(() => { load() }, [load])
 
@@ -621,8 +627,7 @@ export function ConsentManager({ companyId }: Props) {
                             textAlign: 'center', padding: '3rem', color: '#94a3b8',
                             background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0',
                         }}>
-                            <AlertTriangle size={32} color="#d97706" style={{ marginBottom: '0.5rem' }} />
-                            <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: 600 }}>No hay consentimientos registrados</div>
+                                <div style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600 }}>No hay consentimientos registrados</div>
                             <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', color: '#a16207' }}>
                                 Es obligatorio registrar el consentimiento de tratamiento de datos (RGPD Art. 6) antes de gestionar contratos.
                                 Registra o envia solicitudes de consentimiento a tus clientes.

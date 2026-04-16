@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { Star, Quote } from 'lucide-react'
+import { Star } from 'lucide-react'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -64,7 +64,7 @@ export function TestimonialsSection() {
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
             <div
                 className="absolute inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.03) 0%, transparent 70%)' }}
+                style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.04) 0%, transparent 70%)' }}
             />
 
             <div className="max-w-[1100px] mx-auto relative z-10">
@@ -82,7 +82,7 @@ export function TestimonialsSection() {
                     </h2>
                 </div>
 
-                {/* Asymmetric layout: 1 featured (lg:col-span-7) + 2 stacked (lg:col-span-5) */}
+                {/* Asymmetric layout: 1 featured + 2 stacked */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                     {/* Featured testimonial */}
                     <div
@@ -95,8 +95,13 @@ export function TestimonialsSection() {
                         }}
                     >
                         <div>
-                            <Quote className="w-8 h-8 text-blue-500/30 mb-6" strokeWidth={1.5} />
-                            <p className="text-[1.1rem] text-slate-300 leading-relaxed mb-8 font-medium">
+                            {/* Stars */}
+                            <div className="flex gap-1 mb-6">
+                                {Array.from({ length: featured.stars }).map((_, si) => (
+                                    <Star key={si} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                                ))}
+                            </div>
+                            <p className="text-[1.05rem] text-slate-300 leading-relaxed mb-8 font-medium">
                                 "{featured.quote}"
                             </p>
                         </div>
@@ -105,30 +110,28 @@ export function TestimonialsSection() {
                             <div className="flex items-center gap-3.5">
                                 <div
                                     className="w-12 h-12 rounded-xl flex items-center justify-center text-[14px] font-bold text-white flex-shrink-0"
-                                    style={{ background: `${featured.color}22`, border: `1px solid ${featured.color}30` }}
+                                    style={{ background: `${featured.color}20`, border: `1px solid ${featured.color}30` }}
                                 >
                                     {featured.initials}
                                 </div>
                                 <div>
                                     <div className="text-[14px] font-semibold text-white">{featured.name}</div>
                                     <div className="text-[12px] text-slate-500">{featured.role} · {featured.location}</div>
-                                    <div className="flex gap-0.5 mt-1">
-                                        {Array.from({ length: featured.stars }).map((_, si) => (
-                                            <Star key={si} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                        ))}
-                                    </div>
                                 </div>
                             </div>
                             {featured.metric && (
-                                <div className="text-right flex-shrink-0">
-                                    <div className="text-[2.4rem] font-extrabold text-emerald-400 leading-none tracking-tight">{featured.metric}</div>
-                                    <div className="text-[12px] text-slate-500 mt-1">{featured.metricLabel}</div>
+                                <div
+                                    className="text-right flex-shrink-0 px-4 py-2 rounded-xl"
+                                    style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.15)' }}
+                                >
+                                    <div className="text-[2rem] font-extrabold text-emerald-400 leading-none tracking-tight">{featured.metric}</div>
+                                    <div className="text-[11px] text-emerald-600 mt-0.5">{featured.metricLabel}</div>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Two smaller testimonials stacked */}
+                    {/* Two smaller testimonials */}
                     <div className="lg:col-span-5 flex flex-col gap-4">
                         {rest.map((t, i) => (
                             <div
@@ -143,14 +146,14 @@ export function TestimonialsSection() {
                             >
                                 <div className="flex gap-0.5 mb-4">
                                     {Array.from({ length: t.stars }).map((_, si) => (
-                                        <Star key={si} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                        <Star key={si} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                                     ))}
                                 </div>
                                 <p className="text-sm text-slate-400 leading-relaxed flex-1 mb-5">"{t.quote}"</p>
                                 <div className="flex items-center gap-3">
                                     <div
                                         className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
-                                        style={{ background: `${t.color}22`, border: `1px solid ${t.color}30` }}
+                                        style={{ background: `${t.color}20`, border: `1px solid ${t.color}30` }}
                                     >
                                         {t.initials}
                                     </div>

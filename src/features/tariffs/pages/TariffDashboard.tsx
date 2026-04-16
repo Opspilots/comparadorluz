@@ -242,9 +242,12 @@ export default function TariffDashboard() {
                 query = query.eq('supplier_id', supplierFilter);
             }
 
-            // Search Filter
+            // Search Filter — strip PostgREST filter-injection characters before interpolating
             if (searchTerm) {
-                query = query.or(`tariff_name.ilike.%${searchTerm}%,tariff_code.ilike.%${searchTerm}%`);
+                const safeTerm = searchTerm.replace(/[(),]/g, '').trim()
+                if (safeTerm) {
+                    query = query.or(`tariff_name.ilike.%${safeTerm}%,tariff_code.ilike.%${safeTerm}%`)
+                }
             }
 
             // Date Filters
@@ -394,11 +397,9 @@ export default function TariffDashboard() {
                     )}
                 </div>
 
-                {/* Add Button - Distinct Style */}
                 <button
                     onClick={() => navigate('/admin/tariffs/new', { state: { supplyType: activeTab } })}
-                    className="btn tour-tariffs-upload-btn"
-                    style={STYLES.addButton(activeTab)}
+                    className="btn btn-primary tour-tariffs-upload-btn"
                 >
                     <Plus size={20} strokeWidth={2.5} />
                     <span>Nueva Tarifa de {activeTab === 'electricity' ? 'Luz' : 'Gas'}</span>

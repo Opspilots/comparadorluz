@@ -79,6 +79,7 @@ export function SettingsPage() {
                 .from('users')
                 .update({ full_name: fullName })
                 .eq('id', user.id)
+                .eq('company_id', user.company_id)
             if (error) throw error
             setUser({ ...user, full_name: fullName })
             setEditingName(false)
@@ -159,14 +160,14 @@ export function SettingsPage() {
                                     Informaci&oacute;n de Usuario
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[#f8fafc] border border-[#e2e8f0]">
+                                    <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[#eef2f7] border border-[#e2e8f0]">
                                         <Mail size={16} className="text-[#64748b] shrink-0" />
                                         <div>
                                             <div className="text-[11px] font-semibold text-[#64748b] uppercase">Correo</div>
                                             <div className="text-sm font-semibold text-[#0f172a]">{user.email}</div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[#f8fafc] border border-[#e2e8f0]">
+                                    <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[#eef2f7] border border-[#e2e8f0]">
                                         <Calendar size={16} className="text-[#64748b] shrink-0" />
                                         <div>
                                             <div className="text-[11px] font-semibold text-[#64748b] uppercase">Registro</div>
@@ -210,7 +211,7 @@ export function SettingsPage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[#f8fafc] border border-[#e2e8f0] max-w-md">
+                                    <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[#eef2f7] border border-[#e2e8f0] max-w-md">
                                         <User size={16} className="text-[#64748b] shrink-0" />
                                         <div className="flex-1">
                                             <div className="text-sm font-semibold text-[#0f172a]">
@@ -238,7 +239,7 @@ export function SettingsPage() {
                                 <h3 className="text-xs font-bold text-[#64748b] uppercase tracking-[0.05em] mb-3">
                                     Contrase&ntilde;a
                                 </h3>
-                                <div className="flex items-center justify-between p-3 rounded-[10px] bg-[#f8fafc] border border-[#e2e8f0] max-w-md">
+                                <div className="flex items-center justify-between p-3 rounded-[10px] bg-[#eef2f7] border border-[#e2e8f0] max-w-md">
                                     <div className="flex items-center gap-3">
                                         <KeyRound size={16} className="text-[#64748b] shrink-0" />
                                         <div>

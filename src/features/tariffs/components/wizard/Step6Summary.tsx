@@ -63,6 +63,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Sesión expirada. Recarga la página.');
             const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user.id).maybeSingle();
+            if (!company?.company_id) throw new Error('Perfil de empresa no encontrado.');
 
             const { data: selectedStructure } = await supabase
                 .from('tariff_structures')
@@ -95,6 +96,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                     .from('tariff_versions')
                     .update(payload)
                     .eq('id', id)
+                    .eq('company_id', payload.company_id)
                     .select()
                     .single();
                 if (vError) throw vError;
@@ -179,15 +181,20 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
             }
 
             // 3. Handle Schedules — same insert-before-delete pattern
+            const toTimeString = (t: string) => {
+                const parts = t.split(':');
+                if (parts.length === 2) return `${t}:00`;
+                return t;
+            };
             const schedulesPayload = data.schedules.map(s => ({
                 id: crypto.randomUUID(),
                 tariff_version_id: versionId,
-                month_mask: s.month_mask,
-                day_type_mask: s.day_type_mask,
-                start_hour: s.start_hour.includes(':') && s.start_hour.split(':').length === 2 ? `${s.start_hour}:00` : s.start_hour,
-                end_hour: s.end_hour.includes(':') && s.end_hour.split(':').length === 2 ? `${s.end_hour}:59` : s.end_hour,
+                month_mask: Array.from(s.month_mask),
+                day_type_mask: Array.from(s.day_type_mask),
+                start_hour: toTimeString(s.start_hour),
+                end_hour: toTimeString(s.end_hour),
                 period: s.period,
-                context_calendar: s.context_calendar
+                context_calendar: s.context_calendar ?? null,
             }));
 
             const { data: oldSchedules } = await supabase
@@ -220,8 +227,10 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
             }
 
         } catch (err: unknown) {
-            console.error(err);
-            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error('Error al guardar tarifa:', err);
+            const errorMsg = err instanceof Error
+                ? err.message
+                : (err as { message?: string })?.message ?? String(err);
             toast({
                 variant: 'destructive',
                 title: "Error al guardar",

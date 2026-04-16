@@ -1,4 +1,4 @@
-import { Linkedin, Twitter, Mail } from 'lucide-react'
+import { Linkedin, Twitter, Mail, Zap } from 'lucide-react'
 
 const footerLinks = {
     Producto: [
@@ -30,48 +30,49 @@ export function LandingFooter() {
                     {/* Brand */}
                     <div className="col-span-2 sm:col-span-1">
                         <div className="flex items-center gap-2.5 mb-4">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 -rotate-[5deg] flex-shrink-0" />
-                            <span className="text-[1.1rem] font-extrabold tracking-[-0.03em] text-white">EnergyDeal</span>
+                            <div
+                                className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                                style={{
+                                    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                                    boxShadow: '0 0 12px rgba(37,99,235,0.35)',
+                                }}
+                            >
+                                <Zap className="w-4 h-4 text-white" strokeWidth={2.5} fill="currentColor" />
+                            </div>
+                            <span className="text-[1.1rem] font-extrabold tracking-[-0.03em] text-white">
+                                Energy<span style={{ color: '#60a5fa' }}>Deal</span>
+                            </span>
                         </div>
                         <p className="text-[13px] text-slate-600 leading-relaxed mb-5 max-w-[200px]">
                             El CRM para asesores energéticos que cierra más contratos.
                         </p>
-                        <div className="flex gap-2.5">
-                            <a
-                                href="#"
-                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.05] transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.07)' }}
-                                aria-label="LinkedIn"
-                            >
-                                <Linkedin className="w-3.5 h-3.5 text-slate-500" />
-                            </a>
-                            <a
-                                href="#"
-                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.05] transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.07)' }}
-                                aria-label="Twitter / X"
-                            >
-                                <Twitter className="w-3.5 h-3.5 text-slate-500" />
-                            </a>
-                            <a
-                                href="mailto:hola@energydeal.es"
-                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.05] transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.07)' }}
-                                aria-label="Email"
-                            >
-                                <Mail className="w-3.5 h-3.5 text-slate-500" />
-                            </a>
+                        <div className="flex gap-2">
+                            {[
+                                { Icon: Linkedin, label: 'LinkedIn', href: '#' },
+                                { Icon: Twitter, label: 'Twitter / X', href: '#' },
+                                { Icon: Mail, label: 'Email', href: 'mailto:hola@energydeal.es' },
+                            ].map(({ Icon, label, href }) => (
+                                <a
+                                    key={label}
+                                    href={href}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/[0.06] hover:border-white/[0.12] group"
+                                    style={{ border: '1px solid rgba(255,255,255,0.07)' }}
+                                    aria-label={label}
+                                >
+                                    <Icon className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-300 transition-colors" />
+                                </a>
+                            ))}
                         </div>
                     </div>
 
                     {/* Link columns */}
                     {(Object.entries(footerLinks) as [string, { label: string; href: string }[]][]).map(([section, links]) => (
                         <div key={section}>
-                            <h4 className="text-[11px] font-bold text-white/50 tracking-[0.1em] uppercase mb-5">{section}</h4>
+                            <h4 className="text-[11px] font-bold text-white/40 tracking-[0.1em] uppercase mb-5">{section}</h4>
                             <ul className="space-y-3">
                                 {links.map((link) => (
                                     <li key={link.href}>
-                                        <a href={link.href} className="text-[13px] text-slate-600 hover:text-slate-300 transition-colors">
+                                        <a href={link.href} className="text-[13px] text-slate-600 hover:text-slate-300 transition-colors duration-200">
                                             {link.label}
                                         </a>
                                     </li>

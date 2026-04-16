@@ -6,10 +6,10 @@ import { useGSAP } from '@gsap/react'
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 const stats = [
-    { value: 200, suffix: '+', label: 'Tarifas en base de datos', prefix: '' },
-    { value: 2, suffix: ' min', label: 'Por comparativa completa', prefix: '< ' },
-    { value: 40, suffix: '%', label: 'Más contratos cerrados', prefix: '+' },
-    { value: 0, suffix: '', label: 'Coste para empezar', prefix: '' },
+    { value: 200, suffix: '+', label: 'Tarifas en base de datos', prefix: '', color: '#60a5fa' },
+    { value: 2, suffix: ' min', label: 'Por comparativa completa', prefix: '< ', color: '#34d399' },
+    { value: 40, suffix: '%', label: 'Más contratos cerrados', prefix: '+', color: '#a78bfa' },
+    { value: 0, suffix: '', label: 'Coste para empezar', prefix: '0', color: '#fbbf24' },
 ]
 
 export function StatsSection() {
@@ -20,7 +20,7 @@ export function StatsSection() {
             const el = document.querySelector(`.stat-num-${i}`) as HTMLElement
             if (!el) return
 
-            if (stat.value === 0) { el.textContent = `${stat.prefix}0`; return }
+            if (stat.value === 0) { el.textContent = stat.prefix; return }
 
             ScrollTrigger.create({
                 trigger: sectionRef.current,
@@ -61,17 +61,28 @@ export function StatsSection() {
         <section ref={sectionRef} className="relative py-20 px-[5%] overflow-hidden" style={{ background: '#020209' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
-            <div className="max-w-[1000px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4">
-                {stats.map((stat, i) => (
-                    <div key={i} className="stat-item text-center">
-                        <div className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-white tracking-[-0.04em] mb-2 tabular-nums">
-                            <span className={`stat-num-${i}`}>
-                                {stat.prefix}0{stat.suffix}
-                            </span>
+            <div className="max-w-[1000px] mx-auto">
+                <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-white/[0.04]">
+                    {stats.map((stat, i) => (
+                        <div key={i} className="stat-item text-center px-6 py-4 relative group">
+                            {/* Subtle glow on hover */}
+                            <div
+                                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                                style={{ background: `radial-gradient(ellipse at center, ${stat.color}06 0%, transparent 70%)` }}
+                            />
+
+                            <div
+                                className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold tracking-[-0.04em] mb-2 tabular-nums"
+                                style={{ color: stat.color }}
+                            >
+                                <span className={`stat-num-${i}`}>
+                                    {stat.prefix}0{stat.value !== 0 ? stat.suffix : ''}
+                                </span>
+                            </div>
+                            <div className="text-sm text-slate-500 font-medium leading-snug">{stat.label}</div>
                         </div>
-                        <div className="text-sm text-slate-600 font-medium">{stat.label}</div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
         </section>
     )

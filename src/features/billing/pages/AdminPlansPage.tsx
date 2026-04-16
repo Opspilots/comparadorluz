@@ -201,7 +201,6 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function AdminPlansPage() {
-  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null)
   const [search, setSearch] = useState('')
@@ -253,7 +252,6 @@ export function AdminPlansPage() {
 
   const handleSaved = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin-companies'] })
-    toast({ title: 'Cambio guardado' })
   }
 
   return (

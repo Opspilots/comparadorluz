@@ -61,14 +61,20 @@ export function DataRetentionSettings({ companyId }: Props) {
 
     const load = useCallback(async () => {
         setLoading(true)
-        const { data } = await supabase
-            .from('data_retention_policies')
-            .select('*')
-            .eq('company_id', companyId)
-
-        setPolicies((data || []) as DataRetentionPolicy[])
-        setLoading(false)
-    }, [companyId])
+        try {
+            const { data, error } = await supabase
+                .from('data_retention_policies')
+                .select('*')
+                .eq('company_id', companyId)
+            if (error) throw error
+            setPolicies((data || []) as DataRetentionPolicy[])
+        } catch (err) {
+            console.error('Error loading retention policies:', err)
+            toast({ title: 'Error', description: 'No se pudieron cargar las políticas de retención.', variant: 'destructive' })
+        } finally {
+            setLoading(false)
+        }
+    }, [companyId, toast])
 
     useEffect(() => { load() }, [load])
 

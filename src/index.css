@@ -1167,7 +1167,6 @@ html {
   animation: tickerMove 28s linear infinite;
   will-change: transform;
 }
-.ticker-track:hover { animation-play-state: paused; }
 
 /* Contact form inputs */
 .contact-input {
