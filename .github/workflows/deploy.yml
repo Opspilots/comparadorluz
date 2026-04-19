@@ -10,6 +10,7 @@ jobs:
     uses: Opspilots/agenciaopspilot/.github/workflows/deploy-vps.yml@main
     with:
       project_name: comparadorluz
+      deploy_path: /var/www/energydeal/dist
       test_command: npm test -- --run
     secrets:
       VPS_HOST: ${{ secrets.VPS_HOST }}
