@@ -68,7 +68,7 @@ export function ContractPreview() {
                     supabase
                         .from('contract_templates')
                         .select('*')
-                        .single(),
+                        .maybeSingle(),
                 ])
 
                 if (contractRes.error) throw contractRes.error
@@ -97,7 +97,7 @@ export function ContractPreview() {
                             .from('companies')
                             .select('messaging_settings')
                             .eq('id', contractRes.data.company_id)
-                            .single()
+                            .maybeSingle()
                         setAvailableChannels(getAvailableChannels(company?.messaging_settings || null))
                     }
                 }

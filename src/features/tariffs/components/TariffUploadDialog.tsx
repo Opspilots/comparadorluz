@@ -29,11 +29,13 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
     // Mutation to create a batch
     const createBatchMutation = useMutation({
         mutationFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No autenticado');
             const { data, error } = await supabase
                 .from('tariff_batches')
                 .insert({
                     company_id: companyId,
-                    uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+                    uploaded_by: user.id,
                     status: 'processing',
                     file_count: uploads.length
                 })
@@ -182,10 +184,19 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                                     .from('tariff_versions')
                                     .select('id')
                                     .eq('company_id', payload.company_id)
-                                    .eq('supplier_id', payload.supplier_id)
-                                    .eq('tariff_structure_id', payload.tariff_structure_id)
                                     .ilike('tariff_name', payload.tariff_name)
                                     .eq('valid_from', payload.valid_from);
+
+                                if (payload.supplier_id) {
+                                    versionCheckQuery = versionCheckQuery.eq('supplier_id', payload.supplier_id);
+                                } else {
+                                    versionCheckQuery = versionCheckQuery.is('supplier_id', null);
+                                }
+                                if (payload.tariff_structure_id) {
+                                    versionCheckQuery = versionCheckQuery.eq('tariff_structure_id', payload.tariff_structure_id);
+                                } else {
+                                    versionCheckQuery = versionCheckQuery.is('tariff_structure_id', null);
+                                }
 
                                 if (payload.contract_duration === null || payload.contract_duration === undefined) {
                                     versionCheckQuery = versionCheckQuery.is('contract_duration', null);
@@ -222,6 +233,7 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                                 }
 
                                 if (tvError) throw tvError;
+                                if (!tariffVersion) throw new Error('No se pudo crear o actualizar la versión de tarifa');
 
                                 // Clean existing rates before inserting new ones to avoid duplicate entries when overwriting
                                 await supabase.from('tariff_rates').delete().eq('tariff_version_id', tariffVersion.id);

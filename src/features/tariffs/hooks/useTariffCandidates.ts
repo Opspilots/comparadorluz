@@ -128,6 +128,7 @@ export function useTariffCandidates(
             if (!user.user) throw new Error('Usuario no autenticado');
             const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user.id).maybeSingle();
             const companyId = company?.company_id;
+            if (!companyId) throw new Error('Empresa no encontrada');
 
             const [structsRes, suppsRes] = await Promise.all([
                 supabase.from('tariff_structures').select('id, code, name'),

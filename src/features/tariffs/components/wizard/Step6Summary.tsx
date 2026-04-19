@@ -50,6 +50,16 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
     };
 
     const handleSave = async (activate: boolean) => {
+        // Validate required UUID fields before hitting the DB
+        if (!data.metadata.supplier_id) {
+            toast({ variant: 'destructive', title: 'Falta comercializadora', description: 'Selecciona una comercializadora antes de guardar.' });
+            return;
+        }
+        if (!data.metadata.name) {
+            toast({ variant: 'destructive', title: 'Falta nombre', description: 'Introduce un nombre para la tarifa antes de guardar.' });
+            return;
+        }
+
         setSaving(true);
         try {
             // Helper to prevent e.g '2026-02-29' crashing Supabase inserts
@@ -59,22 +69,26 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 return isNaN(dateObj.getTime()) ? null : d;
             };
 
+            // Helper to prevent empty strings being sent as UUID values
+            const sanitizeUuid = (v: string | null | undefined) => (v && v.trim() !== '' ? v : null);
+
             // 1. Prepare Payload
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Sesión expirada. Recarga la página.');
             const { data: company } = await supabase.from('users').select('company_id').eq('id', user.user.id).maybeSingle();
             if (!company?.company_id) throw new Error('Perfil de empresa no encontrado.');
 
-            const { data: selectedStructure } = await supabase
+            const structureId = sanitizeUuid(data.metadata.tariff_structure_id);
+            const { data: selectedStructure } = structureId ? await supabase
                 .from('tariff_structures')
                 .select('code')
-                .eq('id', data.metadata.tariff_structure_id)
-                .single();
+                .eq('id', structureId)
+                .single() : { data: null };
 
             const payload = {
                 company_id: company?.company_id,
-                supplier_id: data.metadata.supplier_id,
-                tariff_structure_id: data.metadata.tariff_structure_id,
+                supplier_id: sanitizeUuid(data.metadata.supplier_id),
+                tariff_structure_id: structureId,
                 tariff_name: data.metadata.name,
                 tariff_code: data.metadata.code,
                 tariff_type: selectedStructure?.code || '2.0TD',

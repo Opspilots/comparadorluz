@@ -371,13 +371,14 @@ export function ContractForm() {
                         .then(() => { /* best-effort */ })
                 }
 
-                const { error: insertError } = await supabase
+                const { data: newContract, error: insertError } = await supabase
                     .from('contracts')
                     .insert(insertPayload)
                     .select('id')
-                    .single()
+                    .maybeSingle()
 
                 if (insertError) throw insertError
+                if (!newContract) throw new Error('No se pudo crear el contrato')
 
                 toast({ title: 'Contrato registrado', description: 'El contrato se ha creado correctamente.' })
             }
