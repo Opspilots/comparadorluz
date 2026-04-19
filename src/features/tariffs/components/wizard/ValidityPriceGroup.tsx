@@ -119,11 +119,12 @@ export function ValidityPriceGroup({
                                 <input
                                     type="number"
                                     step="0.000001"
+                                    min="0"
                                     style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 600 }}
                                     value={rate.price === null ? '' : rate.price}
                                     placeholder="0.000000"
                                     onChange={(e) => {
-                                        const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                                        const val = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value));
                                         onUpdateRate(rate.id, 'price', val);
                                     }}
                                 />

@@ -59,6 +59,11 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
             toast({ variant: 'destructive', title: 'Falta nombre', description: 'Introduce un nombre para la tarifa antes de guardar.' });
             return;
         }
+        const negativeRate = data.rates.find(r => r.price != null && r.price < 0);
+        if (negativeRate) {
+            toast({ variant: 'destructive', title: 'Precio negativo', description: `El precio del periodo ${negativeRate.period} (${negativeRate.item_type}) no puede ser negativo.` });
+            return;
+        }
 
         setSaving(true);
         try {
