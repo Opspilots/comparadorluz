@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/shared/lib/supabase';
+import { getErrorMessage } from '@/shared/lib/errors';
 import { Loader2, Upload } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { DetectedTariff } from '@/shared/types';
@@ -226,8 +227,7 @@ export function Step1Upload({ onTariffsDetected, onManualEntry }: Step1UploadPro
 
         } catch (err: unknown) {
             console.error('Error parsing document:', err);
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            toast({ variant: 'destructive', title: 'Error', description: errorMsg || 'Error al analizar el documento.' });
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
         } finally {
             setProcessing(false);
         }

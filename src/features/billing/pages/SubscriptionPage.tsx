@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Check, X, CreditCard, ExternalLink, BadgeCheck, AlertTriangle, Building2 } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 import type { Plan, PlanTier, BillingInterval } from '@/shared/types'
 import { usePlan } from '../hooks/usePlan'
 import { PlanBadge } from '../components/PlanBadge'
@@ -414,7 +415,7 @@ export function SubscriptionPage() {
     } catch (err) {
       toast({
         title: 'Error al iniciar el pago',
-        description: err instanceof Error ? err.message : 'Inténtalo de nuevo',
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -438,7 +439,7 @@ export function SubscriptionPage() {
     } catch (err) {
       toast({
         title: 'Error al abrir el portal de facturación',
-        description: err instanceof Error ? err.message : 'Inténtalo de nuevo',
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -460,7 +461,7 @@ export function SubscriptionPage() {
     } catch (err) {
       toast({
         title: 'Error al cambiar el plan',
-        description: err instanceof Error ? err.message : 'Inténtalo de nuevo',
+        description: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {

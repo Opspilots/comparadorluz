@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 import {
     Dialog,
     DialogContent,
@@ -104,7 +105,7 @@ export function SwitchingDialog({ contract, open, onOpenChange, onSuccess }: Swi
             const e = err as Error
             toast({
                 title: 'Error al iniciar traspaso',
-                description: e.message,
+                description: getErrorMessage(e),
                 variant: 'destructive',
             })
         } finally {

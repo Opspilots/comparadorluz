@@ -4,7 +4,9 @@ import { supabase } from '@/shared/lib/supabase';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { getErrorMessage } from '@/shared/lib/errors';
 
 interface Step6Props {
     data: TariffWizardState;
@@ -17,6 +19,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const { id } = useParams();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -35,7 +38,7 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
             const { data: user } = await supabase.auth.getUser();
             if (!user.user) throw new Error('Sesión expirada');
             const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.user.id).maybeSingle();
-            if (!profile?.company_id) throw new Error('No company');
+            if (!profile?.company_id) throw new Error('No se encontró el perfil de empresa.');
             const { error } = await supabase.from('tariff_versions').delete().eq('id', id).eq('company_id', profile.company_id);
             if (error) throw error;
             toast({ title: 'Tarifa eliminada', description: 'La tarifa ha sido eliminada correctamente.' });
@@ -239,6 +242,8 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
                 description: `La tarifa ${data.metadata.name} ha sido guardada correctamente.`,
             });
 
+            await queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
+
             if (fromOCR) {
                 onSave();
             } else {
@@ -247,13 +252,10 @@ export function Step6Summary({ data, mode = 'create', fromOCR = false, onSave }:
 
         } catch (err: unknown) {
             console.error('Error al guardar tarifa:', err);
-            const errorMsg = err instanceof Error
-                ? err.message
-                : (err as { message?: string })?.message ?? String(err);
             toast({
                 variant: 'destructive',
                 title: "Error al guardar",
-                description: errorMsg,
+                description: getErrorMessage(err),
             });
         } finally {
             setSaving(false);

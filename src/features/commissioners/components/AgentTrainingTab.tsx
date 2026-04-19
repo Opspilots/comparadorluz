@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 import type { AgentCertification, CertificationType } from '@/shared/types'
 import {
     GraduationCap,
@@ -125,7 +126,7 @@ export function AgentTrainingTab({ commissionerId }: Props) {
             setFormExpiresAt('')
             load()
         } catch (err) {
-            toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' })
+            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
         } finally {
             setSaving(false)
         }
@@ -137,7 +138,7 @@ export function AgentTrainingTab({ commissionerId }: Props) {
             .delete()
             .eq('id', id)
         if (error) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         } else {
             toast({ title: 'Certificacion eliminada' })
             load()

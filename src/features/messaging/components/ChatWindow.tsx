@@ -4,6 +4,7 @@ import { Send, Phone, Mail, User, Paperclip, X, FileIcon, Download, FileText } f
 import { Input } from '@/shared/components/ui/input';
 import { Message, uploadAttachment } from '../lib/messaging-service';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/shared/lib/errors';
 import { useTrackUsage } from '@/features/billing/hooks/useTrackUsage';
 import { useUsageGuard } from '@/features/billing/hooks/useUsageGuard';
 
@@ -158,7 +159,7 @@ export function ChatWindow({ customerName, customerContact, messages, onSendMess
             console.error("Error sending message:", error);
             toast({
                 title: 'Error al enviar',
-                description: error instanceof Error ? error.message : 'No se pudo enviar el mensaje. Intenta de nuevo.',
+                description: getErrorMessage(error),
                 variant: 'destructive'
             });
         } finally {

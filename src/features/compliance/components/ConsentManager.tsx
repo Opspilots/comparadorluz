@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 import type { CustomerConsent, ConsentType, ConsentRequest, Customer } from '@/shared/types'
 import { sendConsentRequest, getAvailableChannels, CONSENT_LEGAL_TEXTS } from '../lib/consent-notification'
 import { useNavigate } from 'react-router-dom'
@@ -120,7 +121,7 @@ export function ConsentManager({ companyId }: Props) {
             .eq('id', consentId)
 
         if (error) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
             return
         }
 
@@ -166,7 +167,7 @@ export function ConsentManager({ companyId }: Props) {
             setSendCustomerId('')
             load()
         } catch (err) {
-            toast({ title: 'Error al enviar', description: (err as Error).message, variant: 'destructive' })
+            toast({ title: 'Error al enviar', description: getErrorMessage(err), variant: 'destructive' })
         } finally {
             setSending(false)
         }
@@ -202,7 +203,7 @@ export function ConsentManager({ companyId }: Props) {
             setBulkMode(false)
             load()
         } catch (err) {
-            toast({ title: 'Error en envío masivo', description: (err as Error).message, variant: 'destructive' })
+            toast({ title: 'Error en envío masivo', description: getErrorMessage(err), variant: 'destructive' })
         } finally {
             setSending(false)
         }
@@ -223,7 +224,7 @@ export function ConsentManager({ companyId }: Props) {
             toast({ title: 'Solicitud reenviada' })
             load()
         } catch (err) {
-            toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' })
+            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
         } finally {
             setSending(false)
         }

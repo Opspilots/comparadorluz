@@ -6,6 +6,7 @@ import type { Contract } from '@/shared/types'
 import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye, Loader2, ArrowRightLeft, CheckCircle2, ChevronRight, XCircle } from 'lucide-react'
 import { SwitchingDialog } from './SwitchingDialog'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { removeEmojis } from '@/shared/lib/utils'
 import type { SwitchingStatus } from '@/shared/types'
@@ -132,7 +133,7 @@ export function ContractList() {
             queryClient.invalidateQueries({ queryKey: ['contracts'] })
         } catch (err) {
             const e = err as Error
-            toast({ title: 'Error', description: e.message, variant: 'destructive' })
+            toast({ title: 'Error', description: getErrorMessage(e), variant: 'destructive' })
         } finally {
             setSwitchingUpdating(false)
         }

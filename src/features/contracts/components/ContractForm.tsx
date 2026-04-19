@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer, TariffVersion, Commissioner, SupplyPoint } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 
 export function ContractForm() {
     const navigate = useNavigate()
@@ -252,7 +253,7 @@ export function ContractForm() {
             })
         } catch (err) {
             const e = err as Error
-            toast({ title: 'Error al registrar cliente', description: e.message, variant: 'destructive' })
+            toast({ title: 'Error al registrar cliente', description: getErrorMessage(e), variant: 'destructive' })
         } finally {
             setRegisteringCustomer(false)
         }

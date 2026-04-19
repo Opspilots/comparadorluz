@@ -5,6 +5,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { TariffRate } from '@/shared/types';
 import { Save, Loader2, Plus, Clock, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/shared/lib/errors';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui/tabs';
 
 interface TariffComponentsEditorProps {
@@ -85,7 +86,7 @@ export function TariffComponentsEditor({ tariffVersionId, rates, onSaveSuccess }
             onSaveSuccess?.();
         },
         onError: (err) => {
-            toast({ variant: 'destructive', title: 'Error al actualizar', description: err.message });
+            toast({ variant: 'destructive', title: 'Error al actualizar', description: getErrorMessage(err) });
         }
     });
 
@@ -133,7 +134,7 @@ export function TariffComponentsEditor({ tariffVersionId, rates, onSaveSuccess }
             queryClient.invalidateQueries({ queryKey: ['tariff-batch-details'] });
         },
         onError: (err) => {
-            toast({ variant: 'destructive', title: 'Error al añadir duración', description: err.message });
+            toast({ variant: 'destructive', title: 'Error al añadir duración', description: getErrorMessage(err) });
         }
     });
 
@@ -156,7 +157,7 @@ export function TariffComponentsEditor({ tariffVersionId, rates, onSaveSuccess }
             queryClient.invalidateQueries({ queryKey: ['tariff-batch-details'] });
         },
         onError: (err) => {
-            toast({ variant: 'destructive', title: 'Error al eliminar', description: err.message });
+            toast({ variant: 'destructive', title: 'Error al eliminar', description: getErrorMessage(err) });
         }
     });
 

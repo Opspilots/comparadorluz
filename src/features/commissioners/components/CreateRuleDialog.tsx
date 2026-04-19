@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/errors'
 
 interface CreateRuleDialogProps {
     isOpen: boolean
@@ -79,7 +80,7 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
 
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : 'Error al cargar datos del formulario')
-                toast({ title: 'Error', description: err instanceof Error ? err.message : 'Error al cargar datos del formulario', variant: 'destructive' })
+                toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
             } finally {
                 setLoading(false)
             }
@@ -134,7 +135,7 @@ export function CreateRuleDialog({ isOpen, onClose, onSuccess, presetCommissione
 
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Error al crear la regla')
-            toast({ title: 'Error', description: 'Error al crear la regla: ' + (err instanceof Error ? err.message : 'Error desconocido'), variant: 'destructive' })
+            toast({ title: 'Error', description: 'Error al crear la regla: ' + getErrorMessage(err), variant: 'destructive' })
         } finally {
             setLoading(false)
         }

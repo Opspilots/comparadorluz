@@ -5,6 +5,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { TariffBatch, TariffVersion, TariffRate } from '@/shared/types';
 import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/shared/lib/errors';
 import { TariffComponentsEditor } from '../components/TariffComponentsEditor';
 import { useState, useEffect } from 'react';
 
@@ -105,7 +106,7 @@ export default function TariffReviewPage() {
             navigate('/admin/tariffs');
         },
         onError: (err) => {
-            toast({ variant: 'destructive', title: 'Error al publicar', description: err.message });
+            toast({ variant: 'destructive', title: 'Error al publicar', description: getErrorMessage(err) });
         }
     });
 

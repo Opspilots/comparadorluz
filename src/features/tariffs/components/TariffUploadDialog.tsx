@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, X, FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/shared/lib/errors';
 // We will use a fixed overlay/modal approach instead of shadcn Dialog to remove dependencies
 import { useEffect } from 'react';
 
@@ -345,11 +346,10 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
             queryClient.invalidateQueries({ queryKey: ['tariff-versions'] });
 
         } catch (err: unknown) {
-            const errorMsg = err instanceof Error ? err.message : String(err);
             toast({
                 variant: "destructive",
                 title: "Error creating batch",
-                description: errorMsg
+                description: getErrorMessage(err)
             });
         }
     };

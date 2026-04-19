@@ -6,6 +6,7 @@ import { ChatWindow } from '../components/ChatWindow';
 import { getMessages, sendMessage, getUserCompanyId, Message } from '../lib/messaging-service';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/shared/lib/errors';
 
 export default function ConversationPage() {
     const { customerId } = useParams<{ customerId: string }>();
@@ -172,7 +173,7 @@ export default function ConversationPage() {
             const error = err as Error;
             toast({
                 title: "Error al enviar",
-                description: error.message,
+                description: getErrorMessage(error),
                 variant: "destructive"
             });
         }
