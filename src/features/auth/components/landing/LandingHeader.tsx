@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Menu, X, Zap, ArrowRight } from 'lucide-react'
 
 interface LandingHeaderProps {
@@ -17,89 +17,76 @@ const navLinks = [
 export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
-    const [announcementVisible, setAnnouncementVisible] = useState(true)
+    const headerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 20)
+        const onScroll = () => setScrolled(window.scrollY > 10)
         window.addEventListener('scroll', onScroll, { passive: true })
         return () => window.removeEventListener('scroll', onScroll)
     }, [])
 
-    return (
-        <div className="fixed top-0 left-0 right-0 z-50">
-            {/* Announcement strip */}
-            {announcementVisible && !scrolled && (
-                <div
-                    className="relative flex items-center justify-center gap-3 px-4 py-2 text-center"
-                    style={{
-                        background: 'rgba(37,99,235,0.22)',
-                        borderBottom: '1px solid rgba(37,99,235,0.35)',
-                        boxShadow: '0 1px 0 rgba(124,58,237,0.12)',
-                    }}
-                >
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-blue-400 tracking-[0.1em] uppercase bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/20">Nuevo</span>
-                        <span className="text-[12px] text-slate-300">
-                            OCR de facturas con IA — detecta CUPS y consumo automáticamente
-                        </span>
-                        <ArrowRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" strokeWidth={2.5} />
-                    </div>
-                    <button
-                        onClick={() => setAnnouncementVisible(false)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors bg-transparent border-none cursor-pointer p-0.5"
-                        aria-label="Cerrar"
-                    >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
-                </div>
-            )}
+    // Expose header height as CSS variable for hero section offset
+    useEffect(() => {
+        const update = () => {
+            if (headerRef.current) {
+                const h = headerRef.current.offsetHeight
+                document.documentElement.style.setProperty('--header-h', `${h}px`)
+            }
+        }
+        update()
+        window.addEventListener('resize', update)
+        return () => window.removeEventListener('resize', update)
+    }, [])
 
+    return (
+        <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50">
             <header
-                className={`transition-all duration-500 ${
-                    scrolled ? 'border-b border-white/[0.05]' : 'bg-transparent'
-                }`}
-                style={
-                    scrolled
-                        ? {
-                              background: 'rgba(2,2,9,0.9)',
-                              backdropFilter: 'blur(24px)',
-                              boxShadow: '0 1px 0 rgba(37,99,235,0.08), 0 4px 32px rgba(0,0,0,0.3)',
-                          }
-                        : undefined
-                }
+                className="transition-all duration-300"
+                style={{
+                    background: scrolled
+                        ? 'rgba(3,5,20,0.92)'
+                        : 'rgba(3,5,20,0.75)',
+                    backdropFilter: 'blur(20px)',
+                    borderBottom: scrolled
+                        ? '1px solid rgba(255,255,255,0.07)'
+                        : '1px solid rgba(255,255,255,0.04)',
+                    boxShadow: scrolled
+                        ? '0 4px 32px rgba(0,0,0,0.4)'
+                        : 'none',
+                }}
             >
-                <div className="flex items-center justify-between px-[5%] py-[18px] max-w-[1400px] mx-auto">
+                <div className="flex items-center justify-between px-6 lg:px-[5%] h-16 max-w-[1400px] mx-auto">
+
                     {/* Logo */}
                     <div className="flex items-center gap-2.5 flex-shrink-0">
                         <div
-                            className="w-9 h-9 rounded-[11px] flex items-center justify-center flex-shrink-0"
+                            className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0"
                             style={{
                                 background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-                                boxShadow: '0 0 16px rgba(37,99,235,0.4)',
+                                boxShadow: '0 0 14px rgba(37,99,235,0.5)',
                             }}
                         >
                             <Zap className="w-4 h-4 text-white" strokeWidth={2.5} fill="currentColor" />
                         </div>
-                        <span className="text-[1.25rem] font-extrabold tracking-[-0.03em] text-white">
-                            Energy<span style={{ color: '#60a5fa' }}>Deal</span>
+                        <span className="text-[1.2rem] font-extrabold tracking-[-0.03em] text-white">
+                            Energy<span className="text-blue-400">Deal</span>
                         </span>
                     </div>
 
                     {/* Desktop nav */}
-                    <nav className="hidden xl:flex items-center gap-1">
+                    <nav className="hidden xl:flex items-center gap-0.5">
                         {navLinks.map((link) => (
                             <a
                                 key={link.href}
                                 href={link.href}
-                                className="relative px-3.5 py-2 text-[13px] font-medium text-slate-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/[0.04] group"
+                                className="px-3.5 py-2 text-[13px] font-medium text-slate-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/[0.05]"
                             >
                                 {link.label}
-                                <span className="absolute bottom-1 left-3.5 right-3.5 h-px bg-blue-400/0 group-hover:bg-blue-400/40 transition-all duration-300 rounded-full" />
                             </a>
                         ))}
                     </nav>
 
-                    {/* Desktop actions */}
+                    {/* Actions */}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => onOpenAuth('login')}
@@ -109,8 +96,11 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                         </button>
                         <button
                             onClick={() => onOpenAuth('signup')}
-                            className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-all duration-300 text-white border-none landing-glow-blue"
-                            style={{ background: '#2563eb' }}
+                            className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer text-white border-none transition-all duration-200 hover:opacity-90"
+                            style={{
+                                background: '#2563eb',
+                                boxShadow: '0 0 20px rgba(37,99,235,0.35)',
+                            }}
                         >
                             Empezar gratis
                             <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -119,7 +109,7 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                         {/* Mobile toggle */}
                         <button
                             onClick={() => setMobileOpen(!mobileOpen)}
-                            className="xl:hidden bg-transparent border-none cursor-pointer p-1.5 text-white rounded-lg hover:bg-white/[0.06] transition-colors ml-1"
+                            className="xl:hidden bg-transparent border-none cursor-pointer p-1.5 text-slate-300 rounded-lg hover:bg-white/[0.06] transition-colors ml-1"
                             aria-label="Menú"
                         >
                             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -129,10 +119,10 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
 
                 {/* Mobile menu */}
                 <div
-                    className={`xl:hidden overflow-hidden transition-all duration-300 border-b border-white/[0.04] ${mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
-                    style={{ background: 'rgba(2,2,9,0.98)', backdropFilter: 'blur(24px)' }}
+                    className={`xl:hidden overflow-hidden transition-all duration-300 ${mobileOpen ? 'max-h-[480px] opacity-100' : 'max-h-0 opacity-0'}`}
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
                 >
-                    <nav className="flex flex-col px-[5%] pb-6 pt-2 gap-0.5">
+                    <nav className="flex flex-col px-6 pb-6 pt-3 gap-0.5">
                         {navLinks.map((link) => (
                             <a
                                 key={link.href}
@@ -143,16 +133,16 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                                 {link.label}
                             </a>
                         ))}
-                        <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-white/[0.06]">
+                        <div className="flex flex-col gap-3 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                             <button
                                 onClick={() => { onOpenAuth('login'); setMobileOpen(false) }}
-                                className="bg-transparent border border-white/[0.08] text-sm font-medium text-slate-400 cursor-pointer py-2.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-all"
+                                className="border border-white/[0.08] text-sm font-medium text-slate-400 cursor-pointer py-2.5 rounded-lg hover:text-white hover:bg-white/[0.04] transition-all bg-transparent"
                             >
                                 Acceder
                             </button>
                             <button
                                 onClick={() => { onOpenAuth('signup'); setMobileOpen(false) }}
-                                className="text-white border-none px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer text-center landing-glow-blue"
+                                className="text-white border-none px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer text-center"
                                 style={{ background: '#2563eb' }}
                             >
                                 Empezar gratis

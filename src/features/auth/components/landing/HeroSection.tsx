@@ -245,8 +245,11 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 }}
             />
 
-            {/* Content */}
-            <div className="relative z-10 w-full max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center pt-[108px] pb-16 lg:pt-[96px] lg:pb-20">
+            {/* Content — padding-top matches the fixed header height + breathing room */}
+            <div
+                className="relative z-10 w-full max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center pb-16 lg:pb-20"
+                style={{ paddingTop: 'calc(var(--header-h, 64px) + 40px)' }}
+            >
                 {/* Left: text */}
                 <div className="flex flex-col">
                     {/* Eyebrow badge */}

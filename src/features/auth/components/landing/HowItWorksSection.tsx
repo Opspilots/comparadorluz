@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Upload, BarChart2, BadgeCheck } from 'lucide-react'
 
-function useInView(threshold = 0.1) {
+function useInView(threshold = 0.15) {
     const ref = useRef<HTMLDivElement>(null)
     const [visible, setVisible] = useState(false)
     useEffect(() => {
@@ -17,28 +17,31 @@ function useInView(threshold = 0.1) {
 
 const steps = [
     {
-        step: '01',
+        num: '01',
         icon: Upload,
         title: 'Conecta y carga datos',
-        desc: 'Importa las facturas de tus clientes o introduce los datos manualmente. El sistema detecta automáticamente el CUPS y el consumo.',
-        color: '#2563eb',
-        glow: 'rgba(37,99,235,0.15)',
+        desc: 'Importa facturas o introduce datos manualmente. El sistema detecta automáticamente el CUPS y el consumo.',
+        color: '#3b82f6',
+        bg: 'rgba(59,130,246,0.08)',
+        border: 'rgba(59,130,246,0.2)',
     },
     {
-        step: '02',
+        num: '02',
         icon: BarChart2,
         title: 'Compara y genera propuesta',
-        desc: 'En menos de 2 minutos obtienes una comparativa detallada con el ahorro potencial de cada tarifa del mercado libre.',
-        color: '#7c3aed',
-        glow: 'rgba(124,58,237,0.15)',
+        desc: 'En menos de 2 minutos obtienes una comparativa con el ahorro potencial de cada tarifa del mercado libre.',
+        color: '#8b5cf6',
+        bg: 'rgba(139,92,246,0.08)',
+        border: 'rgba(139,92,246,0.2)',
     },
     {
-        step: '03',
+        num: '03',
         icon: BadgeCheck,
         title: 'Cierra y cobra tu comisión',
         desc: 'Gestiona el contrato, haz seguimiento del estado y controla tu comisión directamente desde la plataforma.',
-        color: '#059669',
-        glow: 'rgba(5,150,105,0.15)',
+        color: '#10b981',
+        bg: 'rgba(16,185,129,0.08)',
+        border: 'rgba(16,185,129,0.2)',
     },
 ]
 
@@ -46,82 +49,118 @@ export function HowItWorksSection() {
     const { ref, visible } = useInView(0.1)
 
     return (
-        <section id="como-funciona" className="relative py-16 lg:py-24 px-[5%]" style={{ background: '#050514' }}>
-            <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
-
+        <section id="como-funciona" className="relative py-20 lg:py-28 px-[5%]" style={{ background: '#020209' }}>
+            {/* Subtle top separator — no absolute, just border-top on the inner container */}
             <div className="max-w-[1100px] mx-auto">
-                {/* Header */}
-                <div className={`text-center mb-14 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                    <span className="inline-block text-[11px] font-bold text-blue-400/80 tracking-[0.14em] uppercase mb-5">
-                        Cómo funciona
-                    </span>
+
+                {/* Section label + heading */}
+                <div
+                    ref={ref}
+                    className="text-center mb-16"
+                    style={{
+                        transition: 'opacity 0.7s ease, transform 0.7s ease',
+                        opacity: visible ? 1 : 0,
+                        transform: visible ? 'translateY(0)' : 'translateY(24px)',
+                    }}
+                >
+                    <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.18)' }}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                        <span className="text-[11px] font-bold text-blue-400 tracking-[0.12em] uppercase">
+                            Cómo funciona
+                        </span>
+                    </div>
+
                     <h2
-                        className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold text-white tracking-[-0.03em]"
+                        className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold text-white tracking-[-0.03em] mb-4"
                         style={{ textWrap: 'balance' } as React.CSSProperties}
                     >
-                        De la factura al contrato firmado
-                        <br />
+                        De la factura al contrato{' '}
                         <span className="gradient-text-bp">en tres pasos</span>
                     </h2>
-                    <p className="text-slate-400 text-base mt-4 max-w-[440px] mx-auto">
+                    <p className="text-slate-400 text-base max-w-[420px] mx-auto leading-relaxed">
                         Sin curva de aprendizaje. Empieza a comparar tarifas el mismo día.
                     </p>
                 </div>
 
-                {/* Steps */}
-                <div ref={ref} className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-8 relative">
-                    {/* Connector line — desktop */}
-                    <div
-                        className="hidden md:block absolute h-px pointer-events-none"
-                        style={{
-                            top: '56px',
-                            left: 'calc(16.67% + 56px)',
-                            right: 'calc(16.67% + 56px)',
-                            background: 'linear-gradient(90deg, rgba(37,99,235,0.5), rgba(124,58,237,0.4), rgba(5,150,105,0.35))',
-                        }}
-                    />
-
+                {/* Steps grid — no absolute connector, uses CSS border trick instead */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
                     {steps.map((s, i) => {
                         const Icon = s.icon
                         return (
                             <div
                                 key={i}
-                                className="relative rounded-2xl p-7 group cursor-default"
+                                className="relative group rounded-2xl p-7 cursor-default overflow-hidden"
                                 style={{
-                                    background: 'rgba(255,255,255,0.018)',
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                    transition: `opacity 0.7s ease ${i * 150}ms, transform 0.7s ease ${i * 150}ms`,
+                                    background: 'rgba(255,255,255,0.016)',
+                                    border: '1px solid rgba(255,255,255,0.07)',
+                                    transition: `opacity 0.6s ease ${i * 120}ms, transform 0.6s ease ${i * 120}ms`,
                                     opacity: visible ? 1 : 0,
-                                    transform: visible ? 'translateY(0)' : 'translateY(32px)',
+                                    transform: visible ? 'translateY(0)' : 'translateY(28px)',
                                 }}
                             >
-                                {/* Hover glow */}
+                                {/* Hover accent */}
                                 <div
-                                    className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                                    style={{ background: `radial-gradient(ellipse at top left, ${s.glow} 0%, transparent 60%)` }}
+                                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                                    style={{ background: `radial-gradient(ellipse at 20% 20%, ${s.bg} 0%, transparent 65%)` }}
                                 />
 
-                                {/* Icon container */}
-                                <div className="relative inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-6" style={{ background: `${s.color}14`, border: `1px solid ${s.color}25` }}>
-                                    <Icon className="w-6 h-6" style={{ color: s.color }} strokeWidth={1.8} />
-                                    {/* Step badge */}
-                                    <div
-                                        className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-full flex items-center justify-center text-[9px] font-bold"
-                                        style={{
-                                            background: s.color,
-                                            boxShadow: `0 0 8px ${s.color}60`,
-                                            color: '#ffffff',
-                                        }}
-                                    >
-                                        {s.step}
-                                    </div>
+                                {/* Step number — large, decorative, top-right */}
+                                <div
+                                    className="absolute top-5 right-6 font-extrabold leading-none select-none"
+                                    style={{
+                                        fontSize: '4rem',
+                                        color: s.color,
+                                        opacity: 0.07,
+                                        letterSpacing: '-0.05em',
+                                    }}
+                                >
+                                    {s.num}
                                 </div>
 
-                                <h3 className="text-[1.05rem] font-bold text-white mb-3 tracking-[-0.01em]">{s.title}</h3>
+                                {/* Icon */}
+                                <div
+                                    className="relative inline-flex items-center justify-center w-12 h-12 rounded-xl mb-5"
+                                    style={{ background: s.bg, border: `1px solid ${s.border}` }}
+                                >
+                                    <Icon className="w-5 h-5" style={{ color: s.color }} strokeWidth={2} />
+                                </div>
+
+                                {/* Step label */}
+                                <div
+                                    className="text-[10px] font-bold tracking-[0.12em] uppercase mb-3"
+                                    style={{ color: s.color }}
+                                >
+                                    Paso {s.num}
+                                </div>
+
+                                <h3 className="text-[1rem] font-bold text-white mb-2.5 tracking-[-0.01em] leading-snug">{s.title}</h3>
                                 <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+
+                                {/* Bottom accent bar on hover */}
+                                <div
+                                    className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                    style={{ background: `linear-gradient(90deg, transparent, ${s.color}, transparent)` }}
+                                />
                             </div>
                         )
                     })}
+                </div>
+
+                {/* Arrows between steps — desktop only, PART of layout flow (not absolute) */}
+                <div className="hidden md:flex justify-center gap-4 mt-8">
+                    {[0, 1, 2].map((i) => (
+                        <div
+                            key={i}
+                            className="flex items-center gap-2 text-slate-600"
+                            style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                        >
+                            <div className="w-2 h-2 rounded-full" style={{ background: steps[i].color, boxShadow: `0 0 6px ${steps[i].color}` }} />
+                            <span style={{ color: steps[i].color }}>{steps[i].num}</span>
+                            {i < 2 && (
+                                <span className="text-slate-700 ml-2">→</span>
+                            )}
+                        </div>
+                    ))}
                 </div>
             </div>
         </section>

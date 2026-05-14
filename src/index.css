@@ -1134,32 +1134,10 @@ html {
   box-shadow: 0 24px 60px rgba(0,0,0,0.45);
 }
 
-/* V2 Divider */
+/* V2 Divider — simple 1px gradient, no pseudo-elements */
 .divider-v2 {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(37,99,235,0.45) 25%,
-    rgba(124,58,237,0.6) 50%,
-    rgba(37,99,235,0.45) 75%,
-    transparent 100%
-  );
-  position: relative;
-}
-
-.divider-v2::after {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(90deg, #2563eb, #7c3aed);
-  border-radius: 2px;
-  filter: blur(2px);
-  opacity: 0.7;
+  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.25) 30%, rgba(124,58,237,0.18) 50%, rgba(37,99,235,0.25) 70%, transparent);
 }
 
 /* Integration badge */
