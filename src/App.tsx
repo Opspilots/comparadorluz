@@ -196,7 +196,7 @@ function App() {
                             <Route path="/comparator" element={<FeatureGate feature="comparator"><ComparatorForm /></FeatureGate>} />
                             <Route path="/comparator/history" element={<FeatureGate feature="comparator"><ComparisonHistory /></FeatureGate>} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/settings/subscription" element={<SubscriptionPage />} />
+                            <Route path="/settings/subscription" element={<AdminRoute><SubscriptionPage /></AdminRoute>} />
                             <Route path="/admin/plans" element={<AdminRoute><AdminPlansPage /></AdminRoute>} />
                             <Route path="/crm" element={<FeatureGate feature="crm"><CustomerList /></FeatureGate>} />
                             <Route path="/crm/new" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
