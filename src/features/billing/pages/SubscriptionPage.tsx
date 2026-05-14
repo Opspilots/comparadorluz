@@ -363,7 +363,7 @@ function PlanCard({ plan, currentTier, billingInterval, onCheckout, loadingCheck
 
 export function SubscriptionPage() {
   const { toast } = useToast()
-  const { company, plan, tier, loading, refetch } = usePlan()
+  const { company, plan, tier, loading } = usePlan()
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly')
   const [loadingCheckout, setLoadingCheckout] = useState<string | null>(null)
   const [loadingPortal, setLoadingPortal] = useState(false)
