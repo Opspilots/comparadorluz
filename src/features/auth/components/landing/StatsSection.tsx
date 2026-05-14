@@ -58,7 +58,7 @@ export function StatsSection() {
     }, { scope: sectionRef })
 
     return (
-        <section ref={sectionRef} className="relative py-20 px-[5%] overflow-hidden" style={{ background: '#020209' }}>
+        <section ref={sectionRef} className="relative py-20 px-[5%] overflow-hidden" style={{ background: '#04041a' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div className="max-w-[1000px] mx-auto">
@@ -79,7 +79,7 @@ export function StatsSection() {
                                     {stat.prefix}0{stat.value !== 0 ? stat.suffix : ''}
                                 </span>
                             </div>
-                            <div className="text-sm text-slate-500 font-medium leading-snug">{stat.label}</div>
+                            <div className="text-sm text-slate-400 font-medium leading-snug">{stat.label}</div>
                         </div>
                     ))}
                 </div>

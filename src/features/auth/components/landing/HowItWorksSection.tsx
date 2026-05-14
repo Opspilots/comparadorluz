@@ -46,12 +46,12 @@ export function HowItWorksSection() {
     const { ref, visible } = useInView(0.1)
 
     return (
-        <section id="como-funciona" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
+        <section id="como-funciona" className="relative py-16 lg:py-24 px-[5%]" style={{ background: '#050514' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div className="max-w-[1100px] mx-auto">
                 {/* Header */}
-                <div className={`text-center mb-20 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                <div className={`text-center mb-14 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                     <span className="inline-block text-[11px] font-bold text-blue-400/80 tracking-[0.14em] uppercase mb-5">
                         Cómo funciona
                     </span>
@@ -63,7 +63,7 @@ export function HowItWorksSection() {
                         <br />
                         <span className="gradient-text-bp">en tres pasos</span>
                     </h2>
-                    <p className="text-slate-500 text-base mt-4 max-w-[440px] mx-auto">
+                    <p className="text-slate-400 text-base mt-4 max-w-[440px] mx-auto">
                         Sin curva de aprendizaje. Empieza a comparar tarifas el mismo día.
                     </p>
                 </div>
@@ -74,10 +74,10 @@ export function HowItWorksSection() {
                     <div
                         className="hidden md:block absolute h-px pointer-events-none"
                         style={{
-                            top: '28px',
-                            left: 'calc(16.67% + 32px)',
-                            right: 'calc(16.67% + 32px)',
-                            background: 'linear-gradient(90deg, rgba(37,99,235,0.4), rgba(124,58,237,0.3), rgba(5,150,105,0.25))',
+                            top: '56px',
+                            left: 'calc(16.67% + 56px)',
+                            right: 'calc(16.67% + 56px)',
+                            background: 'linear-gradient(90deg, rgba(37,99,235,0.5), rgba(124,58,237,0.4), rgba(5,150,105,0.35))',
                         }}
                     />
 
@@ -107,14 +107,18 @@ export function HowItWorksSection() {
                                     {/* Step badge */}
                                     <div
                                         className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-full flex items-center justify-center text-[9px] font-bold"
-                                        style={{ background: '#020209', border: `1px solid ${s.color}40`, color: s.color }}
+                                        style={{
+                                            background: s.color,
+                                            boxShadow: `0 0 8px ${s.color}60`,
+                                            color: '#ffffff',
+                                        }}
                                     >
                                         {s.step}
                                     </div>
                                 </div>
 
                                 <h3 className="text-[1.05rem] font-bold text-white mb-3 tracking-[-0.01em]">{s.title}</h3>
-                                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+                                <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
                             </div>
                         )
                     })}

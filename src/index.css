@@ -1115,7 +1115,7 @@ html {
 
 /* Blue-Purple gradient text */
 .gradient-text-bp {
-  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 55%, #c4b5fd 100%);
+  background: linear-gradient(135deg, #60a5fa 0%, #818cf8 40%, #a78bfa 70%, #c4b5fd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1137,7 +1137,29 @@ html {
 /* V2 Divider */
 .divider-v2 {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.2), rgba(124,58,237,0.12), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(37,99,235,0.45) 25%,
+    rgba(124,58,237,0.6) 50%,
+    rgba(37,99,235,0.45) 75%,
+    transparent 100%
+  );
+  position: relative;
+}
+
+.divider-v2::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  border-radius: 2px;
+  filter: blur(2px);
+  opacity: 0.7;
 }
 
 /* Integration badge */

@@ -31,11 +31,15 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
             {announcementVisible && !scrolled && (
                 <div
                     className="relative flex items-center justify-center gap-3 px-4 py-2 text-center"
-                    style={{ background: 'rgba(37,99,235,0.12)', borderBottom: '1px solid rgba(37,99,235,0.15)' }}
+                    style={{
+                        background: 'rgba(37,99,235,0.22)',
+                        borderBottom: '1px solid rgba(37,99,235,0.35)',
+                        boxShadow: '0 1px 0 rgba(124,58,237,0.12)',
+                    }}
                 >
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-blue-400 tracking-[0.1em] uppercase bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/20">Nuevo</span>
-                        <span className="text-[12px] text-slate-400">
+                        <span className="text-[12px] text-slate-300">
                             OCR de facturas con IA — detecta CUPS y consumo automáticamente
                         </span>
                         <ArrowRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" strokeWidth={2.5} />

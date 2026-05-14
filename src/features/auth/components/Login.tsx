@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import { loginSchema, signupSchema, getFirstZodError } from '@/shared/lib/validations'
@@ -26,6 +26,15 @@ export function Login() {
     const [showAuthModal, setShowAuthModal] = useState(false)
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
 
+
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+                navigate('/', { replace: true })
+            }
+        })
+        return () => subscription.unsubscribe()
+    }, [navigate])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -111,7 +120,7 @@ export function Login() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/`,
+                    redirectTo: `${window.location.origin}/login`,
                 },
             })
             if (error) throw error
