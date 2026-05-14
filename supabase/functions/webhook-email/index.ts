@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 import { getCorsHeadersWithExtra } from "../_shared/cors.ts"
@@ -49,7 +49,7 @@ async function verifyWebhookSignature(
     })
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
     const corsHeaders = getCorsHeadersWithExtra(req, 'svix-id, svix-timestamp, svix-signature')
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })

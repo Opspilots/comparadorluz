@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
 // No user auth — Stripe calls this directly with its own signature header.
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // ── Stripe webhook signature verification ────────────────────────────────────
@@ -98,7 +98,7 @@ async function isProtectedPlan(supabase: ReturnType<typeof createClient>, compan
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
     // Webhook endpoints should return 200 quickly — never redirect Stripe.
     // CORS is not needed here (Stripe is a server, not a browser).
 

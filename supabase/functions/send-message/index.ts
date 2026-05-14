@@ -1,5 +1,5 @@
 // deno-lint-ignore-file
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { encode as base64Encode } from "https://deno.land/std@0.192.0/encoding/base64.ts"
 
@@ -106,7 +106,7 @@ async function buildMimeEmail(
     return headers.join('\r\n')
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req)
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })

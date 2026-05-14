@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, X, CreditCard, ExternalLink, BadgeCheck, AlertTriangle, Building2 } from 'lucide-react'
+import { Check, X, CreditCard, ExternalLink, BadgeCheck, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/shared/lib/errors'
@@ -367,9 +367,6 @@ export function SubscriptionPage() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly')
   const [loadingCheckout, setLoadingCheckout] = useState<string | null>(null)
   const [loadingPortal, setLoadingPortal] = useState(false)
-  const [adminPlanId, setAdminPlanId] = useState<string>('')
-  const [savingAdminPlan, setSavingAdminPlan] = useState(false)
-
   // Fetch all plans for comparison
   const { data: plans = [] } = useQuery<Plan[]>({
     queryKey: ['plans'],
@@ -379,20 +376,6 @@ export function SubscriptionPage() {
     },
     staleTime: 10 * 60 * 1000,
   })
-
-  // Determine if current user is admin
-  const { data: userRole } = useQuery<string | null>({
-    queryKey: ['user-role'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return null
-      const { data } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle()
-      return data?.role ?? null
-    },
-    staleTime: 10 * 60 * 1000,
-  })
-
-  const isAdmin = userRole === 'admin'
 
   const handleCheckout = async (planId: string) => {
     setLoadingCheckout(planId)
@@ -444,28 +427,6 @@ export function SubscriptionPage() {
       })
     } finally {
       setLoadingPortal(false)
-    }
-  }
-
-  const handleAdminPlanSave = async () => {
-    if (!adminPlanId || !company?.id) return
-    setSavingAdminPlan(true)
-    try {
-      const { error } = await supabase
-        .from('companies')
-        .update({ plan_id: adminPlanId })
-        .eq('id', company.id)
-      if (error) throw error
-      toast({ title: 'Plan actualizado', description: 'El plan de la empresa se ha actualizado correctamente.' })
-      void refetch()
-    } catch (err) {
-      toast({
-        title: 'Error al cambiar el plan',
-        description: getErrorMessage(err),
-        variant: 'destructive',
-      })
-    } finally {
-      setSavingAdminPlan(false)
     }
   }
 
@@ -627,89 +588,6 @@ export function SubscriptionPage() {
         </div>
       </section>
 
-      {/* ── ADMIN MANUAL OVERRIDE ── */}
-      {isAdmin && (
-        <section>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 16px', letterSpacing: '-0.01em' }}>
-            Asignación manual de plan
-          </h2>
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '14px',
-              padding: '24px',
-              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.07)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <Building2 size={18} color="#64748b" />
-              <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                Cambiar plan sin Stripe
-              </h3>
-              <span
-                style={{
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  color: '#7c3aed',
-                  background: '#faf5ff',
-                  border: '1px solid #ddd6fe',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                }}
-              >
-                Solo administradores
-              </span>
-            </div>
-            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: '0 0 20px' }}>
-              Para clientes B2B con contrato manual. Este cambio omite el flujo de Stripe.
-            </p>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <select
-                value={adminPlanId}
-                onChange={e => setAdminPlanId(e.target.value)}
-                style={{
-                  height: '36px',
-                  padding: '0 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  minWidth: '200px',
-                }}
-              >
-                <option value="">Seleccionar plan...</option>
-                {plans.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.display_name}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={() => void handleAdminPlanSave()}
-                disabled={!adminPlanId || savingAdminPlan}
-                style={{
-                  height: '36px',
-                  padding: '0 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: '#2563eb',
-                  color: '#ffffff',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  cursor: !adminPlanId || savingAdminPlan ? 'not-allowed' : 'pointer',
-                  opacity: !adminPlanId || savingAdminPlan ? 0.6 : 1,
-                }}
-              >
-                {savingAdminPlan ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   )
 }

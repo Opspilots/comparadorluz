@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
 const ESIOS_TOKEN = Deno.env.get('ESIOS_API_TOKEN')
@@ -12,7 +12,7 @@ const INDICATORS = [
     { id: 1021, name: 'Mercado Diario (Pool)' }
 ]
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
     // Cron-only endpoint — no CORS needed
     if (req.method === 'OPTIONS') {
         return new Response(null, { status: 405 })
