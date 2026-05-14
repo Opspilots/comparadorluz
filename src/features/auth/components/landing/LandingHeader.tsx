@@ -64,11 +64,11 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                         : undefined
                 }
             >
-                <div className="flex items-center justify-between px-[5%] py-4 max-w-[1400px] mx-auto">
+                <div className="flex items-center justify-between px-[5%] py-[18px] max-w-[1400px] mx-auto">
                     {/* Logo */}
                     <div className="flex items-center gap-2.5 flex-shrink-0">
                         <div
-                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                            className="w-9 h-9 rounded-[11px] flex items-center justify-center flex-shrink-0"
                             style={{
                                 background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
                                 boxShadow: '0 0 16px rgba(37,99,235,0.4)',
@@ -76,13 +76,13 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                         >
                             <Zap className="w-4 h-4 text-white" strokeWidth={2.5} fill="currentColor" />
                         </div>
-                        <span className="text-[1.2rem] font-extrabold tracking-[-0.03em] text-white">
+                        <span className="text-[1.25rem] font-extrabold tracking-[-0.03em] text-white">
                             Energy<span style={{ color: '#60a5fa' }}>Deal</span>
                         </span>
                     </div>
 
                     {/* Desktop nav */}
-                    <nav className="hidden lg:flex items-center gap-1">
+                    <nav className="hidden xl:flex items-center gap-1">
                         {navLinks.map((link) => (
                             <a
                                 key={link.href}
@@ -99,13 +99,13 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => onOpenAuth('login')}
-                            className="hidden sm:block px-4 py-2 rounded-lg bg-transparent border-none text-[13px] font-medium text-slate-400 hover:text-white hover:bg-white/[0.05] cursor-pointer transition-all duration-200"
+                            className="hidden md:block px-4 py-2 rounded-lg bg-transparent border-none text-[13px] font-medium text-slate-400 hover:text-white hover:bg-white/[0.05] cursor-pointer transition-all duration-200"
                         >
                             Acceder
                         </button>
                         <button
                             onClick={() => onOpenAuth('signup')}
-                            className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-all duration-300 text-white border-none landing-glow-blue"
+                            className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-all duration-300 text-white border-none landing-glow-blue"
                             style={{ background: '#2563eb' }}
                         >
                             Empezar gratis
@@ -115,7 +115,7 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                         {/* Mobile toggle */}
                         <button
                             onClick={() => setMobileOpen(!mobileOpen)}
-                            className="lg:hidden bg-transparent border-none cursor-pointer p-1.5 text-white rounded-lg hover:bg-white/[0.06] transition-colors ml-1"
+                            className="xl:hidden bg-transparent border-none cursor-pointer p-1.5 text-white rounded-lg hover:bg-white/[0.06] transition-colors ml-1"
                             aria-label="Menú"
                         >
                             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -125,7 +125,7 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
 
                 {/* Mobile menu */}
                 <div
-                    className={`lg:hidden overflow-hidden transition-all duration-300 border-b border-white/[0.04] ${mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+                    className={`xl:hidden overflow-hidden transition-all duration-300 border-b border-white/[0.04] ${mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
                     style={{ background: 'rgba(2,2,9,0.98)', backdropFilter: 'blur(24px)' }}
                 >
                     <nav className="flex flex-col px-[5%] pb-6 pt-2 gap-0.5">

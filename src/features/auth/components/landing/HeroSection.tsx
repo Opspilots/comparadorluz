@@ -31,7 +31,7 @@ function HeroVisual() {
 
     return (
         <div
-            className="hero-visual relative w-full max-w-[440px] mx-auto lg:mx-0"
+            className="hero-visual relative w-full max-w-[480px] xl:max-w-[560px] mx-auto lg:mx-0"
             style={{ perspective: '1000px' }}
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setTilt({ x: 0, y: 0 })}
@@ -44,9 +44,25 @@ function HeroVisual() {
                     transformStyle: 'preserve-3d',
                 }}
             >
+                {/* Preview label */}
+                <div className="flex items-center gap-2 mb-4 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[11px] font-semibold text-slate-400 tracking-wide uppercase">Vista previa del comparador</span>
+                </div>
+
+                {/* Glow backdrop */}
+                <div
+                    className="absolute inset-0 rounded-2xl pointer-events-none"
+                    style={{
+                        background: 'radial-gradient(ellipse at 60% 40%, rgba(37,99,235,0.12) 0%, transparent 70%)',
+                        filter: 'blur(20px)',
+                        transform: 'scale(1.1)',
+                    }}
+                />
+
                 {/* Main card */}
                 <div
-                    className="relative rounded-2xl p-5"
+                    className="relative rounded-2xl p-6"
                     style={{
                         background: 'rgba(8,8,24,0.9)',
                         border: '1px solid rgba(255,255,255,0.09)',
@@ -57,24 +73,24 @@ function HeroVisual() {
                     {/* Card header */}
                     <div className="flex items-center justify-between mb-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                         <div>
-                            <div className="text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase mb-0.5">Comparativa activa</div>
-                            <div className="text-[13px] font-semibold text-white">Aceros Bilbao S.L.</div>
+                            <div className="text-[11px] font-bold text-slate-500 tracking-[0.1em] uppercase mb-0.5">Comparativa activa</div>
+                            <div className="text-[14px] font-semibold text-white">Aceros Bilbao S.L.</div>
                         </div>
                         <div className="text-right">
-                            <div className="text-[10px] text-slate-600 mb-0.5">47.2 MWh/año</div>
+                            <div className="text-[11px] text-slate-600 mb-0.5">47.2 MWh/año</div>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                <span className="text-[10px] text-emerald-400 font-semibold">En tiempo real</span>
+                                <span className="text-[11px] text-emerald-400 font-semibold">En tiempo real</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Comparison rows */}
-                    <div className="space-y-2.5 mb-4">
+                    <div className="space-y-3 mb-4">
                         {rows.map((r, i) => (
                             <div
                                 key={i}
-                                className={`rounded-xl p-3 transition-all duration-200 ${r.best ? 'border border-blue-500/25' : ''}`}
+                                className={`rounded-xl p-3.5 transition-all duration-200 ${r.best ? 'border border-blue-500/25' : ''}`}
                                 style={{ background: r.best ? 'rgba(37,99,235,0.08)' : 'rgba(255,255,255,0.025)' }}
                             >
                                 <div className="flex items-center justify-between mb-2">
@@ -82,12 +98,12 @@ function HeroVisual() {
                                         {r.best && (
                                             <span className="text-[9px] font-bold text-blue-400 bg-blue-500/15 border border-blue-400/25 px-1.5 py-0.5 rounded tracking-wide">MEJOR</span>
                                         )}
-                                        <span className="text-[11px] font-semibold text-white">{r.name}</span>
+                                        <span className="text-[12px] font-semibold text-white">{r.name}</span>
                                     </div>
-                                    <span className="text-[11px] font-bold text-emerald-400">–{r.saving}</span>
+                                    <span className="text-[12px] font-bold text-emerald-400">–{r.saving}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
                                         <div
                                             className="h-full rounded-full"
                                             style={{
@@ -98,7 +114,7 @@ function HeroVisual() {
                                             }}
                                         />
                                     </div>
-                                    <span className="text-[10px] text-slate-500 w-[54px] text-right tabular-nums">{r.price}/kWh</span>
+                                    <span className="text-[11px] text-slate-500 w-[54px] text-right tabular-nums">{r.price}/kWh</span>
                                 </div>
                             </div>
                         ))}
@@ -111,15 +127,15 @@ function HeroVisual() {
                     >
                         <div className="flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-emerald-400" strokeWidth={2} />
-                            <span className="text-[12px] font-semibold text-emerald-300">Ahorro estimado</span>
+                            <span className="text-[13px] font-semibold text-emerald-300">Ahorro estimado</span>
                         </div>
-                        <span className="text-[15px] font-extrabold text-emerald-400 tracking-tight tabular-nums">2.847€/año</span>
+                        <span className="text-[17px] font-extrabold text-emerald-400 tracking-tight tabular-nums">2.847€/año</span>
                     </div>
                 </div>
 
                 {/* Floating speed badge */}
                 <div
-                    className="absolute -bottom-4 -left-4 flex items-center gap-2 px-3 py-2 rounded-xl"
+                    className="absolute -bottom-5 -left-3 flex items-center gap-2 px-3 py-2 rounded-xl"
                     style={{
                         background: 'rgba(8,8,24,0.95)',
                         border: '1px solid rgba(37,99,235,0.3)',
@@ -134,7 +150,7 @@ function HeroVisual() {
 
                 {/* Floating contracts badge */}
                 <div
-                    className="absolute -top-4 -right-4 rounded-xl p-3 text-right"
+                    className="absolute -top-4 -right-4 z-10 rounded-xl p-3 text-right"
                     style={{
                         background: 'rgba(8,8,24,0.95)',
                         border: '1px solid rgba(255,255,255,0.08)',
@@ -152,7 +168,7 @@ function HeroVisual() {
 
                 {/* Floating pending badge */}
                 <div
-                    className="absolute top-1/2 -right-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                    className="absolute top-1/2 -right-8 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
                     style={{
                         background: 'rgba(8,8,24,0.95)',
                         border: '1px solid rgba(245,158,11,0.25)',
@@ -200,7 +216,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
     return (
         <section
             ref={containerRef}
-            className="relative overflow-hidden flex items-center px-[5%]"
+            className="relative overflow-x-hidden flex items-center px-[5%]"
             style={{ background: '#020209', minHeight: '100dvh' }}
         >
             {/* Animated orbs */}
@@ -230,7 +246,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
             />
 
             {/* Content */}
-            <div className="relative z-10 w-full max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center pt-28 pb-16 lg:py-0">
+            <div className="relative z-10 w-full max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center pt-[108px] pb-16 lg:pt-[96px] lg:pb-20">
                 {/* Left: text */}
                 <div className="flex flex-col">
                     {/* Eyebrow badge */}
