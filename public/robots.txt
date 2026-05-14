@@ -1,10 +1,14 @@
 User-agent: *
 Allow: /login
+Allow: /blog
+Allow: /blog/
+Allow: /legal/
 Disallow: /crm
 Disallow: /comparator
 Disallow: /admin
 Disallow: /commissioners
 Disallow: /contracts
 Disallow: /settings
+Disallow: /auth/
 
 Sitemap: https://energydeal.es/sitemap.xml

@@ -1,5 +1,14 @@
 import { Link } from 'react-router-dom'
-import { Zap, ArrowLeft, Clock, ArrowRight } from 'lucide-react'
+import { ArrowLeft, Clock, ArrowRight } from 'lucide-react'
+
+function EnergyPulseIcon() {
+    return (
+        <svg width="26" height="16" viewBox="0 0 30 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 9 L7 9 L9.5 2 L12 16 L14.5 9 L17 9" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M17 9 L29 9" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.35" />
+        </svg>
+    )
+}
 
 const posts = [
     {
@@ -64,10 +73,8 @@ export function BlogPage() {
             {/* Header */}
             <header style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(2,2,9,0.95)', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 50 }}>
                 <div className="max-w-[1100px] mx-auto px-[5%] py-4 flex items-center justify-between">
-                    <Link to="/login" style={{ textDecoration: 'none' }} className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
-                            <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} fill="currentColor" />
-                        </div>
+                    <Link to="/login" style={{ textDecoration: 'none' }} className="flex items-center gap-2">
+                        <EnergyPulseIcon />
                         <span className="text-[1rem] font-extrabold tracking-[-0.03em] text-white">
                             Energy<span style={{ color: '#60a5fa' }}>Deal</span>
                         </span>

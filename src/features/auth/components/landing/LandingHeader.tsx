@@ -1,5 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
-import { Menu, X, Zap, ArrowRight } from 'lucide-react'
+import { Menu, X, ArrowRight } from 'lucide-react'
+
+function EnergyPulseIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            width="30"
+            height="18"
+            viewBox="0 0 30 18"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={className}
+        >
+            <path
+                d="M1 9 L7 9 L9.5 2 L12 16 L14.5 9 L17 9"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M17 9 L29 9"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeOpacity="0.35"
+            />
+        </svg>
+    )
+}
 
 interface LandingHeaderProps {
     onOpenAuth: (mode: 'login' | 'signup') => void
@@ -58,16 +86,8 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                 <div className="flex items-center justify-between px-6 lg:px-[5%] h-16 max-w-[1400px] mx-auto">
 
                     {/* Logo */}
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
-                        <div
-                            className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                            style={{
-                                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-                                boxShadow: '0 0 14px rgba(37,99,235,0.5)',
-                            }}
-                        >
-                            <Zap className="w-4 h-4 text-white" strokeWidth={2.5} fill="currentColor" />
-                        </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <EnergyPulseIcon />
                         <span className="text-[1.2rem] font-extrabold tracking-[-0.03em] text-white">
                             Energy<span className="text-blue-400">Deal</span>
                         </span>
