@@ -2,6 +2,15 @@ import { useEffect } from 'react'
 import { Link, useParams, Navigate } from 'react-router-dom'
 import { Zap, ArrowLeft, Clock, Calendar, ChevronRight } from 'lucide-react'
 
+function EnergyPulseIcon() {
+    return (
+        <svg width="26" height="16" viewBox="0 0 30 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 9 L7 9 L9.5 2 L12 16 L14.5 9 L17 9" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M17 9 L29 9" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.35" />
+        </svg>
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -20,6 +29,7 @@ interface Article {
   title: string
   excerpt: string
   date: string
+  isoDate: string
   readTime: string
   author: string
   metaDescription: string
@@ -39,6 +49,7 @@ const articles: Record<string, Article> = {
     excerpt:
       'Aprende a analizar el consumo de tus clientes empresariales y encontrar la tarifa de electricidad y gas más competitiva del mercado libre en 2026. Todo el proceso paso a paso.',
     date: '2 Apr 2026',
+    isoDate: '2026-04-02',
     readTime: '8 min',
     author: 'EnergyDeal',
     metaDescription:
@@ -165,6 +176,7 @@ const articles: Record<string, Article> = {
     excerpt:
       'Cómo organizar tu cartera con CIF y CUPS, automatizar el seguimiento y aumentar tu tasa de conversión con las herramientas adecuadas.',
     date: '28 Mar 2026',
+    isoDate: '2026-03-28',
     readTime: '6 min',
     author: 'EnergyDeal',
     metaDescription:
@@ -275,6 +287,7 @@ const articles: Record<string, Article> = {
     excerpt:
       'Las corredurías que venden tarifas energéticas están aumentando sus ingresos un 30% de media. Te explicamos cómo funciona el modelo y cómo empezar.',
     date: '20 Mar 2026',
+    isoDate: '2026-03-20',
     readTime: '5 min',
     author: 'EnergyDeal',
     metaDescription:
@@ -384,6 +397,7 @@ const articles: Record<string, Article> = {
     excerpt:
       'Cómo la lectura automática de facturas con inteligencia artificial elimina el trabajo manual y reduce errores en la captura de CUPS y consumos.',
     date: '12 Mar 2026',
+    isoDate: '2026-03-12',
     readTime: '4 min',
     author: 'EnergyDeal',
     metaDescription:
@@ -514,6 +528,7 @@ const articles: Record<string, Article> = {
     excerpt:
       'Guía completa sobre cómo funcionan las comisiones de los agentes y corredurías en el mercado libre: modelos, plazos y mejores prácticas para no perder dinero.',
     date: '5 Mar 2026',
+    isoDate: '2026-03-05',
     readTime: '7 min',
     author: 'EnergyDeal',
     metaDescription:
@@ -642,6 +657,7 @@ const articles: Record<string, Article> = {
     excerpt:
       'El RD 88/2026 endurece los requisitos de consentimiento para contacto comercial en el sector energético. Descubre qué debes implementar antes de que sea obligatorio.',
     date: '25 Feb 2026',
+    isoDate: '2026-02-25',
     readTime: '6 min',
     author: 'EnergyDeal',
     metaDescription:
@@ -845,7 +861,7 @@ export function BlogArticlePage() {
     if (!article) return
     document.title = `${article.title} | EnergyDeal Blog`
 
-    // Update meta description
+    // Meta description
     let metaDesc = document.querySelector('meta[name="description"]')
     if (!metaDesc) {
       metaDesc = document.createElement('meta')
@@ -854,8 +870,31 @@ export function BlogArticlePage() {
     }
     metaDesc.setAttribute('content', article.metaDescription)
 
+    // BlogPosting JSON-LD
+    const existing = document.querySelector('script[data-article-ld]')
+    if (existing) existing.remove()
+    const ldScript = document.createElement('script')
+    ldScript.type = 'application/ld+json'
+    ldScript.setAttribute('data-article-ld', 'true')
+    ldScript.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: article.title,
+      description: article.metaDescription,
+      datePublished: article.isoDate,
+      dateModified: article.isoDate,
+      author: { '@type': 'Organization', name: 'EnergyDeal', url: 'https://energydeal.es' },
+      publisher: { '@type': 'Organization', name: 'EnergyDeal', url: 'https://energydeal.es' },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': `https://energydeal.es/blog/${article.slug}` },
+      image: 'https://energydeal.es/og-image.svg',
+      keywords: article.category,
+      inLanguage: 'es',
+    })
+    document.head.appendChild(ldScript)
+
     return () => {
       document.title = 'EnergyDeal — CRM para asesores energéticos'
+      document.querySelector('script[data-article-ld]')?.remove()
     }
   }, [article])
 
@@ -890,13 +929,8 @@ export function BlogArticlePage() {
         }}
       >
         <div className="max-w-[1100px] mx-auto px-[5%] py-4 flex items-center justify-between">
-          <Link to="/login" style={{ textDecoration: 'none' }} className="flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
-            >
-              <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} fill="currentColor" />
-            </div>
+          <Link to="/login" style={{ textDecoration: 'none' }} className="flex items-center gap-2">
+            <EnergyPulseIcon />
             <span className="text-[1rem] font-extrabold tracking-[-0.03em] text-white">
               Energy<span style={{ color: '#60a5fa' }}>Deal</span>
             </span>
