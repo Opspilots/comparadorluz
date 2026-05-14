@@ -294,9 +294,24 @@ export function ComparatorForm() {
             setSelectedDurations(initDurations)
 
         } catch (e: unknown) {
-            const error = e as Error;
+            const error = e as Error & { code?: string; status?: number; message?: string }
             console.error(error)
-            toast({ title: 'Error', description: 'Error en la comparativa. Verifica los datos.', variant: 'destructive' })
+            const msg = error?.message ?? ''
+            const isAuthError =
+                error?.code === 'PGRST301' ||
+                error?.status === 401 ||
+                msg.includes('JWT') ||
+                msg.includes('expired') ||
+                msg.includes('session')
+            if (isAuthError) {
+                toast({
+                    title: 'Sesión expirada',
+                    description: 'Tu sesión ha caducado. Recarga la página e inicia sesión de nuevo.',
+                    variant: 'destructive',
+                })
+            } else {
+                toast({ title: 'Error al comparar', description: msg || 'Error en la comparativa. Verifica los datos.', variant: 'destructive' })
+            }
         } finally {
             setSearching(false)
         }
