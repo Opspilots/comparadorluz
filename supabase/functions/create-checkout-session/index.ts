@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
             // Create a new Stripe customer
             const customerRes = await stripeRequest('/customers', 'POST', {
                 name: company.name ?? '',
-                metadata: { company_id: companyId },
+                'metadata[company_id]': companyId,
             })
 
             if (!customerRes.ok) {
