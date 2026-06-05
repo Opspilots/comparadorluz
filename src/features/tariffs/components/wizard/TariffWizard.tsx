@@ -11,7 +11,6 @@ import { Step5FeesAndTaxes } from './Step5FeesAndTaxes';
 import { Step6Summary } from './Step6Summary';
 import { TariffWizardState, TariffStructure, DetectedTariff, TariffRate, TariffRateType, Supplier } from '@/shared/types';
 import { useToast } from '@/hooks/use-toast';
-import { getErrorMessage } from '@/shared/lib/errors';
 import { ChevronRight, ChevronLeft, ListChecks, Building2, X } from 'lucide-react';
 import { Step3BGasFixedFee } from './Step3BGasFixedFee';
 
@@ -615,7 +614,7 @@ export function TariffWizard({ initialSupplyType }: { initialSupplyType?: 'elect
                                     setUnknownSupplier(null);
                                     toast({ title: 'Comercializadora creada', description: `Se ha registrado "${unknownSupplier}" correctamente.` });
                                 } catch (err: unknown) {
-                                    toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+                                    toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'Error desconocido' });
                                 }
                             }}
                             style={{

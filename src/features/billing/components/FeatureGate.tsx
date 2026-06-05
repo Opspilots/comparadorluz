@@ -98,10 +98,10 @@ function DefaultUpgradeOverlay() {
             transition: 'background 0.15s',
           }}
           onMouseEnter={e => {
-            ;(e.currentTarget as HTMLButtonElement).style.background = '#1d4ed8'
+            (e.currentTarget as HTMLButtonElement).style.background = '#1d4ed8'
           }}
           onMouseLeave={e => {
-            ;(e.currentTarget as HTMLButtonElement).style.background = '#2563eb'
+            (e.currentTarget as HTMLButtonElement).style.background = '#2563eb'
           }}
         >
           Ver planes →

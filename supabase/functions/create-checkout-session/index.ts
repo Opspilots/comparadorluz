@@ -1,5 +1,5 @@
 // deno-lint-ignore-file
-
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 import { getCorsHeaders } from "../_shared/cors.ts"
@@ -26,7 +26,7 @@ async function stripeRequest(
     return { ok: res.ok, status: res.status, data }
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req)
 
     if (req.method === 'OPTIONS') {
@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
             // Create a new Stripe customer
             const customerRes = await stripeRequest('/customers', 'POST', {
                 name: company.name ?? '',
-                'metadata[company_id]': companyId,
+                metadata: { company_id: companyId },
             })
 
             if (!customerRes.ok) {

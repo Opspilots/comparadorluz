@@ -1115,7 +1115,7 @@ html {
 
 /* Blue-Purple gradient text */
 .gradient-text-bp {
-  background: linear-gradient(135deg, #60a5fa 0%, #818cf8 40%, #a78bfa 70%, #c4b5fd 100%);
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 55%, #c4b5fd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1134,10 +1134,10 @@ html {
   box-shadow: 0 24px 60px rgba(0,0,0,0.45);
 }
 
-/* V2 Divider — simple 1px gradient, no pseudo-elements */
+/* V2 Divider */
 .divider-v2 {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.25) 30%, rgba(124,58,237,0.18) 50%, rgba(37,99,235,0.25) 70%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.2), rgba(124,58,237,0.12), transparent);
 }
 
 /* Integration badge */

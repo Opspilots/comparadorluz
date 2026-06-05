@@ -49,6 +49,53 @@ function useInView(threshold = 0.1) {
     return { ref, visible }
 }
 
+interface FeatureCardProps {
+    feat: typeof features[number]
+    index: number
+}
+
+function FeatureCard({ feat, index }: FeatureCardProps) {
+    const card = useInView(0.08)
+    return (
+        <div
+            ref={card.ref}
+            className={`${feat.span} landing-card-premium rounded-2xl overflow-hidden group transition-all duration-700 ${
+                card.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`}
+            style={{ transitionDelay: `${index * 120}ms` }}
+        >
+            {/* Text content */}
+            <div className="p-6 lg:p-7">
+                <h3 className="text-lg font-bold text-white mb-1.5 tracking-[-0.01em]">
+                    {feat.title}
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed max-w-[380px]">
+                    {feat.desc}
+                </p>
+            </div>
+
+            {/* Screenshot */}
+            <div className="relative px-4 pb-0">
+                {/* Glow behind */}
+                <div
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-[80%] h-[120px] rounded-full blur-[60px] pointer-events-none"
+                    style={{ background: feat.glowColor }}
+                />
+                <div className="relative rounded-t-lg overflow-hidden border border-white/[0.06] border-b-0">
+                    <img
+                        src={feat.image}
+                        alt={feat.alt}
+                        className="w-full h-auto block transition-transform duration-700 group-hover:scale-[1.015]"
+                        loading="lazy"
+                    />
+                    {/* Top shine */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export function MethodSection() {
     const header = useInView(0.2)
 
@@ -82,48 +129,9 @@ export function MethodSection() {
 
                 {/* Bento grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    {features.map((feat, i) => {
-                        const card = useInView(0.08)
-                        return (
-                            <div
-                                key={i}
-                                ref={card.ref}
-                                className={`${feat.span} landing-card-premium rounded-2xl overflow-hidden group transition-all duration-700 ${
-                                    card.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                                }`}
-                                style={{ transitionDelay: `${i * 120}ms` }}
-                            >
-                                {/* Text content */}
-                                <div className="p-6 lg:p-7">
-                                    <h3 className="text-lg font-bold text-white mb-1.5 tracking-[-0.01em]">
-                                        {feat.title}
-                                    </h3>
-                                    <p className="text-sm text-slate-400 leading-relaxed max-w-[380px]">
-                                        {feat.desc}
-                                    </p>
-                                </div>
-
-                                {/* Screenshot */}
-                                <div className="relative px-4 pb-0">
-                                    {/* Glow behind */}
-                                    <div
-                                        className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-[80%] h-[120px] rounded-full blur-[60px] pointer-events-none"
-                                        style={{ background: feat.glowColor }}
-                                    />
-                                    <div className="relative rounded-t-lg overflow-hidden border border-white/[0.06] border-b-0">
-                                        <img
-                                            src={feat.image}
-                                            alt={feat.alt}
-                                            className="w-full h-auto block transition-transform duration-700 group-hover:scale-[1.015]"
-                                            loading="lazy"
-                                        />
-                                        {/* Top shine */}
-                                        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
+                    {features.map((feat, i) => (
+                        <FeatureCard key={i} feat={feat} index={i} />
+                    ))}
                 </div>
             </div>
         </section>

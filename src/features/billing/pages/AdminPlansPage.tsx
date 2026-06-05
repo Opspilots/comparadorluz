@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, Users, ChevronDown } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/shared/lib/errors'
 import type { Plan, PlanTier } from '@/shared/types'
 import { PlanBadge } from '../components/PlanBadge'
 
@@ -57,7 +56,7 @@ function ChangePlanDialog({ company, plans, onClose, onSaved }: ChangePlanDialog
     } catch (err) {
       toast({
         title: 'Error al actualizar el plan',
-        description: getErrorMessage(err),
+        description: err instanceof Error ? err.message : 'Inténtalo de nuevo',
         variant: 'destructive',
       })
     } finally {

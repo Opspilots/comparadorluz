@@ -11,7 +11,6 @@ import { ConsentSignPage } from '@/features/compliance/pages/ConsentSignPage'
 import { FeatureGate } from '@/features/billing/components/FeatureGate'
 import { LegalPage } from '@/features/landing/pages/LegalPage'
 import { BlogPage } from '@/features/landing/pages/BlogPage'
-import { BlogArticlePage } from '@/features/landing/pages/BlogArticlePage'
 
 // Lazy-loaded route components (code splitting)
 const TariffDashboard = lazy(() => import('@/features/tariffs/pages/TariffDashboard'))
@@ -187,7 +186,7 @@ function App() {
                     <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/blog" element={<BlogPage />} />
-                        <Route path="/blog/:slug" element={<BlogArticlePage />} />
+                        <Route path="/blog/:slug" element={<BlogPage />} />
                         <Route path="/legal/:page" element={<LegalPage />} />
                         <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
                         <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
@@ -196,7 +195,7 @@ function App() {
                             <Route path="/comparator" element={<FeatureGate feature="comparator"><ComparatorForm /></FeatureGate>} />
                             <Route path="/comparator/history" element={<FeatureGate feature="comparator"><ComparisonHistory /></FeatureGate>} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/settings/subscription" element={<AdminRoute><SubscriptionPage /></AdminRoute>} />
+                            <Route path="/settings/subscription" element={<SubscriptionPage />} />
                             <Route path="/admin/plans" element={<AdminRoute><AdminPlansPage /></AdminRoute>} />
                             <Route path="/crm" element={<FeatureGate feature="crm"><CustomerList /></FeatureGate>} />
                             <Route path="/crm/new" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />

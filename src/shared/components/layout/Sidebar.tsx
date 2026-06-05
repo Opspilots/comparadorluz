@@ -76,7 +76,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const { startTour } = useTour()
     const { tier, canUseFeature } = usePlan()
 
-    const { data: sidebarData } = useQuery({
+    const { data: companyData } = useQuery({
         queryKey: ['company-branding'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser()
@@ -84,7 +84,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
             const { data: profile } = await supabase
                 .from('users')
-                .select('company_id, role')
+                .select('company_id')
                 .eq('id', user.id)
                 .maybeSingle()
 
@@ -96,13 +96,10 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 .eq('id', profile.company_id)
                 .maybeSingle()
 
-            return { company, userRole: profile.role as string | null }
+            return company
         },
         staleTime: 5 * 60 * 1000,
     })
-
-    const companyData = sidebarData?.company
-    const canManageBilling = sidebarData?.userRole === 'admin' || sidebarData?.userRole === 'manager'
 
     const companyName = companyData?.name || 'Mi Empresa'
     const primaryColor = companyData?.primary_color || '#2563eb'
@@ -294,8 +291,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 flexDirection: 'column',
                 gap: '2px',
             }}>
-                {/* Plan indicator — solo para admin/manager */}
-                {canManageBilling && (
+                {/* Plan indicator */}
                 <Link
                     to="/settings/subscription"
                     onClick={handleNavClick}
@@ -327,7 +323,6 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                         {PLAN_DISPLAY[tier]}
                     </span>
                 </Link>
-                )}
 
                 <Link
                     to="/settings"

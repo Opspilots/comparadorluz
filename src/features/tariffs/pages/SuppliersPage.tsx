@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/shared/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { getErrorMessage } from '@/shared/lib/errors';
 import { Plus, Pencil, ToggleLeft, ToggleRight, X, Check, Building2 } from 'lucide-react';
 
 interface Supplier {
@@ -46,7 +45,7 @@ export default function SuppliersPage() {
             .select('*')
             .order('name');
         if (error) {
-            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
+            toast({ variant: 'destructive', title: 'Error', description: error.message });
         } else {
             setSuppliers(data || []);
         }
@@ -119,7 +118,7 @@ export default function SuppliersPage() {
         }
 
         if (error) {
-            toast({ variant: 'destructive', title: 'Error al guardar', description: getErrorMessage(error) });
+            toast({ variant: 'destructive', title: 'Error al guardar', description: error.message });
         } else {
             toast({ title: editing ? 'Comercializadora actualizada' : 'Comercializadora creada' });
             setShowForm(false);
@@ -134,7 +133,7 @@ export default function SuppliersPage() {
             .update({ is_active: !s.is_active })
             .eq('id', s.id);
         if (error) {
-            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
+            toast({ variant: 'destructive', title: 'Error', description: error.message });
         } else {
             setSuppliers(prev => prev.map(x => x.id === s.id ? { ...x, is_active: !s.is_active } : x));
         }
