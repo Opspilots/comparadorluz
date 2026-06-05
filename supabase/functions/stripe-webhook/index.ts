@@ -150,7 +150,7 @@ serve(async (req: Request) => {
     console.log(`Stripe webhook received: ${eventType} (event_id: ${eventId})`)
 
     // ── Idempotency check: avoid processing duplicate events ────────────────
-    const { data: existingEvent, error: checkErr } = await supabase
+    const { data: existingEvent } = await supabase
         .from('stripe_webhook_events')
         .select('id')
         .eq('stripe_event_id', eventId)
