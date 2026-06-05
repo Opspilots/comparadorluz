@@ -80,7 +80,21 @@ serve(async (req: Request) => {
 
         const companyId: string = callerUser.company_id
 
-        // ── 3. Parse request body ───────────────────────────────────────────
+        // ── 3. Check role (RBAC) ────────────────────────────────────────────
+        const { data: userRole, error: roleError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (roleError || !userRole?.role || !['admin', 'manager'].includes(userRole.role)) {
+            return new Response(JSON.stringify({ error: 'No tienes permiso para cambiar el plan de suscripción' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
+        // ── 4. Parse request body ───────────────────────────────────────────
         const body = await req.json()
         const { plan_id, billing_interval, success_url, cancel_url } = body as {
             plan_id: string
