@@ -30,6 +30,8 @@ const ComparisonHistory = lazy(() => import('@/features/comparator/pages/Compari
 const ContactForm = lazy(() => import('@/features/crm/components/ContactForm').then(m => ({ default: m.ContactForm })))
 const SupplyPointForm = lazy(() => import('@/features/crm/components/SupplyPointForm').then(m => ({ default: m.SupplyPointForm })))
 const CustomerForm = lazy(() => import('@/features/crm/components/CustomerForm').then(m => ({ default: m.CustomerForm })))
+const ContactsListPage = lazy(() => import('@/features/crm/pages/ContactsListPage').then(m => ({ default: m.ContactsListPage })))
+const SupplyPointsListPage = lazy(() => import('@/features/crm/pages/SupplyPointsListPage').then(m => ({ default: m.SupplyPointsListPage })))
 const CampaignsPage = lazy(() => import('@/features/messaging/pages/CampaignsPage').then(m => ({ default: m.CampaignsPage })))
 const CampaignForm = lazy(() => import('@/features/messaging/pages/CampaignForm').then(m => ({ default: m.CampaignForm })))
 const ContractList = lazy(() => import('@/features/contracts/components/ContractList').then(m => ({ default: m.ContractList })))
@@ -201,7 +203,9 @@ function App() {
                             <Route path="/crm/new" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
                             <Route path="/crm/:id" element={<FeatureGate feature="crm"><CustomerDetails /></FeatureGate>} />
                             <Route path="/crm/:id/edit" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
+                            <Route path="/crm/:customerId/contacts" element={<FeatureGate feature="crm"><ContactsListPage /></FeatureGate>} />
                             <Route path="/crm/:customerId/contacts/new" element={<FeatureGate feature="crm"><ContactForm /></FeatureGate>} />
+                            <Route path="/crm/:customerId/supply-points" element={<FeatureGate feature="crm"><SupplyPointsListPage /></FeatureGate>} />
                             <Route path="/crm/:customerId/supply-points/new" element={<FeatureGate feature="crm"><SupplyPointForm /></FeatureGate>} />
                             <Route path="/commissioners" element={<FeatureGate feature="commissioners"><CommissionersPage /></FeatureGate>} />
                             <Route path="/commissioners/:id" element={<FeatureGate feature="commissioners"><CommissionerDetailPage /></FeatureGate>} />
