@@ -81,6 +81,27 @@ const legalContent: Record<string, { title: string; sections: { heading: string;
             },
         ],
     },
+    'aviso-legal': {
+        title: 'Aviso Legal',
+        sections: [
+            {
+                heading: 'Identificación de la empresa titular',
+                body: 'EnergyDeal S.L., CIF: B12345678, con domicilio en Calle Principal, 123, 01001 Vitoria-Gasteiz, Álava. Email: contacto@energydeal.es · Teléfono: +34 945 123 456.',
+            },
+            {
+                heading: 'Condiciones de uso de la plataforma',
+                body: 'El acceso y uso de esta plataforma web (en adelante, el "Servicio") están sujetos a los siguientes términos y condiciones. Al utilizar el Servicio, usted acepta cumplir con estos términos y condiciones en su totalidad.',
+            },
+            {
+                heading: 'Derechos de propiedad intelectual',
+                body: 'Todos los contenidos del Servicio, incluyendo pero no limitado a textos, gráficos, imágenes, logotipos, software e información general, son propiedad exclusiva de EnergyDeal S.L. o sus licenciatarios y están protegidos por leyes de derechos de autor y otras leyes de propiedad intelectual.',
+            },
+            {
+                heading: 'Limitación de responsabilidad',
+                body: 'EnergyDeal S.L. no se hace responsable de ningún daño directo, indirecto, incidental, especial o consecuente que pueda surgir del uso o la imposibilidad de usar el Servicio, incluso si EnergyDeal S.L. ha sido informado de la posibilidad de tales daños. EnergyDeal S.L. no garantiza que el Servicio esté libre de errores, ininterrumpido o seguro, ni garantiza resultados específicos a partir del uso del Servicio.',
+            },
+        ],
+    },
     rgpd: {
         title: 'Derechos RGPD',
         sections: [
