@@ -30,6 +30,7 @@ export default defineConfig({
     },
     build: {
         target: 'esnext',
+        sourcemap: 'hidden',
         chunkSizeWarningLimit: 1600,
         rollupOptions: {
             output: {
@@ -38,6 +39,7 @@ export default defineConfig({
                     supabase: ['@supabase/supabase-js'],
                     ui: ['@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-toast'],
                     charts: ['recharts'],
+                    'pdf-renderer': ['@react-pdf/renderer'],
                 },
             },
         },

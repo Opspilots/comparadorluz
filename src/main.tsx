@@ -1,10 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
+import * as Sentry from '@sentry/react'
 import App from './App'
 import './index.css'
 // PDF worker configuration moved to src/shared/lib/pdf-utils.ts
 // so it's only loaded when PDF features are actually used (lazy routes).
+
+if (import.meta.env.VITE_SENTRY_DSN) {
+    Sentry.init({
+        dsn: import.meta.env.VITE_SENTRY_DSN,
+        environment: import.meta.env.MODE,
+        tracesSampleRate: 0.1,
+        integrations: [Sentry.browserTracingIntegration()],
+    })
+}
 
 // Using the user-friendly ErrorBoundary from shared components (imported in App.tsx).
 // This top-level boundary is a last-resort fallback — no stack traces exposed.
@@ -20,6 +30,7 @@ class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, {
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         console.error("Uncaught error:", error, errorInfo);
+        Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack } } })
     }
 
     render() {
