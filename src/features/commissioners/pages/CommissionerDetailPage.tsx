@@ -85,7 +85,7 @@ export function CommissionerDetailPage() {
                         width: '42px',
                         height: '42px',
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)',
+                        background: 'linear-gradient(135deg, var(--color-primary), #3b82f6)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',

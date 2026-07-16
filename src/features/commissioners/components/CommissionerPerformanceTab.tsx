@@ -84,12 +84,12 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
     }, [commissionerId])
 
     if (loading) {
-        return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Calculando métricas...</div>
+        return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Calculando métricas...</div>
     }
 
     if (fetchError) {
         return (
-            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
                 <AlertCircle size={18} />
                 <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
             </div>
@@ -97,7 +97,7 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
     }
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+        <div className="metric-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
             {/* Total Contracts */}
             <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#64748b' }}>

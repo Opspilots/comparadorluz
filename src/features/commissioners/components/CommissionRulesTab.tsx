@@ -189,7 +189,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
                                                         style={{
                                                             width: '80px',
                                                             padding: '0.3rem 0.5rem',
-                                                            border: '2px solid #0ea5e9',
+                                                            border: '2px solid var(--color-primary)',
                                                             borderRadius: '6px',
                                                             fontSize: '0.875rem',
                                                             fontWeight: 600,
@@ -201,7 +201,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
                                                         onClick={() => handleSaveEdit(rule.id)}
                                                         style={{
                                                             padding: '0.2rem 0.5rem',
-                                                            background: '#0ea5e9',
+                                                            background: 'var(--color-primary)',
                                                             color: 'white',
                                                             border: 'none',
                                                             borderRadius: '4px',
@@ -263,7 +263,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
                                                     onClick={() => handleStartEdit(rule)}
                                                     style={{
                                                         background: 'none', border: 'none', cursor: 'pointer',
-                                                        color: '#0ea5e9', display: 'flex', alignItems: 'center', padding: '0.25rem'
+                                                        color: 'var(--color-primary)', display: 'flex', alignItems: 'center', padding: '0.25rem'
                                                     }}
                                                     title="Editar porcentaje"
                                                 >

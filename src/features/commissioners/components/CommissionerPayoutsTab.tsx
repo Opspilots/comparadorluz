@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { Download, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { getStatusChipClass } from '@/shared/lib/statusColors'
 
 interface Payout {
     id: string
@@ -76,27 +77,32 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
         URL.revokeObjectURL(url)
     }
 
-    const getStatusBadge = (status: string) => {
-        const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }
-        switch (status) {
-            case 'paid':
-                return <span style={{ ...base, background: '#dcfce7', color: '#166534' }}><CheckCircle size={12} /> Pagado</span>
-            case 'finalized':
-                return <span style={{ ...base, background: '#fef3c7', color: '#92400e' }}><Clock size={12} /> Finalizado</span>
-            case 'draft':
-                return <span style={{ ...base, background: '#f1f5f9', color: '#64748b' }}><AlertCircle size={12} /> Borrador</span>
-            default:
-                return <span style={{ ...base, background: '#f1f5f9', color: '#64748b' }}>{status}</span>
-        }
+    const payoutStatusLabels: Record<string, string> = {
+        paid: 'Pagado',
+        finalized: 'Finalizado',
+        draft: 'Borrador',
     }
 
+    const payoutStatusIcons: Record<string, JSX.Element> = {
+        paid: <CheckCircle size={12} />,
+        finalized: <Clock size={12} />,
+        draft: <AlertCircle size={12} />,
+    }
+
+    const getStatusBadge = (status: string) => (
+        <span className={getStatusChipClass(status)}>
+            {payoutStatusIcons[status] ?? <AlertCircle size={12} />}
+            {payoutStatusLabels[status] ?? status}
+        </span>
+    )
+
     if (loading) {
-        return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Cargando liquidaciones...</div>
+        return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando liquidaciones...</div>
     }
 
     if (fetchError) {
         return (
-            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
                 <AlertCircle size={18} />
                 <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
             </div>
@@ -105,17 +111,18 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="flex justify-between items-center mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div className="flex justify-between items-center mb-4">
                 <div style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Liquidaciones Mensuales</div>
                 {/* Future: Add 'Generate Payout' button available usually for admins */}
             </div>
 
             {payouts.length === 0 ? (
-                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <p>No hay liquidaciones registradas para este comisionado.</p>
                 </div>
             ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div className="responsive-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                             <tr>
@@ -159,6 +166,7 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
                             ))}
                         </tbody>
                     </table>
+                  </div>
                 </div>
             )}
         </div>

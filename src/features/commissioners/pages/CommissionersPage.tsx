@@ -153,11 +153,11 @@ export function CommissionersPage() {
 
             {/* Commissioners Table */}
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                     Cargando comisionados...
                 </div>
             ) : fetchError ? (
-                <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+                <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
                     <AlertCircle size={18} />
                     <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
                 </div>
@@ -200,14 +200,7 @@ export function CommissionersPage() {
                                     onClick={() => navigate(`/commissioners/${commissioner.id}`)}
                                     style={{
                                         borderBottom: index < filteredCommissioners.length - 1 ? '1px solid #f1f5f9' : 'none',
-                                        cursor: 'pointer',
-                                        transition: 'background 0.15s ease'
-                                    }}
-                                    onMouseOver={(e) => {
-                                        e.currentTarget.style.background = '#f8fafc'
-                                    }}
-                                    onMouseOut={(e) => {
-                                        e.currentTarget.style.background = ''
+                                        cursor: 'pointer'
                                     }}
                                 >
                                     <td style={{ padding: '1rem 1.25rem' }}>

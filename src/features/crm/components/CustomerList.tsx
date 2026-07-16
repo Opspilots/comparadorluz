@@ -7,20 +7,9 @@ import { LayoutGrid, List as ListIcon, Plus, Search, MapPin, Building2, User, Pe
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { removeEmojis } from '@/shared/lib/utils'
+import { getStatusChipClass } from '@/shared/lib/statusColors'
 
 const PAGE_SIZE = 50
-
-const badgeStyle = (status: string) => {
-    const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, border: '1px solid transparent', letterSpacing: '0.025em' }
-    switch (status) {
-        case 'cliente': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
-        case 'propuesta': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
-        case 'negociacion': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
-        case 'perdido': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
-        case 'contactado': return { ...base, background: '#f3e8ff', color: '#7e22ce', borderColor: '#e9d5ff' }
-        default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
-    }
-}
 
 const statusLabels: Record<string, string> = {
     'prospecto': 'Prospecto',
@@ -81,7 +70,7 @@ export function CustomerList() {
     }
 
     if (isError) return (
-        <div className="flex flex-col items-center justify-center p-12 text-[#ef4444] gap-2">
+        <div className="flex flex-col items-center justify-center p-12 text-[var(--danger)] gap-2">
             <AlertCircle size={20} />
             <p className="text-sm font-medium">No se pudieron cargar los clientes. Comprueba tu conexión.</p>
         </div>
@@ -181,7 +170,7 @@ export function CustomerList() {
                                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{customer.customer_type === 'particular' ? 'Particular' : 'Empresa'}</div>
                                                 </td>
                                                 <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <span style={badgeStyle(customer.status)}>
+                                                    <span className={getStatusChipClass(customer.status)}>
                                                         {statusLabels[customer.status] || customer.status}
                                                     </span>
                                                 </td>
@@ -244,7 +233,7 @@ export function CustomerList() {
                                                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{customer.cif}</p>
                                                 </div>
                                             </div>
-                                            <span style={badgeStyle(customer.status)}>
+                                            <span className={getStatusChipClass(customer.status)}>
                                                 {statusLabels[customer.status] || customer.status}
                                             </span>
                                         </div>

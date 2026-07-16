@@ -10,6 +10,14 @@ import { getErrorMessage } from '@/shared/lib/errors'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { removeEmojis } from '@/shared/lib/utils'
 import type { SwitchingStatus } from '@/shared/types'
+import { getStatusChipClass } from '@/shared/lib/statusColors'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/shared/components/ui/dialog'
 
 const PAGE_SIZE = 50
 
@@ -27,17 +35,6 @@ const filterLabels: Record<string, string> = {
     'signed': 'Firmado',
     'active': 'Activo',
     'cancelled': 'Cancelado'
-}
-
-const badgeStyle = (status: string) => {
-    const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, border: '1px solid transparent' }
-    switch (status) {
-        case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
-        case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
-        case 'pending': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
-        case 'cancelled': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
-        default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
-    }
 }
 
 type ContractWithRelations = Contract & {
@@ -171,7 +168,7 @@ export function ContractList() {
 
 
     if (isError) return (
-        <div className="flex flex-col items-center justify-center p-12 text-[#ef4444] gap-2">
+        <div className="flex flex-col items-center justify-center p-12 text-[var(--danger)] gap-2">
             <AlertCircle size={20} />
             <p className="text-sm font-medium">No se pudieron cargar los contratos. Comprueba tu conexión.</p>
         </div>
@@ -184,7 +181,7 @@ export function ContractList() {
 
                 <div className="mobile-actions-wrap" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {/* Filters */}
-                    <div className="tour-contracts-filters mobile-filters-scroll" style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
+                    <div className="tour-contracts-filters mobile-filters-scroll" style={{ display: 'flex', gap: '0.25rem', background: 'var(--border-light)', padding: '0.25rem', borderRadius: '8px' }}>
                         {['all', 'pending', 'signed', 'active', 'cancelled'].map(f => (
                             <button
                                 key={f}
@@ -195,8 +192,8 @@ export function ContractList() {
                                     fontWeight: 500,
                                     border: 'none',
                                     borderRadius: '6px',
-                                    background: filter === f ? 'white' : 'transparent',
-                                    color: filter === f ? '#111827' : '#6b7280',
+                                    background: filter === f ? 'var(--surface)' : 'transparent',
+                                    color: filter === f ? 'var(--text-main)' : 'var(--text-muted)',
                                     boxShadow: filter === f ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
@@ -208,18 +205,18 @@ export function ContractList() {
                     </div>
 
                     {/* View Toggle */}
-                    <div style={{ display: 'flex', gap: '0.25rem', background: '#f3f4f6', padding: '0.25rem', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--border-light)', padding: '0.25rem', borderRadius: '8px' }}>
                         <button
                             onClick={() => setViewMode('list')}
                             style={{
                                 padding: '0.4rem',
                                 border: 'none',
-                                background: viewMode === 'list' ? 'white' : 'transparent',
+                                background: viewMode === 'list' ? 'var(--surface)' : 'transparent',
                                 borderRadius: '6px',
                                 boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
                                 cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: viewMode === 'list' ? '#111827' : '#6b7280'
+                                color: viewMode === 'list' ? 'var(--text-main)' : 'var(--text-muted)'
                             }}
                             title="Vista Lista"
                         >
@@ -230,12 +227,12 @@ export function ContractList() {
                             style={{
                                 padding: '0.4rem',
                                 border: 'none',
-                                background: viewMode === 'board' ? 'white' : 'transparent',
+                                background: viewMode === 'board' ? 'var(--surface)' : 'transparent',
                                 borderRadius: '6px',
                                 boxShadow: viewMode === 'board' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
                                 cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: viewMode === 'board' ? '#111827' : '#6b7280'
+                                color: viewMode === 'board' ? 'var(--text-main)' : 'var(--text-muted)'
                             }}
                             title="Vista Tablero"
                         >
@@ -298,7 +295,7 @@ export function ContractList() {
                                                 {contract.supply_points?.cups || '—'}
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem' }}>
-                                                <span style={badgeStyle(contract.status)}>
+                                                <span className={getStatusChipClass(contract.status)}>
                                                     {statusLabels[contract.status] || contract.status}
                                                 </span>
                                                 {contract.switching_status && contract.switching_status !== 'completed' && (
@@ -398,7 +395,7 @@ export function ContractList() {
                                 <div key={contract.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <span style={badgeStyle(contract.status)}>{statusLabels[contract.status] || contract.status}</span>
+                                            <span className={getStatusChipClass(contract.status)}>{statusLabels[contract.status] || contract.status}</span>
                                             <div style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{removeEmojis(contract.customers?.name || '')}</div>
                                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{contract.customers?.cif}</p>
                                         </div>
@@ -496,44 +493,34 @@ export function ContractList() {
 
             {/* Switching Action Dialog — advance or confirm switching */}
             {switchingActionContract && (
-                <div
-                    style={{
-                        position: 'fixed', inset: 0, zIndex: 50,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
-                    }}
-                    onClick={() => setSwitchingActionContract(null)}
+                <Dialog
+                    open={!!switchingActionContract}
+                    onOpenChange={(open) => { if (!open) setSwitchingActionContract(null) }}
                 >
-                    <div
-                        style={{
-                            background: '#fff', borderRadius: 14, maxWidth: 440, width: '90%',
-                            boxShadow: '0 20px 60px rgba(0,0,0,0.15)', overflow: 'hidden',
-                        }}
-                        onClick={e => e.stopPropagation()}
-                    >
+                    <DialogContent className="max-w-[440px] p-0 overflow-hidden">
                         {/* Header */}
                         <div style={{
                             padding: '1.25rem 1.5rem',
                             background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #f5f3ff 100%)',
                             borderBottom: '1px solid #e2e8f0',
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{
-                                    width: 36, height: 36, borderRadius: 10,
-                                    background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
-                                }}>
-                                    <ArrowRightLeft size={18} color="#fff" />
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '1.0625rem', fontWeight: 600, color: '#0f172a' }}>
-                                        Gestionar Traspaso
+                            <DialogHeader>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: 10,
+                                        background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
+                                    }}>
+                                        <ArrowRightLeft size={18} color="#fff" />
                                     </div>
-                                    <div style={{ fontSize: '0.8125rem', color: '#64748b' }}>
-                                        {removeEmojis(switchingActionContract.customers?.name || 'Cliente')}
+                                    <div>
+                                        <DialogTitle className="text-[1.0625rem]">Gestionar Traspaso</DialogTitle>
+                                        <DialogDescription className="mt-0.5">
+                                            {removeEmojis(switchingActionContract.customers?.name || 'Cliente')}
+                                        </DialogDescription>
                                     </div>
                                 </div>
-                            </div>
+                            </DialogHeader>
                         </div>
 
                         {/* Body */}
@@ -670,8 +657,8 @@ export function ContractList() {
                                 )}
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </DialogContent>
+                </Dialog>
             )}
         </div>
     )

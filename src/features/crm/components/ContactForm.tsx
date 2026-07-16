@@ -3,6 +3,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/shared/lib/errors'
+import { Input } from '@/shared/components/ui/input'
 
 export function ContactForm() {
     const { customerId } = useParams<{ customerId: string }>()
@@ -76,58 +77,58 @@ export function ContactForm() {
     return (
         <div style={{ maxWidth: '600px', margin: '2rem auto', padding: '2rem', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.25rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Nombre</label>
-                        <input
+                        <label htmlFor="firstName" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Nombre</label>
+                        <Input
+                            id="firstName"
                             type="text"
                             required
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Apellidos</label>
-                        <input
+                        <label htmlFor="lastName" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Apellidos</label>
+                        <Input
+                            id="lastName"
                             type="text"
                             required
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                         />
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="mobile-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Email</label>
-                        <input
+                        <label htmlFor="email" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Email</label>
+                        <Input
+                            id="email"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Teléfono</label>
-                        <input
+                        <label htmlFor="phone" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Teléfono</label>
+                        <Input
+                            id="phone"
                             type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Cargo / Puesto</label>
-                    <input
+                    <label htmlFor="position" style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>Cargo / Puesto</label>
+                    <Input
+                        id="position"
                         type="text"
                         value={position}
                         onChange={(e) => setPosition(e.target.value)}
                         placeholder="Ej: Director Gerente"
-                        style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}
                     />
                 </div>
 
