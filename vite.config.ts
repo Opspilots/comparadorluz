@@ -31,7 +31,11 @@ export default defineConfig({
     build: {
         target: 'esnext',
         sourcemap: 'hidden',
-        chunkSizeWarningLimit: 1600,
+        // Default-ish limit now that Login/ConsentSignPage/LegalPage/Blog* are lazy-loaded
+        // and out of the entry chunk. pdf-renderer (@react-pdf/renderer, ~1.5MB) and its
+        // pdf-utils helper chunk are expected to exceed this — they're already isolated via
+        // manualChunks so they only load on the contract PDF preview/generation routes.
+        chunkSizeWarningLimit: 600,
         rollupOptions: {
             output: {
                 manualChunks: {

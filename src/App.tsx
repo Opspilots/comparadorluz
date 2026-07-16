@@ -6,14 +6,14 @@ import { MainLayout } from '@/shared/components/layout/MainLayout'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/shared/components/ui/toaster'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
-import { Login } from '@/features/auth/components/Login'
-import { ConsentSignPage } from '@/features/compliance/pages/ConsentSignPage'
 import { FeatureGate } from '@/features/billing/components/FeatureGate'
-import { LegalPage } from '@/features/landing/pages/LegalPage'
-import { BlogPage } from '@/features/landing/pages/BlogPage'
-import { BlogArticlePage } from '@/features/landing/pages/BlogArticlePage'
 
 // Lazy-loaded route components (code splitting)
+const Login = lazy(() => import('@/features/auth/components/Login').then(m => ({ default: m.Login })))
+const ConsentSignPage = lazy(() => import('@/features/compliance/pages/ConsentSignPage').then(m => ({ default: m.ConsentSignPage })))
+const LegalPage = lazy(() => import('@/features/landing/pages/LegalPage').then(m => ({ default: m.LegalPage })))
+const BlogPage = lazy(() => import('@/features/landing/pages/BlogPage').then(m => ({ default: m.BlogPage })))
+const BlogArticlePage = lazy(() => import('@/features/landing/pages/BlogArticlePage').then(m => ({ default: m.BlogArticlePage })))
 const TariffDashboard = lazy(() => import('@/features/tariffs/pages/TariffDashboard'))
 const TariffEditorPage = lazy(() => import('@/features/tariffs/pages/TariffEditorPage').then(m => ({ default: m.TariffEditorPage })))
 const TariffDetailsPage = lazy(() => import('@/features/tariffs/pages/TariffDetailsPage'))
