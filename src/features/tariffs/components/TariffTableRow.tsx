@@ -103,6 +103,7 @@ export const TariffTableRow = ({ tariff }: TariffTableRowProps) => {
             <td style={{ padding: '1rem', textAlign: 'right' }}>
                 <button
                     className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/admin/tariffs/${tariff.id}`) }}
                 >
                     <ExternalLink size={14} className="text-gray-400" />
                 </button>

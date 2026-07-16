@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
-import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye, Loader2, ArrowRightLeft, CheckCircle2, ChevronRight, XCircle } from 'lucide-react'
+import { Pencil, Trash2, LayoutGrid, List as ListIcon, Plus, Eye, Loader2, ArrowRightLeft, CheckCircle2, ChevronRight, XCircle, AlertCircle } from 'lucide-react'
 import { SwitchingDialog } from './SwitchingDialog'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/shared/lib/errors'
@@ -56,7 +56,7 @@ export function ContractList() {
     const { toast } = useToast()
     const queryClient = useQueryClient()
 
-    const { data: contracts = [], isLoading: loading } = useQuery({
+    const { data: contracts = [], isLoading: loading, isError } = useQuery({
         queryKey: ['contracts'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser()
@@ -169,6 +169,13 @@ export function ContractList() {
         setDeleteTarget(null)
     }
 
+
+    if (isError) return (
+        <div className="flex flex-col items-center justify-center p-12 text-[#ef4444] gap-2">
+            <AlertCircle size={20} />
+            <p className="text-sm font-medium">No se pudieron cargar los contratos. Comprueba tu conexión.</p>
+        </div>
+    )
 
     return (
         <div className="animate-fade-in" style={{ maxWidth: '1400px', margin: '0 auto' }}>

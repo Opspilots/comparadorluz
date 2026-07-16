@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import type { Customer } from '@/shared/types'
 import { Link } from 'react-router-dom'
-import { LayoutGrid, List as ListIcon, Plus, Search, MapPin, Building2, User, Pencil, Trash2, Eye, Loader2 } from 'lucide-react'
+import { LayoutGrid, List as ListIcon, Plus, Search, MapPin, Building2, User, Pencil, Trash2, Eye, Loader2, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { removeEmojis } from '@/shared/lib/utils'
@@ -38,7 +38,7 @@ export function CustomerList() {
     const { toast } = useToast()
     const queryClient = useQueryClient()
 
-    const { data: customers = [], isLoading: loading } = useQuery({
+    const { data: customers = [], isLoading: loading, isError } = useQuery({
         queryKey: ['customers'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser()
@@ -79,6 +79,13 @@ export function CustomerList() {
         }
         setDeleteTarget(null)
     }
+
+    if (isError) return (
+        <div className="flex flex-col items-center justify-center p-12 text-[#ef4444] gap-2">
+            <AlertCircle size={20} />
+            <p className="text-sm font-medium">No se pudieron cargar los clientes. Comprueba tu conexión.</p>
+        </div>
+    )
 
     return (
         <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>

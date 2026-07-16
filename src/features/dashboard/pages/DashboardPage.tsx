@@ -5,7 +5,7 @@ import { MetricCard } from '../components/MetricCard'
 import { DashboardChart } from '../components/DashboardChart'
 import { RecentActivity } from '../components/RecentActivity'
 
-import { Users, FileText, CheckCircle, Plus, Search, FileSignature, Calendar, ArrowRight } from 'lucide-react'
+import { Users, FileText, CheckCircle, Plus, Search, FileSignature, ArrowRight } from 'lucide-react'
 
 export function DashboardPage() {
     const [stats, setStats] = useState({
@@ -90,9 +90,6 @@ export function DashboardPage() {
                     <h1 className="page-title">Panel de Control</h1>
                     <p className="page-subtitle">Resumen general de tu actividad</p>
                 </div>
-                <button className="btn btn-secondary btn-sm">
-                    <Calendar size={14} /> Últimos 30 días
-                </button>
             </div>
 
             {/* Metrics Grid */}

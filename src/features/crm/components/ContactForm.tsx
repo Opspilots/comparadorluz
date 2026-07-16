@@ -8,7 +8,6 @@ export function ContactForm() {
     const { customerId } = useParams<{ customerId: string }>()
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
     const { toast } = useToast()
 
     const [firstName, setFirstName] = useState('')
@@ -26,7 +25,6 @@ export function ContactForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        setError(null) // Keep this to clear previous errors, even if toast is used for new ones
 
         try {
             const { data: { user } } = await supabase.auth.getUser()
@@ -68,9 +66,8 @@ export function ContactForm() {
 
             navigate(`/crm/${customerId}`)
         } catch (err: unknown) {
-            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
-            // Optionally, you could still set the error state here if you want it to display in the form's error div as well
-            // setError(err instanceof Error ? err.message : 'Error al guardar contacto');
+            const msg = getErrorMessage(err)
+            toast({ title: 'Error', description: msg, variant: 'destructive' })
         } finally {
             setLoading(false)
         }
@@ -78,14 +75,6 @@ export function ContactForm() {
 
     return (
         <div style={{ maxWidth: '600px', margin: '2rem auto', padding: '2rem', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-
-
-            {error && (
-                <div style={{ padding: '1rem', background: '#fee2e2', color: '#b91c1c', marginBottom: '1.5rem', borderRadius: '8px' }}>
-                    {error}
-                </div>
-            )}
-
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1.25rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>

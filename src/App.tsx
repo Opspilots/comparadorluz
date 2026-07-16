@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom'
 import { useState, useEffect, useRef, Suspense, lazy } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/lib/supabase'
@@ -166,6 +166,7 @@ const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             staleTime: 1000 * 60 * 5,
+            gcTime: 1000 * 60 * 10,
             retry: 1,
             refetchOnWindowFocus: false,
         },
@@ -236,7 +237,7 @@ function App() {
                             <div className="flex flex-col items-center justify-center py-20 text-center">
                                 <h1 className="text-4xl font-bold text-slate-800 mb-2">404</h1>
                                 <p className="text-lg text-slate-500 mb-6">Página no encontrada</p>
-                                <a href="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</a>
+                                <Link to="/" className="text-blue-600 hover:underline font-medium">Volver al inicio</Link>
                             </div>
                         } />
                     </Routes>

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Commissioner } from '@/shared/types'
-import { Users, Plus, FileCheck, Search } from 'lucide-react'
+import { Users, Plus, FileCheck, Search, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { CreateCommissionerDialog } from '../components/CreateCommissionerDialog'
 import { removeEmojis } from '@/shared/lib/utils'
@@ -22,6 +22,7 @@ export function CommissionersPage() {
     const navigate = useNavigate()
     const [commissioners, setCommissioners] = useState<CommissionerWithStats[]>([])
     const [loading, setLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
 
@@ -39,6 +40,7 @@ export function CommissionersPage() {
     const fetchCommissioners = useCallback(async () => {
         if (!companyId) return
         setLoading(true)
+        setFetchError(null)
 
         const [{ data: commissionersData, error }, { data: contractCounts }] = await Promise.all([
             supabase
@@ -65,6 +67,7 @@ export function CommissionersPage() {
 
         if (error) {
             console.error('Error fetching commissioners:', error)
+            setFetchError('No se pudieron cargar los comisionados.')
             setLoading(false)
             return
         }
@@ -152,6 +155,11 @@ export function CommissionersPage() {
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                     Cargando comisionados...
+                </div>
+            ) : fetchError ? (
+                <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+                    <AlertCircle size={18} />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
                 </div>
             ) : filteredCommissioners.length === 0 ? (
                 <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--color-border)' }}>

@@ -26,10 +26,12 @@ interface CommissionerPayoutsTabProps {
 export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTabProps) {
     const [loading, setLoading] = useState(true)
     const [payouts, setPayouts] = useState<Payout[]>([])
+    const [fetchError, setFetchError] = useState<string | null>(null)
 
     useEffect(() => {
         const fetchPayouts = async () => {
             setLoading(true)
+            setFetchError(null)
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) { setLoading(false); return }
             const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).maybeSingle()
@@ -44,6 +46,7 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
 
             if (error) {
                 console.error('Error fetching payouts:', error)
+                setFetchError('No se pudieron cargar las liquidaciones.')
             } else {
                 setPayouts(data || [])
             }
@@ -54,6 +57,24 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
             fetchPayouts()
         }
     }, [commissionerId])
+
+    const downloadPayoutCsv = (payout: Payout) => {
+        const period = new Date(payout.period_month).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })
+        const amount = payout.total_amount_eur.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+        const paidAt = payout.paid_at ? new Date(payout.paid_at).toLocaleDateString('es-ES') : ''
+        const rows = [
+            ['Periodo', 'Importe', 'Eventos', 'Estado', 'Fecha Pago', 'Referencia Pago', 'Notas'],
+            [period, amount, String(payout.event_count), payout.status, paidAt, payout.payment_reference ?? '', payout.notes ?? ''],
+        ]
+        const csv = rows.map(r => r.map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `liquidacion_${payout.period_month}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }
 
     const getStatusBadge = (status: string) => {
         const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }
@@ -71,6 +92,15 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
 
     if (loading) {
         return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Cargando liquidaciones...</div>
+    }
+
+    if (fetchError) {
+        return (
+            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+                <AlertCircle size={18} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
+            </div>
+        )
     }
 
     return (
@@ -116,8 +146,12 @@ export function CommissionerPayoutsTab({ commissionerId }: CommissionerPayoutsTa
                                         {payout.notes || '-'}
                                     </td>
                                     <td style={{ padding: '0.75rem 1rem' }}>
-                                        {/* Placeholder link for invoice download */}
-                                        <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} title="Descargar Factura">
+                                        <button
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                            title="Descargar CSV"
+                                            onClick={() => downloadPayoutCsv(payout)}
+                                        >
                                             <Download size={14} />
                                         </button>
                                     </td>

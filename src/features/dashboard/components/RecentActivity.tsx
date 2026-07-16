@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
-import { FileText, ChevronRight } from 'lucide-react'
+import { FileText, ChevronRight, AlertCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 interface ActivityItem {
@@ -15,9 +15,11 @@ interface ActivityItem {
 export function RecentActivity() {
     const [activities, setActivities] = useState<ActivityItem[]>([])
     const [loading, setLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
 
     useEffect(() => {
         const fetchActivity = async () => {
+            setFetchError(null)
             try {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) return
@@ -48,6 +50,7 @@ export function RecentActivity() {
                 }
             } catch (error) {
                 console.error('Error fetching activity:', error)
+                setFetchError('No se pudo cargar la actividad reciente.')
             } finally {
                 setLoading(false)
             }
@@ -58,6 +61,15 @@ export function RecentActivity() {
 
     if (loading) {
         return <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Cargando actividad...</div>
+    }
+
+    if (fetchError) {
+        return (
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+                <AlertCircle size={18} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
+            </div>
+        )
     }
 
     return (

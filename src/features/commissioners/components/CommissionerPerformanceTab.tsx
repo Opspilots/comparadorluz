@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/shared/lib/supabase'
-import { TrendingUp, FileCheck, DollarSign, Wallet } from 'lucide-react'
+import { TrendingUp, FileCheck, DollarSign, Wallet, AlertCircle } from 'lucide-react'
 
 interface CommissionerPerformanceTabProps {
     commissionerId: string
@@ -8,6 +8,7 @@ interface CommissionerPerformanceTabProps {
 
 export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerformanceTabProps) {
     const [loading, setLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
     const [stats, setStats] = useState({
         totalContracts: 0,
         totalCommission: 0,
@@ -19,6 +20,7 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
     useEffect(() => {
         const fetchStats = async () => {
             setLoading(true)
+            setFetchError(null)
 
             // Fetch company_id for tenant scoping
             const { data: { user } } = await supabase.auth.getUser()
@@ -36,6 +38,9 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
 
             if (commError) {
                 console.error('Error fetching commissions:', commError)
+                setFetchError('No se pudieron cargar las métricas de rendimiento.')
+                setLoading(false)
+                return
             }
 
             // 2. Fetch Contracts count
@@ -47,6 +52,9 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
 
             if (contractError) {
                 console.error('Error fetching contracts:', contractError)
+                setFetchError('No se pudieron cargar las métricas de rendimiento.')
+                setLoading(false)
+                return
             }
 
             const contractsCount = count || 0
@@ -77,6 +85,15 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
 
     if (loading) {
         return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Calculando métricas...</div>
+    }
+
+    if (fetchError) {
+        return (
+            <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+                <AlertCircle size={18} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{fetchError}</span>
+            </div>
+        )
     }
 
     return (
