@@ -261,16 +261,27 @@ Deno.serve(async (req: Request) => {
             }
 
             // Update message status
-            await supabaseClient
+            const { error: updateError } = await supabaseClient
                 .from('messages')
                 .update({ status: 'sent', sent_at: new Date().toISOString(), provider_id: result.id })
                 .eq('id', messageId)
+            if (updateError) {
+                console.error('Failed to update message status to sent (email):', updateError)
+            }
 
         } else if (message.channel === 'whatsapp') {
-            const waToken = settings.whatsapp_token
-            const waPhoneId = settings.whatsapp_phone_number_id
+            const { data: waConfig, error: waConfigError } = await supabaseClient
+                .from('company_whatsapp_config')
+                .select('access_token, phone_number_id')
+                .eq('company_id', verifiedCompanyId)
+                .maybeSingle()
 
-            if (!waToken || !waPhoneId) throw new Error('WhatsApp credentials missing in company settings')
+            if (waConfigError || !waConfig?.access_token || !waConfig?.phone_number_id) {
+                throw new Error('WhatsApp no configurado. Conecta tu cuenta en Configuración → Mensajería.')
+            }
+
+            const waToken = waConfig.access_token
+            const waPhoneId = waConfig.phone_number_id
 
             // Normalize phone number to international format (E.164 without +)
             let phone = (message.recipient_contact || '').replace(/[\s\-()+]/g, '')
@@ -306,10 +317,15 @@ Deno.serve(async (req: Request) => {
 
             // Update message status — guard against missing messages array
             const providerId = result.messages?.[0]?.id ?? null
-            await supabaseClient
+            const { error: updateError } = await supabaseClient
                 .from('messages')
                 .update({ status: 'sent', sent_at: new Date().toISOString(), provider_id: providerId })
                 .eq('id', messageId)
+            if (updateError) {
+                console.error('Failed to update message status to sent (whatsapp):', updateError)
+            }
+        } else {
+            throw new Error(`Canal no soportado: ${message.channel}`)
         }
 
         return new Response(JSON.stringify({ success: true }), {

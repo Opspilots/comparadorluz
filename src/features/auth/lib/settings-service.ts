@@ -4,13 +4,9 @@ export interface MessagingSettings {
     google_refresh_token?: string;
     google_access_token?: string;
     email_from?: string;
-    whatsapp_token?: string;
-    whatsapp_phone_number_id?: string;
 }
 
-interface WhatsAppSettings {
-    whatsapp_token?: string;
-    whatsapp_phone_number_id?: string;
+interface EmailFromSettings {
     email_from?: string;
 }
 
@@ -46,7 +42,7 @@ export async function getCompanySettings(): Promise<MessagingSettings> {
 
     if (companyError) throw companyError;
 
-    const waSettings = (companyData.messaging_settings ?? {}) as WhatsAppSettings;
+    const emailSettings = (companyData.messaging_settings ?? {}) as EmailFromSettings;
 
     // Fetch OAuth tokens from secure table (RLS restricts to admin/manager)
     const { data: tokenData, error: tokenError } = await supabase
@@ -65,9 +61,7 @@ export async function getCompanySettings(): Promise<MessagingSettings> {
     return {
         google_refresh_token: oauthRow?.refresh_token ?? '',
         google_access_token: oauthRow?.access_token ?? '',
-        email_from: oauthRow?.email ?? waSettings.email_from ?? '',
-        whatsapp_token: waSettings.whatsapp_token ?? '',
-        whatsapp_phone_number_id: waSettings.whatsapp_phone_number_id ?? '',
+        email_from: oauthRow?.email ?? emailSettings.email_from ?? '',
     };
 }
 
@@ -78,16 +72,22 @@ export async function updateCompanySettings(settings: MessagingSettings) {
         throw new Error('Only admins or managers can update company settings');
     }
 
-    // 1. Update WhatsApp + email_from in companies.messaging_settings
-    const waPayload: WhatsAppSettings = {
-        whatsapp_token: settings.whatsapp_token,
-        whatsapp_phone_number_id: settings.whatsapp_phone_number_id,
+    // 1. Update email_from in companies.messaging_settings
+    // Fetch existing JSONB first to avoid overwriting other fields in the object
+    const { data: currentCompany } = await supabase
+        .from('companies')
+        .select('messaging_settings')
+        .eq('id', companyId)
+        .single();
+
+    const merged = {
+        ...(currentCompany?.messaging_settings as Record<string, unknown> ?? {}),
         email_from: settings.email_from,
     };
 
     const { error: updateError } = await supabase
         .from('companies')
-        .update({ messaging_settings: waPayload })
+        .update({ messaging_settings: merged })
         .eq('id', companyId);
 
     if (updateError) throw updateError;
