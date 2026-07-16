@@ -287,15 +287,16 @@ export function calculateFixedFee(rates: TariffRate[], contractDuration: number 
 
 /**
  * Apply Spanish electricity taxes
- * 
+ *
  * Tax calculation order (as per Spanish regulation):
  * 1. Electricity Tax (5.11%) on subtotal
- * 2. IVA (21%) on (subtotal + electricity tax)
- * 
+ * 2. IVA (21% standard, or 10% for residential 2.0TD ≤10 kW) on (subtotal + electricity tax)
+ *
  * @param subtotal - Pre-tax subtotal
+ * @param isResidential - If true, applies reduced IVA 10% (2.0TD ≤10 kW contracts)
  * @returns Object with total taxes and breakdown
  */
-export function applyTaxes(subtotal: number): {
+export function applyTaxes(subtotal: number, isResidential?: boolean): {
     total: number;
     breakdown: { iva: number; electricity_tax: number };
 } {
@@ -303,8 +304,10 @@ export function applyTaxes(subtotal: number): {
     const electricityTax = round(subtotal * TAX_RATES.ELECTRICITY_TAX);
 
     // Step 2: Apply IVA on (subtotal + electricity tax)
+    // Residential 2.0TD contracts with ≤10 kW contracted power use reduced 10% IVA
+    const ivaRate = isResidential ? 0.10 : TAX_RATES.IVA;
     const baseForIVA = subtotal + electricityTax;
-    const iva = round(baseForIVA * TAX_RATES.IVA);
+    const iva = round(baseForIVA * ivaRate);
 
     const total = round(electricityTax + iva);
 
@@ -447,7 +450,9 @@ export function calculateElectricityAnnualCost(input: CalculationInput): Calcula
 
     // 7. SUBTOTAL & TAXES
     const subtotal = round(energyCost + powerCost + fixedFee + meterRental + reactivePenalty + excessPowerPenalty);
-    const taxResult = applyTaxes(subtotal);
+    // Residential 2.0TD contracts with ≤10 kW contracted power qualify for reduced 10% IVA
+    const isResidential = tariff_version.tariff_type === '2.0TD' && contracted_power_kw <= 10;
+    const taxResult = applyTaxes(subtotal, isResidential);
 
     // 8. FINAL TOTAL
     const totalAnnual = round(subtotal + taxResult.total);

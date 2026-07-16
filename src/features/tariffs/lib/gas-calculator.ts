@@ -36,8 +36,11 @@ export function calculateGasAnnualCost(input: CalculationInput): CalculationResu
     // Subtotal before IVA
     const subtotal = round(fixedFeeAnnual + energyCostAnnual + hydrocarbonTax);
 
-    // IVA (Standard 21%)
-    const iva = round(subtotal * GAS_CONSTANTS.TAXES.IVA_STANDARD);
+    // IVA: RL.1 (small residential consumer) uses reduced 10%; all others use standard 21%
+    const ivaRate = tariff_version.tariff_type === 'RL.1'
+        ? 0.10
+        : GAS_CONSTANTS.TAXES.IVA_STANDARD;
+    const iva = round(subtotal * ivaRate);
 
     // Total
     const totalAnnual = round(subtotal + iva);

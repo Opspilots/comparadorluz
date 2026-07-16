@@ -659,6 +659,11 @@ Deno.serve(async (req: Request) => {
             const formData = await req.formData();
             const file = formData.get('file') as File;
             if (!file) throw new Error('No se encontró ningún archivo en formData');
+            if (file.size > 20 * 1024 * 1024) {
+                return new Response(JSON.stringify({ error: 'El archivo no puede superar 20 MB' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 413
+                })
+            }
             fileName = file.name;
             fileType = file.type;
             console.log(`FormData request: ${fileName} (${fileType}), size: ${file.size}`);
