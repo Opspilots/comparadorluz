@@ -141,17 +141,25 @@ export function Login() {
 
     return (
         <div className="min-h-screen overflow-x-hidden scroll-smooth" style={{ background: '#020209' }}>
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-white focus:text-[#0f172a] focus:font-semibold focus:shadow-lg"
+            >
+                Saltar al contenido principal
+            </a>
             <LandingHeader onOpenAuth={openAuth} />
-            <HeroSection onOpenAuth={openAuth} />
-            <StatsSection />
-            <FeaturesSection />
-            <HowItWorksSection />
-            <IntegrationsSection />
-            <PricingSection onOpenAuth={openAuth} />
-            <BlogSection />
-            <FAQSection />
-            <ContactSection />
-            <CTASection onOpenAuth={openAuth} />
+            <main id="main-content">
+                <HeroSection onOpenAuth={openAuth} />
+                <StatsSection />
+                <FeaturesSection />
+                <HowItWorksSection />
+                <IntegrationsSection />
+                <PricingSection onOpenAuth={openAuth} />
+                <BlogSection />
+                <FAQSection />
+                <ContactSection />
+                <CTASection onOpenAuth={openAuth} />
+            </main>
             <LandingFooter />
             <AuthModal
                 open={showAuthModal}

@@ -10,6 +10,7 @@ function EnergyPulseIcon({ className }: { className?: string }) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className={className}
+            aria-hidden="true"
         >
             <path
                 d="M1 9 L7 9 L9.5 2 L12 16 L14.5 9 L17 9"
@@ -94,7 +95,7 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                     </div>
 
                     {/* Desktop nav */}
-                    <nav className="hidden xl:flex items-center gap-0.5">
+                    <nav className="hidden xl:flex items-center gap-0.5" aria-label="Navegación principal">
                         {navLinks.map((link) => (
                             <a
                                 key={link.href}
@@ -123,26 +124,30 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                             }}
                         >
                             Empezar gratis
-                            <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden="true" />
                         </button>
 
                         {/* Mobile toggle */}
                         <button
                             onClick={() => setMobileOpen(!mobileOpen)}
-                            className="xl:hidden bg-transparent border-none cursor-pointer p-1.5 text-slate-300 rounded-lg hover:bg-white/[0.06] transition-colors ml-1"
+                            className="xl:hidden bg-transparent border-none cursor-pointer text-slate-300 rounded-lg hover:bg-white/[0.06] transition-colors ml-1 flex items-center justify-center"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
                             aria-label="Menú"
+                            aria-expanded={mobileOpen}
+                            aria-controls="mobile-nav-menu"
                         >
-                            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            {mobileOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
                         </button>
                     </div>
                 </div>
 
                 {/* Mobile menu */}
                 <div
+                    id="mobile-nav-menu"
                     className={`xl:hidden overflow-hidden transition-all duration-300 ${mobileOpen ? 'max-h-[480px] opacity-100' : 'max-h-0 opacity-0'}`}
                     style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
                 >
-                    <nav className="flex flex-col px-6 pb-6 pt-3 gap-0.5">
+                    <nav className="flex flex-col px-6 pb-6 pt-3 gap-0.5" aria-label="Navegación móvil">
                         {navLinks.map((link) => (
                             <a
                                 key={link.href}

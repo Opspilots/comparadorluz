@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { supabase } from '@/shared/lib/supabase'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -22,6 +23,7 @@ export function ContactSection() {
     const [submitError, setSubmitError] = useState<string | null>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) return
         gsap.from('.contact-left', {
             opacity: 0, x: -24, duration: 0.7, ease: 'power3.out',
             scrollTrigger: { trigger: '.contact-left', start: 'top 85%', once: true },
@@ -92,7 +94,7 @@ export function ContactSection() {
                                         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                                         style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)' }}
                                     >
-                                        <Icon className="w-4 h-4 text-blue-400" strokeWidth={1.8} />
+                                        <Icon className="w-4 h-4 text-blue-400" strokeWidth={1.8} aria-hidden="true" />
                                     </div>
                                     <div>
                                         <div className="text-[11px] text-slate-600 font-medium">{item.label}</div>
@@ -114,32 +116,40 @@ export function ContactSection() {
                 >
                     {sent ? (
                         <div className="flex flex-col items-center justify-center h-full text-center py-10">
-                            <CheckCircle2 className="w-14 h-14 text-emerald-400 mb-5" strokeWidth={1.5} />
+                            <CheckCircle2 className="w-14 h-14 text-emerald-400 mb-5" strokeWidth={1.5} aria-hidden="true" />
                             <h3 className="text-xl font-bold text-white mb-3">¡Mensaje enviado!</h3>
                             <p className="text-slate-500 text-sm">Nos ponemos en contacto contigo en menos de 24 horas.</p>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             {submitError && (
-                                <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                                <div
+                                    id="submit-error-msg"
+                                    role="alert"
+                                    className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3"
+                                >
                                     {submitError}
                                 </div>
                             )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-[12px] font-semibold text-slate-400 mb-1.5">Nombre *</label>
+                                    <label htmlFor="contact-nombre" className="block text-[12px] font-semibold text-slate-400 mb-1.5">Nombre *</label>
                                     <input
+                                        id="contact-nombre"
                                         name="nombre"
                                         value={form.nombre}
                                         onChange={handleChange}
                                         required
                                         placeholder="Tu nombre"
                                         className="contact-input"
+                                        aria-invalid={submitError ? true : undefined}
+                                        aria-describedby={submitError ? 'submit-error-msg' : undefined}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[12px] font-semibold text-slate-400 mb-1.5">Email *</label>
+                                    <label htmlFor="contact-email" className="block text-[12px] font-semibold text-slate-400 mb-1.5">Email *</label>
                                     <input
+                                        id="contact-email"
                                         type="email"
                                         name="email"
                                         value={form.email}
@@ -147,12 +157,15 @@ export function ContactSection() {
                                         required
                                         placeholder="tu@email.com"
                                         className="contact-input"
+                                        aria-invalid={submitError ? true : undefined}
+                                        aria-describedby={submitError ? 'submit-error-msg' : undefined}
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-[12px] font-semibold text-slate-400 mb-1.5">Empresa</label>
+                                <label htmlFor="contact-empresa" className="block text-[12px] font-semibold text-slate-400 mb-1.5">Empresa</label>
                                 <input
+                                    id="contact-empresa"
                                     name="empresa"
                                     value={form.empresa}
                                     onChange={handleChange}
@@ -161,8 +174,9 @@ export function ContactSection() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-[12px] font-semibold text-slate-400 mb-1.5">Mensaje *</label>
+                                <label htmlFor="contact-mensaje" className="block text-[12px] font-semibold text-slate-400 mb-1.5">Mensaje *</label>
                                 <textarea
+                                    id="contact-mensaje"
                                     name="mensaje"
                                     value={form.mensaje}
                                     onChange={handleChange}
@@ -171,6 +185,8 @@ export function ContactSection() {
                                     placeholder="Cuéntanos en qué podemos ayudarte..."
                                     className="contact-input"
                                     style={{ minHeight: '110px' }}
+                                    aria-invalid={submitError ? true : undefined}
+                                    aria-describedby={submitError ? 'submit-error-msg' : undefined}
                                 />
                             </div>
                             <button
@@ -180,7 +196,7 @@ export function ContactSection() {
                             >
                                 {sending ? 'Enviando...' : 'Enviar mensaje'}
                                 {!sending && (
-                                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} />
+                                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
                                 )}
                             </button>
                             <p className="text-[11px] text-slate-600 text-center">Respuesta garantizada en menos de 24h · Sin spam</p>

@@ -37,7 +37,7 @@ export function LandingFooter() {
                                     boxShadow: '0 0 12px rgba(37,99,235,0.35)',
                                 }}
                             >
-                                <Zap className="w-4 h-4 text-white" strokeWidth={2.5} fill="currentColor" />
+                                <Zap className="w-4 h-4 text-white" strokeWidth={2.5} fill="currentColor" aria-hidden="true" />
                             </div>
                             <span className="text-[1.1rem] font-extrabold tracking-[-0.03em] text-white">
                                 Energy<span style={{ color: '#60a5fa' }}>Deal</span>
@@ -59,7 +59,7 @@ export function LandingFooter() {
                                     style={{ border: '1px solid rgba(255,255,255,0.07)' }}
                                     aria-label={label}
                                 >
-                                    <Icon className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-300 transition-colors" />
+                                    <Icon className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-300 transition-colors" aria-hidden="true" />
                                 </a>
                             ))}
                         </div>

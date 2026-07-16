@@ -1,6 +1,6 @@
 export function EnergyGrid() {
     return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
             {/* Grid lines */}
             <div className="absolute inset-0 energy-grid animate-grid-pulse" />
 

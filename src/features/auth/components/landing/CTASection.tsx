@@ -3,6 +3,7 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -14,6 +15,7 @@ export function CTASection({ onOpenAuth }: CTASectionProps) {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) return
         gsap.from('.cta-content', {
             opacity: 0, y: 32, duration: 0.75, ease: 'power3.out',
             scrollTrigger: { trigger: '.cta-content', start: 'top 80%', once: true },
@@ -36,7 +38,7 @@ export function CTASection({ onOpenAuth }: CTASectionProps) {
 
             <div className="cta-content max-w-[640px] mx-auto relative z-10 text-center">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 border border-white/[0.06] bg-white/[0.02]">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" strokeWidth={2} />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" strokeWidth={2} aria-hidden="true" />
                     <span className="text-[12px] font-medium text-slate-400">Empieza gratis hoy — sin tarjeta</span>
                 </div>
 
@@ -57,7 +59,7 @@ export function CTASection({ onOpenAuth }: CTASectionProps) {
                         className="group inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-[#2563eb] text-white border-none rounded-xl font-bold text-[15px] cursor-pointer landing-glow-blue btn-directional transition-all duration-300 hover:bg-[#3b82f6] active:scale-[0.98]"
                     >
                         Crear cuenta gratis
-                        <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} />
+                        <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
                     </button>
                     <button
                         onClick={() => onOpenAuth('login')}

@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -16,11 +17,18 @@ export function StatsSection() {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        const reduced = prefersReducedMotion()
+
         stats.forEach((stat, i) => {
             const el = document.querySelector(`.stat-num-${i}`) as HTMLElement
             if (!el) return
 
             if (stat.value === 0) { el.textContent = stat.prefix; return }
+
+            if (reduced) {
+                el.textContent = `${stat.prefix}${stat.value}${stat.suffix}`
+                return
+            }
 
             ScrollTrigger.create({
                 trigger: sectionRef.current,
@@ -43,18 +51,20 @@ export function StatsSection() {
             })
         })
 
-        gsap.from('.stat-item', {
-            opacity: 0,
-            y: 24,
-            duration: 0.6,
-            stagger: 0.1,
-            ease: 'power3.out',
-            scrollTrigger: {
-                trigger: sectionRef.current,
-                start: 'top 80%',
-                once: true,
-            },
-        })
+        if (!reduced) {
+            gsap.from('.stat-item', {
+                opacity: 0,
+                y: 24,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: 'power3.out',
+                scrollTrigger: {
+                    trigger: sectionRef.current,
+                    start: 'top 80%',
+                    once: true,
+                },
+            })
+        }
     }, { scope: sectionRef })
 
     return (

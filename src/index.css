@@ -1266,3 +1266,56 @@ html {
   z-index: -1;
 }
 .btn-directional:hover::before { transform: translateX(0); }
+
+/* ============================================================
+   REDUCED MOTION — WCAG 2.2 (2.3.3 Animation from Interactions)
+   Disables decorative landing-page animation for users who have
+   "reduce motion" enabled at the OS level. Content stays visible;
+   only movement/opacity transitions are removed.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .orb-float-1,
+  .orb-float-2,
+  .orb-float-3,
+  .faq-answer,
+  .feature-card,
+  .testimonial-card,
+  .contact-left,
+  .contact-right,
+  .pricing-card,
+  .blog-card,
+  .stat-item,
+  .cta-content,
+  .hero-badge,
+  .hero-h1,
+  .hero-sub,
+  .hero-cta-1,
+  .hero-cta-2,
+  .hero-trust,
+  .hero-visual,
+  .features-header,
+  .testimonials-header,
+  .faq-header,
+  .integrations-header,
+  .pricing-header,
+  .blog-header,
+  .integration-badge,
+  .spotlight-card,
+  .landing-card-premium,
+  .landing-hover-lift,
+  .glass-card-v2,
+  .btn-directional::before,
+  .ticker-track,
+  .animate-fade-in-up,
+  .animate-float-card,
+  .animate-glow-line,
+  .animate-grid-pulse,
+  .animate-pulse-ring,
+  .animate-scan-line,
+  .animate-fade-in,
+  .animate-fade-in-scale,
+  .animate-slide-in {
+    animation: none !important;
+    transition: none !important;
+  }
+}

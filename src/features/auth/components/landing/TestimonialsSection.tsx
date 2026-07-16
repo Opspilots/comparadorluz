@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Star } from 'lucide-react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -45,6 +46,10 @@ export function TestimonialsSection() {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) {
+            gsap.set('.testimonial-card', { opacity: 1, y: 0 })
+            return
+        }
         gsap.from('.testimonials-header', {
             opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
             scrollTrigger: { trigger: '.testimonials-header', start: 'top 85%', once: true },
@@ -98,7 +103,7 @@ export function TestimonialsSection() {
                             {/* Stars */}
                             <div className="flex gap-1 mb-6">
                                 {Array.from({ length: featured.stars }).map((_, si) => (
-                                    <Star key={si} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                                    <Star key={si} className="w-4 h-4 fill-amber-400 text-amber-400" aria-hidden="true" />
                                 ))}
                             </div>
                             <p className="text-[1.05rem] text-slate-300 leading-relaxed mb-8 font-medium">
@@ -146,7 +151,7 @@ export function TestimonialsSection() {
                             >
                                 <div className="flex gap-0.5 mb-4">
                                     {Array.from({ length: t.stars }).map((_, si) => (
-                                        <Star key={si} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                        <Star key={si} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
                                     ))}
                                 </div>
                                 <p className="text-sm text-slate-400 leading-relaxed flex-1 mb-5">"{t.quote}"</p>

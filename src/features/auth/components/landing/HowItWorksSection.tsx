@@ -122,7 +122,7 @@ export function HowItWorksSection() {
                                     className="relative inline-flex items-center justify-center w-12 h-12 rounded-xl mb-5"
                                     style={{ background: s.bg, border: `1px solid ${s.border}` }}
                                 >
-                                    <Icon className="w-5 h-5" style={{ color: s.color }} strokeWidth={2} />
+                                    <Icon className="w-5 h-5" style={{ color: s.color }} strokeWidth={2} aria-hidden="true" />
                                 </div>
 
                                 {/* Step label */}

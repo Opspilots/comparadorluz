@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Check, Zap, ArrowRight } from 'lucide-react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -62,6 +63,10 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) {
+            gsap.set('.pricing-card', { opacity: 1, y: 0 })
+            return
+        }
         gsap.from('.pricing-header', {
             opacity: 0, y: 24, duration: 0.6, ease: 'power3.out',
             scrollTrigger: { trigger: '.pricing-header', start: 'top 85%', once: true },
@@ -141,7 +146,7 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                     className="flex items-center justify-center gap-2 px-6 py-2.5"
                                     style={{ background: 'linear-gradient(90deg, #1d4ed8, #2563eb, #3b82f6)' }}
                                 >
-                                    <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} fill="currentColor" />
+                                    <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} fill="currentColor" aria-hidden="true" />
                                     <span className="text-white text-[11px] font-bold tracking-[0.12em] uppercase">Más popular</span>
                                 </div>
                             )}
@@ -164,7 +169,7 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                     {tier.features.map((feat, idx) => (
                                         <li key={idx} className="flex items-start gap-3">
                                             <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${tier.highlight ? 'bg-emerald-500/15 border border-emerald-500/20' : 'bg-white/[0.05] border border-white/[0.08]'}`}>
-                                                <Check className={`w-2.5 h-2.5 ${tier.highlight ? 'text-emerald-400' : 'text-slate-400'}`} strokeWidth={3} />
+                                                <Check className={`w-2.5 h-2.5 ${tier.highlight ? 'text-emerald-400' : 'text-slate-400'}`} strokeWidth={3} aria-hidden="true" />
                                             </div>
                                             <span className={`text-[13px] leading-snug ${tier.highlight ? 'text-slate-300' : 'text-slate-400'}`}>{feat}</span>
                                         </li>
@@ -182,7 +187,7 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                     style={!tier.highlight ? { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' } : undefined}
                                 >
                                     {tier.cta}
-                                    {tier.highlight && <ArrowRight className="w-4 h-4" strokeWidth={2.5} />}
+                                    {tier.highlight && <ArrowRight className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />}
                                 </button>
                             </div>
                         </div>

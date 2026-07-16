@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { ArrowRight, Zap, TrendingUp, CheckCircle2, Clock, ShieldCheck } from 'lucide-react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -126,7 +127,7 @@ function HeroVisual() {
                         style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}
                     >
                         <div className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-emerald-400" strokeWidth={2} />
+                            <TrendingUp className="w-4 h-4 text-emerald-400" strokeWidth={2} aria-hidden="true" />
                             <span className="text-[13px] font-semibold text-emerald-300">Ahorro estimado</span>
                         </div>
                         <span className="text-[17px] font-extrabold text-emerald-400 tracking-tight tabular-nums">2.847€/año</span>
@@ -144,7 +145,7 @@ function HeroVisual() {
                         animation: 'floatCard 3s ease-in-out infinite',
                     }}
                 >
-                    <Zap className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} fill="currentColor" />
+                    <Zap className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} fill="currentColor" aria-hidden="true" />
                     <span className="text-[11px] font-bold text-white">Generado en 1.4s</span>
                 </div>
 
@@ -160,7 +161,7 @@ function HeroVisual() {
                     }}
                 >
                     <div className="flex items-center gap-2 mb-0.5">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" strokeWidth={2.5} />
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" strokeWidth={2.5} aria-hidden="true" />
                         <span className="text-[13px] font-extrabold text-white">+12</span>
                     </div>
                     <div className="text-[9px] text-slate-500">contratos este mes</div>
@@ -177,7 +178,7 @@ function HeroVisual() {
                         animation: 'floatCard 4s ease-in-out infinite 1s',
                     }}
                 >
-                    <Clock className="w-3 h-3 text-amber-400" strokeWidth={2} />
+                    <Clock className="w-3 h-3 text-amber-400" strokeWidth={2} aria-hidden="true" />
                     <span className="text-[10px] font-semibold text-amber-400">2 pendientes</span>
                 </div>
             </div>
@@ -189,6 +190,8 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
     const containerRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) return
+
         const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
 
         tl.from('.hero-badge', { opacity: 0, y: 14, duration: 0.55 })
@@ -291,7 +294,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
                             className="hero-cta-1 group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-[#2563eb] text-white font-bold text-[14px] cursor-pointer border-none btn-directional landing-glow-blue"
                         >
                             Empezar gratis — sin tarjeta
-                            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} />
+                            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
                         </button>
                         <a
                             href="#como-funciona"
@@ -301,7 +304,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
                                 border: '1px solid rgba(255,255,255,0.09)',
                             }}
                         >
-                            <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} />
+                            <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} aria-hidden="true" />
                             Ver cómo funciona
                         </a>
                     </div>
@@ -314,7 +317,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
                             { icon: null, v: '< 2 min', l: 'por comparativa' },
                         ].map((s, i) => (
                             <div key={i} className="flex items-center gap-1.5">
-                                {s.icon && <s.icon className="w-3.5 h-3.5 text-emerald-400" strokeWidth={2} />}
+                                {s.icon && <s.icon className="w-3.5 h-3.5 text-emerald-400" strokeWidth={2} aria-hidden="true" />}
                                 <span className="text-white font-bold text-sm tracking-tight">{s.v}</span>
                                 <span className="text-slate-500 text-sm">{s.l}</span>
                                 {i < 2 && <div className="w-px h-3.5 bg-white/[0.08] hidden sm:block ml-1.5" />}

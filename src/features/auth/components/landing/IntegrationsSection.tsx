@@ -3,6 +3,7 @@ import { Mail, MessageCircle, Globe, Shield, Zap, FileText, Link2, BookOpen } fr
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -23,6 +24,7 @@ export function IntegrationsSection() {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) return
         gsap.from('.integrations-header', {
             opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
             scrollTrigger: { trigger: '.integrations-header', start: 'top 85%', once: true },
@@ -65,7 +67,7 @@ export function IntegrationsSection() {
                         return (
                             <div key={i} className="integration-badge flex-shrink-0">
                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${item.color}18` }}>
-                                    <Icon className="w-4 h-4" style={{ color: item.color }} strokeWidth={1.8} />
+                                    <Icon className="w-4 h-4" style={{ color: item.color }} strokeWidth={1.8} aria-hidden="true" />
                                 </div>
                                 <div>
                                     <div className="text-[12px] font-semibold text-white leading-none mb-0.5">{item.name}</div>

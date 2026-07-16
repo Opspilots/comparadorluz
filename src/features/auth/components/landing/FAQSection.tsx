@@ -3,6 +3,7 @@ import { Plus, Minus } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -46,6 +47,7 @@ export function FAQSection() {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) return
         gsap.from('.faq-header', {
             opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
             scrollTrigger: { trigger: '.faq-header', start: 'top 85%', once: true },
@@ -88,6 +90,8 @@ export function FAQSection() {
                                 onClick={() => setOpen(open === i ? null : i)}
                                 className="w-full flex items-center justify-between gap-4 text-left px-6 py-5 transition-colors duration-200 hover:bg-white/[0.02] cursor-pointer"
                                 style={{ background: 'none', border: 'none' }}
+                                aria-expanded={open === i}
+                                aria-controls={`faq-answer-${i}`}
                             >
                                 <span className="text-[14px] font-semibold text-white leading-snug">{faq.q}</span>
                                 <div
@@ -98,12 +102,12 @@ export function FAQSection() {
                                     }}
                                 >
                                     {open === i
-                                        ? <Minus className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} />
-                                        : <Plus className="w-3.5 h-3.5 text-slate-400" strokeWidth={2.5} />
+                                        ? <Minus className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} aria-hidden="true" />
+                                        : <Plus className="w-3.5 h-3.5 text-slate-400" strokeWidth={2.5} aria-hidden="true" />
                                     }
                                 </div>
                             </button>
-                            <div className={`faq-answer ${open === i ? 'open' : ''}`}>
+                            <div id={`faq-answer-${i}`} className={`faq-answer ${open === i ? 'open' : ''}`}>
                                 <div>
                                     <div className="px-6 pb-5">
                                         <p className="text-sm text-slate-500 leading-relaxed">{faq.a}</p>

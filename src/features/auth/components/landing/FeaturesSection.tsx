@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Search, Users, FileText, MessageSquare, CheckCircle2, Clock, TrendingUp } from 'lucide-react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -98,14 +99,14 @@ function ContractsMockup() {
                     { cups: 'ES007100E003...', Icon: CheckCircle2, col: 'text-emerald-400', amt: '320€' },
                 ].map((c, idx) => (
                     <div key={idx} className="flex items-center gap-2 py-1.5" style={{ borderBottom: idx < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                        <c.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${c.col}`} strokeWidth={2} />
+                        <c.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${c.col}`} strokeWidth={2} aria-hidden="true" />
                         <span className="text-[10px] text-slate-400 flex-1 font-mono">{c.cups}</span>
                         <span className="text-[10px] font-bold text-white">{c.amt}</span>
                     </div>
                 ))}
             </div>
             <div className="mt-2.5 pt-2 flex items-center gap-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <TrendingUp className="w-3 h-3 text-emerald-400" strokeWidth={2.5} />
+                <TrendingUp className="w-3 h-3 text-emerald-400" strokeWidth={2.5} aria-hidden="true" />
                 <span className="text-[10px] text-emerald-400 font-semibold">Comisión estimada: 341€ este mes</span>
             </div>
         </div>
@@ -154,6 +155,10 @@ export function FeaturesSection() {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) {
+            gsap.set('.feature-card', { opacity: 1, y: 0 })
+            return
+        }
         gsap.from('.features-header', {
             opacity: 0, y: 28, duration: 0.65, ease: 'power3.out',
             scrollTrigger: { trigger: '.features-header', start: 'top 85%', once: true },
@@ -195,7 +200,7 @@ export function FeaturesSection() {
                             >
                                 <div className="p-6 lg:p-7">
                                     <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4" style={{ background: `${feat.accent}18`, border: `1px solid ${feat.accent}25` }}>
-                                        <Icon className="w-[18px] h-[18px]" style={{ color: feat.accent }} strokeWidth={1.8} />
+                                        <Icon className="w-[18px] h-[18px]" style={{ color: feat.accent }} strokeWidth={1.8} aria-hidden="true" />
                                     </div>
                                     <h3 className="text-[15px] font-bold text-white mb-2 tracking-[-0.01em]">{feat.title}</h3>
                                     <p className="text-sm text-slate-500 leading-relaxed max-w-[380px]">{feat.desc}</p>

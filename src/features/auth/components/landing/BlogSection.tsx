@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { ArrowRight, Clock } from 'lucide-react'
+import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -40,6 +41,10 @@ export function BlogSection() {
     const sectionRef = useRef<HTMLElement>(null)
 
     useGSAP(() => {
+        if (prefersReducedMotion()) {
+            gsap.set('.blog-card', { opacity: 1, y: 0 })
+            return
+        }
         gsap.from('.blog-header', {
             opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
             scrollTrigger: { trigger: '.blog-header', start: 'top 85%', once: true },
@@ -79,7 +84,7 @@ export function BlogSection() {
                         className="inline-flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
                     >
                         Ver todos los artículos
-                        <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                        <ArrowRight className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
                     </a>
                 </div>
 
@@ -107,7 +112,7 @@ export function BlogSection() {
                                     {featured.category}
                                 </span>
                                 <span className="flex items-center gap-1.5 text-[11px] text-slate-600">
-                                    <Clock className="w-3 h-3" />
+                                    <Clock className="w-3 h-3" aria-hidden="true" />
                                     {featured.readTime} lectura
                                 </span>
                             </div>
@@ -124,7 +129,7 @@ export function BlogSection() {
                                 <span className="text-[12px] text-slate-600">{featured.date}</span>
                                 <span className="inline-flex items-center gap-1.5 text-[13px] text-blue-400 font-semibold group-hover:text-blue-300 transition-colors">
                                     Leer artículo
-                                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} />
+                                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
                                 </span>
                             </div>
                         </div>
