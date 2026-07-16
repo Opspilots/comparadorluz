@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Check, Zap, ArrowRight } from 'lucide-react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { GlassCard, LandingButton, SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -68,18 +69,18 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
             return
         }
         gsap.from('.pricing-header', {
-            opacity: 0, y: 24, duration: 0.6, ease: 'power3.out',
+            opacity: 0, y: 24, duration: 0.5, ease: 'expo.out',
             scrollTrigger: { trigger: '.pricing-header', start: 'top 85%', once: true },
         })
         ScrollTrigger.batch('.pricing-card', {
-            onEnter: els => gsap.to(els, { opacity: 1, y: 0, duration: 0.6, stagger: 0.12, ease: 'power3.out' }),
+            onEnter: els => gsap.to(els, { opacity: 1, y: 0, duration: 0.55, stagger: 0.1, ease: 'expo.out' }),
             start: 'top 88%',
             once: true,
         })
     }, { scope: sectionRef })
 
     return (
-        <section ref={sectionRef} id="precios" className="py-24 lg:py-32 px-[5%] relative" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="precios" className="py-24 lg:py-32 px-[5%] relative" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             {/* Subtle background glow */}
@@ -89,16 +90,13 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
             />
 
             <div className="max-w-[1100px] mx-auto relative z-10">
-                {/* Header */}
-                <div className="pricing-header text-center mb-14">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                        Precios
-                    </span>
-                    <h2 className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em] mb-4" style={{ textWrap: 'balance' } as React.CSSProperties}>
-                        Simple y transparente
-                    </h2>
-                    <p className="text-slate-500 text-base max-w-[380px] mx-auto">Empieza gratis. Escala cuando lo necesites, sin contratos.</p>
-                </div>
+                <SectionHeading
+                    className="pricing-header mb-14"
+                    kicker="Precios"
+                    title="Simple y transparente"
+                    subtitle="Empieza gratis. Escala cuando lo necesites, sin contratos."
+                    subtitleMaxWidth="380px"
+                />
 
                 {/* Billing toggle */}
                 <div className="flex items-center justify-center gap-4 mb-14">
@@ -125,18 +123,23 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                 {/* Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                     {tiers.map((tier, i) => (
-                        <div
+                        <GlassCard
                             key={i}
+                            as="article"
+                            padding="none"
+                            hover={tier.highlight ? 'none' : 'lift'}
                             className={`pricing-card rounded-2xl text-left overflow-hidden ${tier.highlight ? 'md:-mt-6 md:mb-[-24px]' : ''}`}
                             style={{
                                 opacity: 0,
                                 transform: 'translateY(24px)',
                                 background: tier.highlight ? 'rgba(8,8,24,0.95)' : 'rgba(255,255,255,0.025)',
                                 border: tier.highlight
-                                    ? '1px solid rgba(37,99,235,0.3)'
+                                    ? '1px solid rgba(37,99,235,0.35)'
                                     : '1px solid rgba(255,255,255,0.07)',
                                 boxShadow: tier.highlight
-                                    ? '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(37,99,235,0.1), inset 0 1px 0 rgba(255,255,255,0.06)'
+                                    // Permanent colored glow (not just the md:-mt-6 desktop "pop") so the
+                                    // recommended tier still reads as elevated once stacked on mobile.
+                                    ? '0 0 50px rgba(37,99,235,0.22), 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(37,99,235,0.12), inset 0 1px 0 rgba(255,255,255,0.06)'
                                     : 'none',
                             }}
                         >
@@ -153,12 +156,12 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
 
                             <div className="p-7 lg:p-8">
                                 {/* Plan name */}
-                                <h3 className={`text-lg font-bold mb-1 ${tier.highlight ? 'text-white' : 'text-white'}`}>{tier.name}</h3>
+                                <h3 className="text-lg font-bold mb-1 text-white">{tier.name}</h3>
                                 <p className={`text-xs mb-6 ${tier.highlight ? 'text-slate-400' : 'text-slate-500'}`}>{tier.desc}</p>
 
                                 {/* Price */}
                                 <div className="mb-7 flex items-end gap-1.5">
-                                    <span className={`text-5xl font-extrabold tracking-[-0.04em] tabular-nums ${tier.highlight ? 'text-white' : 'text-white'}`}>
+                                    <span className="text-5xl font-extrabold tracking-[-0.04em] tabular-nums text-white">
                                         {billing === 'monthly' ? tier.monthly : tier.yearly}€
                                     </span>
                                     <span className={`text-sm font-medium pb-1.5 ${tier.highlight ? 'text-slate-500' : 'text-slate-600'}`}>/mes</span>
@@ -177,20 +180,17 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                 </ul>
 
                                 {/* CTA */}
-                                <button
+                                <LandingButton
                                     onClick={() => onOpenAuth('signup')}
-                                    className={`w-full py-3 rounded-xl font-semibold text-[14px] cursor-pointer transition-all duration-250 border-none active:scale-[0.98] flex items-center justify-center gap-2 ${
-                                        tier.highlight
-                                            ? 'bg-[#2563eb] text-white hover:bg-[#3b82f6] landing-glow-blue'
-                                            : 'text-slate-300 hover:text-white hover:bg-white/[0.06]'
-                                    }`}
-                                    style={!tier.highlight ? { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' } : undefined}
+                                    variant={tier.highlight ? 'primary' : 'secondary'}
+                                    size="md"
+                                    fullWidth
+                                    icon={tier.highlight ? <ArrowRight aria-hidden="true" /> : undefined}
                                 >
                                     {tier.cta}
-                                    {tier.highlight && <ArrowRight className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />}
-                                </button>
+                                </LandingButton>
                             </div>
-                        </div>
+                        </GlassCard>
                     ))}
                 </div>
 

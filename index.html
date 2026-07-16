@@ -29,10 +29,13 @@
     <meta name="twitter:description" content="Compara tarifas de luz y gas, gestiona clientes y controla comisiones desde una sola plataforma. Gratis para empezar." />
     <meta name="twitter:image" content="https://energydeal.es/og-image.svg" />
 
-    <!-- Preconnect Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Self-hosted Outfit font (see src/shared/lib/fonts.ts and src/index.css).
+         Google Fonts CDN removed — was render-blocking and loaded 6 weights,
+         one of which (300/light) is never used anywhere in the codebase.
+         Only the weight needed for the very first paint (800 — Hero H1 +
+         nav logo, both font-extrabold) is preloaded here; 400/500/600/700
+         load via the normal @fontsource stylesheet imports in fonts.ts. -->
+    <link rel="preload" href="/fonts/outfit-800.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">

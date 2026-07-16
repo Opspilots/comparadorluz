@@ -1,8 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   SELF-HOSTED FONT — Outfit (weight 800 only)
+   ============================================================
+   Replaces the old Google Fonts CDN @import (render-blocking, 6 weights).
+   Weights 400/500/600/700 are loaded via @fontsource imports in
+   src/shared/lib/fonts.ts (bundled/hashed by Vite — not preloaded, not
+   needed for first paint). Weight 800 is hand-declared here instead,
+   pointing at the SAME stable /fonts/outfit-800.woff2 path that is
+   preloaded in index.html — this file must NOT also be imported via
+   @fontsource, or the browser fetches the identical bytes twice under
+   two different URLs (the preloaded one and Vite's hashed asset copy).
+   Weight 300 (font-light) was dropped entirely: unused anywhere in the app. */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url('/fonts/outfit-800.woff2') format('woff2');
+}
 
 /* ============================================================
    SHADCN / TAILWIND TOKEN LAYER (HSL format required)
@@ -364,6 +382,16 @@ a {
   color: #991b1b;
 }
 
+.status-info {
+  background: var(--primary-light);
+  color: var(--color-primary-hover);
+}
+
+.status-purple {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
 /* ============================================================
    SECTION HEADER
    ============================================================ */
@@ -579,6 +607,118 @@ tbody tr:hover {
 .sidebar-nav-item:hover {
   background-color: rgba(255, 255, 255, 0.07) !important;
   color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ============================================================
+   LANDING DESIGN SYSTEM — Cinematic Foundation (Tokens)
+   ============================================================
+   Shared tokens for the PUBLIC landing page only (src/features/auth/
+   components/landing/**). The logged-in app has its own light-mode
+   token system defined above (--color-primary, --radius-*, etc) — do
+   NOT use --landing-* tokens outside the landing, and do not use the
+   app tokens above inside landing sections (the two systems intentionally
+   diverge: light dashboard vs. dark cinematic marketing site).
+
+   Consumed by the shared components in
+   src/features/auth/components/landing/ui/ (LandingButton, GlassCard,
+   SectionHeading) — see that folder for the component API built on top
+   of these variables.
+   ============================================================ */
+:root {
+  /* Background — the single source of truth for the near-black landing bg.
+     Existing sections still hard-code style={{ background: '#020209' }} in
+     ~10 files; migrate those to `var(--landing-bg)` incrementally. */
+  --landing-bg: #020209;
+  --landing-bg-elevated: rgba(8, 8, 24, 0.9);   /* raised surfaces over --landing-bg (modals, floating cards) — see HeroVisual */
+  --landing-bg-elevated-solid: #08081a;         /* opaque fallback where backdrop-filter is unavailable/disabled */
+
+  /* Accent palette — consolidates the hex values repeated ad-hoc as JS
+     arrays/inline styles across sections (#2563eb, #10b981, #f59e0b,
+     #8b5cf6 and near-variants like #3b82f6/#60a5fa). One accent per
+     semantic purpose; sections should reference these instead of
+     re-declaring local color arrays. */
+  --landing-accent-blue: #2563eb;      /* primary brand accent — CTAs, links, active states */
+  --landing-accent-blue-soft: #60a5fa; /* lighter blue for text highlights inside dark headings */
+  --landing-accent-green: #10b981;     /* savings/success — emerald badges, "live" pulse dots */
+  --landing-accent-amber: #f59e0b;     /* pending/attention states */
+  --landing-accent-purple: #8b5cf6;    /* secondary gradient stop (blue -> purple accents) */
+
+  /* Text on dark backgrounds */
+  --landing-text-primary: #ffffff;
+  --landing-text-secondary: #cbd5e1; /* slate-300 */
+  --landing-text-muted: #94a3b8;     /* slate-400 */
+  --landing-text-subtle: #64748b;    /* slate-500 */
+  --landing-text-faint: #475569;     /* slate-600 */
+
+  /* Glass surface system (feeds GlassCard.tsx) */
+  --landing-border: rgba(255, 255, 255, 0.08);
+  --landing-border-hover: rgba(255, 255, 255, 0.14);
+  --landing-glass-bg: rgba(255, 255, 255, 0.018);
+  --landing-glass-bg-hover: rgba(255, 255, 255, 0.032);
+
+  /* Radii — reuse the app-wide scale for consistency; add one landing-only
+     step for the large hero/pricing cards which read bigger than any
+     dashboard surface. */
+  --landing-radius-sm: var(--radius-sm);
+  --landing-radius-md: var(--radius-md);
+  --landing-radius-lg: var(--radius-lg);
+  --landing-radius-xl: var(--radius-xl);
+  --landing-radius-2xl: 28px;
+
+  /* Fluid typography — replaces the discrete Tailwind breakpoint jumps
+     (text-3xl sm:text-4xl lg:text-[3rem]) used today in every section
+     heading. Each step scales continuously between the two reference
+     viewports below instead of "jumping" at sm/lg:
+       --landing-h1        375px -> 2.5rem   | 1440px -> 4.75rem
+       --landing-h2         375px -> 1.875rem | 1440px -> 3.25rem
+       --landing-h3         375px -> 1.375rem | 1440px -> 1.875rem
+       --landing-body-lg    375px -> 1rem     | 1440px -> 1.125rem
+       --landing-kicker     375px -> 0.6875rem| 1440px -> 0.75rem
+     Only the Hero H1 uses fluid type today (hand-written inline clamp) —
+     these tokens generalize that pattern to every section heading. */
+  --landing-h1: clamp(2.5rem, 1.7rem + 3.4vw, 4.75rem);
+  --landing-h2: clamp(1.875rem, 1.39rem + 2.07vw, 3.25rem);
+  --landing-h3: clamp(1.375rem, 1.24rem + 0.7vw, 1.875rem);
+  --landing-body-lg: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --landing-kicker: clamp(0.6875rem, 0.66rem + 0.1vw, 0.75rem);
+
+  /* Motion timing — aligned with taste-skill MOTION_INTENSITY 6/10 (fluid,
+     not static, not maximal choreography). */
+  --landing-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --landing-duration-fast: 0.25s;
+  --landing-duration-base: 0.35s;
+  --landing-duration-slow: 0.5s;
+}
+
+/* Ready-to-use utility classes for the fluid scale above — prefer these
+   over reaching for the raw var() when just setting a heading's size,
+   used internally by SectionHeading.tsx. */
+.landing-h1 {
+  font-size: var(--landing-h1);
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+}
+
+.landing-h2 {
+  font-size: var(--landing-h2);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.landing-h3 {
+  font-size: var(--landing-h3);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.landing-body-lg {
+  font-size: var(--landing-body-lg);
+  line-height: 1.6;
+}
+
+.landing-kicker {
+  font-size: var(--landing-kicker);
+  letter-spacing: 0.15em;
 }
 
 /* ============================================================

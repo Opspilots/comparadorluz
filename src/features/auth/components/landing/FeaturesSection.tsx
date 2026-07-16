@@ -4,36 +4,16 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Search, Users, FileText, MessageSquare, CheckCircle2, Clock, TrendingUp } from 'lucide-react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { GlassCard, SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
-
-function useSpotlight(ref: React.RefObject<HTMLDivElement | null>) {
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        const el = ref.current
-        if (!el) return
-        const rect = el.getBoundingClientRect()
-        el.style.setProperty('--sx', `${e.clientX - rect.left}px`)
-        el.style.setProperty('--sy', `${e.clientY - rect.top}px`)
-    }
-    return { onMouseMove: handleMouseMove }
-}
-
-function SpotlightCard({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
-    const ref = useRef<HTMLDivElement>(null)
-    const { onMouseMove } = useSpotlight(ref)
-    return (
-        <div ref={ref} className={`spotlight-card ${className ?? ''}`} style={style} onMouseMove={onMouseMove}>
-            {children}
-        </div>
-    )
-}
 
 function ComparatorMockup() {
     return (
         <div className="mockup-container rounded-xl p-4 text-left">
             <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-white">Resultados comparativa</span>
-                <span className="text-[9px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/15">12 tarifas analizadas</span>
+                <span className="text-[12px] font-semibold text-white">Resultados comparativa</span>
+                <span className="text-[11px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/15">12 tarifas analizadas</span>
             </div>
             <div className="space-y-2.5">
                 {[
@@ -43,8 +23,8 @@ function ComparatorMockup() {
                 ].map((r, i) => (
                     <div key={i} className="space-y-1">
                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-400">{r.name}</span>
-                            <span className="text-[10px] font-bold text-emerald-400">{r.saving}</span>
+                            <span className="text-[12px] text-slate-400">{r.name}</span>
+                            <span className="text-[12px] font-bold text-emerald-400">{r.saving}</span>
                         </div>
                         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
                             <div className="h-full rounded-full" style={{ width: r.w, background: `linear-gradient(90deg, ${r.from}, ${r.to})` }} />
@@ -53,8 +33,8 @@ function ComparatorMockup() {
                 ))}
             </div>
             <div className="mt-3 pt-2.5 flex justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <span className="text-[9px] text-slate-600">Basado en consumo real del cliente</span>
-                <span className="text-[9px] text-blue-400 font-semibold">Ver propuesta →</span>
+                <span className="text-[11px] text-slate-600">Basado en consumo real del cliente</span>
+                <span className="text-[11px] text-blue-400 font-semibold">Ver propuesta →</span>
             </div>
         </div>
     )
@@ -64,8 +44,8 @@ function CRMMockup() {
     return (
         <div className="mockup-container rounded-xl p-4 text-left">
             <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-white">Cartera de clientes</span>
-                <span className="text-[9px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full border border-blue-400/15">+ Nuevo cliente</span>
+                <span className="text-[12px] font-semibold text-white">Cartera de clientes</span>
+                <span className="text-[11px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full border border-blue-400/15">+ Nuevo cliente</span>
             </div>
             <div className="space-y-1.5">
                 {[
@@ -75,9 +55,9 @@ function CRMMockup() {
                     { i: 'GF', n: 'Grupo Ferioli', s: 'Cliente', sc: 'text-emerald-400 bg-emerald-400/10' },
                 ].map((c, idx) => (
                     <div key={idx} className="flex items-center gap-2 py-1.5" style={{ borderBottom: idx < 3 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                        <div className="w-6 h-6 rounded-md text-[9px] font-bold text-blue-400 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(37,99,235,0.12)' }}>{c.i}</div>
-                        <span className="text-[10px] text-slate-300 flex-1 truncate">{c.n}</span>
-                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${c.sc}`}>{c.s}</span>
+                        <div className="w-6 h-6 rounded-md text-[11px] font-bold text-blue-400 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(37,99,235,0.12)' }}>{c.i}</div>
+                        <span className="text-[12px] text-slate-300 flex-1 truncate">{c.n}</span>
+                        <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${c.sc}`}>{c.s}</span>
                     </div>
                 ))}
             </div>
@@ -89,8 +69,8 @@ function ContractsMockup() {
     return (
         <div className="mockup-container rounded-xl p-4 text-left">
             <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-white">Contratos activos</span>
-                <span className="text-[11px] font-extrabold text-white tracking-tight">7.240€<span className="text-[9px] text-slate-500 font-normal">/mes</span></span>
+                <span className="text-[12px] font-semibold text-white">Contratos activos</span>
+                <span className="text-[12px] font-extrabold text-white tracking-tight">7.240€<span className="text-[11px] text-slate-500 font-normal">/mes</span></span>
             </div>
             <div className="space-y-1.5">
                 {[
@@ -100,14 +80,14 @@ function ContractsMockup() {
                 ].map((c, idx) => (
                     <div key={idx} className="flex items-center gap-2 py-1.5" style={{ borderBottom: idx < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                         <c.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${c.col}`} strokeWidth={2} aria-hidden="true" />
-                        <span className="text-[10px] text-slate-400 flex-1 font-mono">{c.cups}</span>
-                        <span className="text-[10px] font-bold text-white">{c.amt}</span>
+                        <span className="text-[12px] text-slate-400 flex-1 font-mono">{c.cups}</span>
+                        <span className="text-[12px] font-bold text-white">{c.amt}</span>
                     </div>
                 ))}
             </div>
             <div className="mt-2.5 pt-2 flex items-center gap-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <TrendingUp className="w-3 h-3 text-emerald-400" strokeWidth={2.5} aria-hidden="true" />
-                <span className="text-[10px] text-emerald-400 font-semibold">Comisión estimada: 341€ este mes</span>
+                <span className="text-[12px] text-emerald-400 font-semibold">Comisión estimada: 341€ este mes</span>
             </div>
         </div>
     )
@@ -117,26 +97,26 @@ function MessagingMockup() {
     return (
         <div className="mockup-container rounded-xl p-4 text-left">
             <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-white">Conversaciones</span>
+                <span className="text-[12px] font-semibold text-white">Conversaciones</span>
                 <div className="flex gap-1.5">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(234,67,53,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>Gmail</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(37,211,102,0.1)', color: '#25d366', border: '1px solid rgba(37,211,102,0.2)' }}>WhatsApp</span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(234,67,53,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>Gmail</span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(37,211,102,0.1)', color: '#25d366', border: '1px solid rgba(37,211,102,0.2)' }}>WhatsApp</span>
                 </div>
             </div>
             <div className="space-y-2">
                 <div className="flex">
                     <div className="max-w-[78%] px-3 py-1.5 rounded-2xl rounded-bl-sm" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                        <p className="text-[10px] text-slate-300">Buenos días, ¿tiene la comparativa?</p>
+                        <p className="text-[12px] text-slate-300">Buenos días, ¿tiene la comparativa?</p>
                     </div>
                 </div>
                 <div className="flex justify-end">
                     <div className="max-w-[78%] px-3 py-1.5 rounded-2xl rounded-br-sm" style={{ background: 'rgba(37,99,235,0.2)', border: '1px solid rgba(37,99,235,0.2)' }}>
-                        <p className="text-[10px] text-blue-200">Hola Carlos, le envío la propuesta →</p>
+                        <p className="text-[12px] text-blue-200">Hola Carlos, le envío la propuesta →</p>
                     </div>
                 </div>
                 <div className="flex">
                     <div className="max-w-[78%] px-3 py-1.5 rounded-2xl rounded-bl-sm" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                        <p className="text-[10px] text-slate-300">Perfecto, ¿cuándo podemos firmar?</p>
+                        <p className="text-[12px] text-slate-300">Perfecto, ¿cuándo podemos firmar?</p>
                     </div>
                 </div>
             </div>
@@ -156,47 +136,48 @@ export function FeaturesSection() {
 
     useGSAP(() => {
         if (prefersReducedMotion()) {
-            gsap.set('.feature-card', { opacity: 1, y: 0 })
+            gsap.set('.feature-card', { opacity: 1, y: 0, scale: 1 })
             return
         }
         gsap.from('.features-header', {
-            opacity: 0, y: 28, duration: 0.65, ease: 'power3.out',
+            opacity: 0, y: 28, duration: 0.5, ease: 'power4.out',
             scrollTrigger: { trigger: '.features-header', start: 'top 85%', once: true },
         })
 
         ScrollTrigger.batch('.feature-card', {
-            onEnter: els => gsap.to(els, { opacity: 1, y: 0, duration: 0.65, stagger: 0.1, ease: 'power3.out' }),
+            onEnter: els => gsap.to(els, { opacity: 1, y: 0, scale: 1, duration: 0.55, stagger: 0.09, ease: 'power4.out' }),
             start: 'top 88%',
             once: true,
         })
     }, { scope: sectionRef })
 
     return (
-        <section ref={sectionRef} id="funcionalidades" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="funcionalidades" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(37,99,235,0.03) 0%, transparent 70%)', filter: 'blur(60px)' }} />
 
             <div className="max-w-[1200px] mx-auto relative z-10">
-                <div className="features-header text-center mb-16">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                        Funcionalidades del CRM Energético
-                    </span>
-                    <h2 className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold tracking-[-0.03em] leading-tight text-white" style={{ textWrap: 'balance' } as React.CSSProperties}>
-                        Herramientas diseñadas para{' '}
-                        <span style={{ color: '#60a5fa' }}>cerrar operaciones</span>
-                    </h2>
-                    <p className="text-slate-500 text-base mt-4 max-w-[500px] mx-auto">Todo lo que un asesor energético necesita, sin complicaciones.</p>
-                </div>
+                <SectionHeading
+                    className="features-header mb-16"
+                    kicker="Funcionalidades del CRM Energético"
+                    title={<>Herramientas diseñadas para{' '}<span style={{ color: 'var(--landing-accent-blue-soft)' }}>cerrar operaciones</span></>}
+                    subtitle="Todo lo que un asesor energético necesita, sin complicaciones."
+                    subtitleMaxWidth="500px"
+                />
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
                     {features.map((feat, i) => {
                         const Icon = feat.icon
                         const Mockup = feat.Mockup
                         return (
-                            <SpotlightCard
+                            <GlassCard
                                 key={i}
+                                as="article"
+                                spotlight
+                                hover="lift"
+                                padding="none"
                                 className={`feature-card ${feat.span} rounded-2xl overflow-hidden`}
-                                style={{ opacity: 0, transform: 'translateY(24px)' }}
+                                style={{ opacity: 0, transform: 'translateY(24px) scale(0.97)' }}
                             >
                                 <div className="p-6 lg:p-7">
                                     <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4" style={{ background: `${feat.accent}18`, border: `1px solid ${feat.accent}25` }}>
@@ -208,7 +189,7 @@ export function FeaturesSection() {
                                 <div className="px-5 pb-5">
                                     <Mockup />
                                 </div>
-                            </SpotlightCard>
+                            </GlassCard>
                         )
                     })}
                 </div>

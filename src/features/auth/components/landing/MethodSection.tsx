@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SectionHeading } from './ui'
 
 const features = [
     {
@@ -34,6 +35,12 @@ const features = [
         span: 'lg:col-span-7',
     },
 ]
+
+// Real dimensions of the exported screenshots (2880x1800, 16:10) — kept as
+// explicit width/height on <img> so the browser reserves the right aspect
+// ratio before the file loads and avoids layout shift (CLS).
+const IMAGE_WIDTH = 2880
+const IMAGE_HEIGHT = 1800
 
 function useInView(threshold = 0.1) {
     const ref = useRef<HTMLDivElement>(null)
@@ -83,8 +90,11 @@ function MethodFeatureCard({ feat, index }: { feat: Feature; index: number }) {
                     <img
                         src={feat.image}
                         alt={feat.alt}
+                        width={IMAGE_WIDTH}
+                        height={IMAGE_HEIGHT}
                         className="w-full h-auto block transition-transform duration-700 group-hover:scale-[1.015]"
                         loading="lazy"
+                        decoding="async"
                     />
                     {/* Top shine */}
                     <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
@@ -98,7 +108,7 @@ export function MethodSection() {
     const header = useInView(0.2)
 
     return (
-        <section id="funcionalidades" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: '#050508' }}>
+        <section id="producto" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: '#050508' }}>
             {/* Top divider */}
             <div className="landing-divider absolute top-0 left-[10%] right-[10%]" />
 
@@ -109,20 +119,15 @@ export function MethodSection() {
                 {/* Header */}
                 <div
                     ref={header.ref}
-                    className={`text-center mb-16 lg:mb-20 transition-all duration-700 ${
+                    className={`mb-16 lg:mb-20 transition-all duration-700 ${
                         header.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                     }`}
                 >
-                    <span className="inline-block text-[13px] font-medium text-blue-400/80 tracking-widest uppercase mb-5">
-                        Funcionalidades
-                    </span>
-                    <h2
-                        className="text-3xl sm:text-4xl lg:text-[3rem] font-extrabold tracking-[-0.03em] leading-tight"
-                        style={{ textWrap: 'balance' } as React.CSSProperties}
-                    >
-                        <span className="text-white">Herramientas disenadas para </span>
-                        <span className="landing-gradient-text">cerrar operaciones</span>
-                    </h2>
+                    <SectionHeading
+                        kicker="El producto, sin maquetas"
+                        title={<>Así se ve EnergyDeal <span className="landing-gradient-text">en el día a día</span></>}
+                        subtitle="Capturas reales de la plataforma — no mockups genericos."
+                    />
                 </div>
 
                 {/* Bento grid */}

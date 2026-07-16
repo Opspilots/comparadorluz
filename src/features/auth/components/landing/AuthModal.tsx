@@ -84,8 +84,23 @@ export function AuthModal({
                     </div>
 
                     {/* Right form panel */}
-                    <div className="flex-1 p-8 sm:p-10 flex flex-col justify-center">
-                        <div className="max-w-[360px] mx-auto w-full">
+                    <div className="flex-1 flex flex-col justify-center">
+                        {/* Compact brand/social-proof strip — mobile only.
+                            The left brand panel is hidden below md, so this keeps
+                            the "500+ asesores activos" trust signal visible instead
+                            of losing it entirely on mobile. */}
+                        <div
+                            className="md:hidden flex items-center justify-center gap-2 py-2.5 px-4 text-center"
+                            style={{ background: '#0f172a' }}
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" aria-hidden="true" />
+                            <span className="text-[12px] font-semibold text-slate-200 tracking-tight">
+                                500+ asesores activos ya usan EnergyDeal
+                            </span>
+                        </div>
+
+                        <div className="p-8 sm:p-10">
+                            <div className="max-w-[360px] mx-auto w-full">
                             {/* Header */}
                             <div className="text-center mb-8">
                                 <div className="md:hidden w-12 h-12 bg-[#2563eb] rounded-xl mx-auto mb-5 flex items-center justify-center text-white text-xl font-black">
@@ -190,6 +205,7 @@ export function AuthModal({
                                     </button>
                                 </p>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

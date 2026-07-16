@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { supabase } from '@/shared/lib/supabase'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { GlassCard, LandingButton, SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -25,11 +26,11 @@ export function ContactSection() {
     useGSAP(() => {
         if (prefersReducedMotion()) return
         gsap.from('.contact-left', {
-            opacity: 0, x: -24, duration: 0.7, ease: 'power3.out',
+            opacity: 0, x: -32, duration: 0.6, ease: 'power4.out',
             scrollTrigger: { trigger: '.contact-left', start: 'top 85%', once: true },
         })
         gsap.from('.contact-right', {
-            opacity: 0, x: 24, duration: 0.7, ease: 'power3.out',
+            opacity: 0, x: 32, duration: 0.6, delay: 0.08, ease: 'power4.out',
             scrollTrigger: { trigger: '.contact-right', start: 'top 85%', once: true },
         })
     }, { scope: sectionRef })
@@ -60,26 +61,20 @@ export function ContactSection() {
     }
 
     return (
-        <section ref={sectionRef} id="contacto" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="contacto" className="relative py-28 lg:py-36 px-[5%]" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div className="max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
                 {/* Left: info */}
                 <div className="contact-left">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                        Contacto
-                    </span>
-                    <h2
-                        className="text-3xl sm:text-4xl font-extrabold text-white tracking-[-0.03em] mb-5"
-                        style={{ textWrap: 'balance' } as React.CSSProperties}
-                    >
-                        ¿Tienes preguntas?
-                        <br />
-                        <span className="gradient-text-bp">Hablemos</span>
-                    </h2>
-                    <p className="text-slate-500 text-base mb-10 leading-relaxed">
-                        Nuestro equipo está disponible para resolver tus dudas, hacer una demo personalizada o ayudarte a dar tus primeros pasos con EnergyDeal.
-                    </p>
+                    <SectionHeading
+                        align="left"
+                        className="mb-10"
+                        kicker="Contacto"
+                        title={<>¿Tienes preguntas?<br /><span className="gradient-text-bp">Hablemos</span></>}
+                        subtitle="Nuestro equipo está disponible para resolver tus dudas, hacer una demo personalizada o ayudarte a dar tus primeros pasos con EnergyDeal."
+                        subtitleMaxWidth="480px"
+                    />
 
                     <div className="space-y-5">
                         {[
@@ -107,8 +102,10 @@ export function ContactSection() {
                 </div>
 
                 {/* Right: form */}
-                <div
-                    className="contact-right rounded-2xl p-7 lg:p-8"
+                <GlassCard
+                    as="div"
+                    padding="lg"
+                    className="contact-right rounded-2xl"
                     style={{
                         background: 'rgba(255,255,255,0.022)',
                         border: '1px solid rgba(255,255,255,0.08)',
@@ -189,20 +186,18 @@ export function ContactSection() {
                                     aria-describedby={submitError ? 'submit-error-msg' : undefined}
                                 />
                             </div>
-                            <button
+                            <LandingButton
                                 type="submit"
-                                disabled={sending}
-                                className="group w-full inline-flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-[#2563eb] text-white font-bold text-[14px] cursor-pointer border-none transition-all duration-300 hover:bg-[#3b82f6] landing-glow-blue disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+                                fullWidth
+                                loading={sending}
+                                icon={<ArrowRight aria-hidden="true" />}
                             >
                                 {sending ? 'Enviando...' : 'Enviar mensaje'}
-                                {!sending && (
-                                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
-                                )}
-                            </button>
+                            </LandingButton>
                             <p className="text-[11px] text-slate-600 text-center">Respuesta garantizada en menos de 24h · Sin spam</p>
                         </form>
                     )}
-                </div>
+                </GlassCard>
             </div>
         </section>
     )

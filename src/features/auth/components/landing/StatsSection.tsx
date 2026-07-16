@@ -54,10 +54,11 @@ export function StatsSection() {
         if (!reduced) {
             gsap.from('.stat-item', {
                 opacity: 0,
-                y: 24,
-                duration: 0.6,
-                stagger: 0.1,
-                ease: 'power3.out',
+                y: 16,
+                scale: 0.92,
+                duration: 0.5,
+                stagger: 0.08,
+                ease: 'power2.out',
                 scrollTrigger: {
                     trigger: sectionRef.current,
                     start: 'top 80%',

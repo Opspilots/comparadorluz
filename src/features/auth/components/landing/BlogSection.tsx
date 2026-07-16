@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { ArrowRight, Clock } from 'lucide-react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { GlassCard, LandingButton, SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -42,15 +43,23 @@ export function BlogSection() {
 
     useGSAP(() => {
         if (prefersReducedMotion()) {
-            gsap.set('.blog-card', { opacity: 1, y: 0 })
+            gsap.set('.blog-card', { opacity: 1, y: 0, x: 0 })
             return
         }
         gsap.from('.blog-header', {
-            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            opacity: 0, y: 24, duration: 0.5, ease: 'power3.out',
             scrollTrigger: { trigger: '.blog-header', start: 'top 85%', once: true },
         })
-        ScrollTrigger.batch('.blog-card', {
-            onEnter: els => gsap.to(els, { opacity: 1, y: 0, duration: 0.65, stagger: 0.1, ease: 'power3.out' }),
+        // Featured post glides in from the left, the two smaller posts rise up with
+        // their own stagger — gives the asymmetric grid its own entrance identity.
+        ScrollTrigger.create({
+            trigger: '.blog-card-featured',
+            start: 'top 88%',
+            once: true,
+            onEnter: () => gsap.to('.blog-card-featured', { opacity: 1, x: 0, duration: 0.6, ease: 'power3.out' }),
+        })
+        ScrollTrigger.batch('.blog-card-mini', {
+            onEnter: els => gsap.to(els, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out' }),
             start: 'top 88%',
             once: true,
         })
@@ -60,42 +69,37 @@ export function BlogSection() {
     const rest = posts.slice(1)
 
     return (
-        <section ref={sectionRef} id="blog" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="blog" className="relative py-28 lg:py-36 px-[5%] overflow-hidden" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div className="max-w-[1100px] mx-auto relative z-10">
                 {/* Header row */}
                 <div className="blog-header flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14">
-                    <div>
-                        <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                            Blog y Recursos
-                        </span>
-                        <h2
-                            className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em]"
-                            style={{ textWrap: 'balance' } as React.CSSProperties}
-                        >
-                            Recursos para el
-                            <br />
-                            <span className="gradient-text-bp">sector energético</span>
-                        </h2>
-                    </div>
-                    <a
-                        href="/blog"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
-                    >
-                        Ver todos los artículos
-                        <ArrowRight className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
-                    </a>
+                    <SectionHeading
+                        align="left"
+                        kicker="Blog y Recursos"
+                        title={<>Recursos para el<br /><span className="gradient-text-bp">sector energético</span></>}
+                    />
+                    <LandingButton asChild variant="ghost" size="sm" className="flex-shrink-0">
+                        <a href="/blog">
+                            Ver todos los artículos
+                            <ArrowRight className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
+                        </a>
+                    </LandingButton>
                 </div>
 
-                {/* Asymmetric grid: featured (lg:col-span-7) + 2 stacked (lg:col-span-5) */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Asymmetric grid — md:2-col intermediate step (full-width featured + 2-across
+                    mini posts) before the lg:12-col asymmetric 7/5 desktop layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
                     {/* Featured post */}
-                    <article
-                        className="blog-card lg:col-span-7 rounded-2xl overflow-hidden group cursor-pointer flex flex-col"
+                    <GlassCard
+                        as="article"
+                        padding="none"
+                        hover="lift"
+                        className="blog-card blog-card-featured md:col-span-2 lg:col-span-7 rounded-2xl overflow-hidden group cursor-pointer flex flex-col"
                         style={{
                             opacity: 0,
-                            transform: 'translateY(24px)',
+                            transform: 'translateX(-28px)',
                             background: 'rgba(255,255,255,0.022)',
                             border: '1px solid rgba(255,255,255,0.08)',
                         }}
@@ -133,14 +137,17 @@ export function BlogSection() {
                                 </span>
                             </div>
                         </div>
-                    </article>
+                    </GlassCard>
 
-                    {/* Two smaller posts */}
-                    <div className="lg:col-span-5 flex flex-col gap-4">
+                    {/* Two smaller posts — sm:2-across, stacked again once inside the lg sidebar column */}
+                    <div className="md:col-span-2 lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                         {rest.map((post, i) => (
-                            <article
+                            <GlassCard
                                 key={i}
-                                className="blog-card flex-1 rounded-2xl overflow-hidden group cursor-pointer"
+                                as="article"
+                                padding="none"
+                                hover="lift"
+                                className="blog-card blog-card-mini rounded-2xl overflow-hidden group cursor-pointer"
                                 style={{
                                     opacity: 0,
                                     transform: 'translateY(24px)',
@@ -172,7 +179,7 @@ export function BlogSection() {
                                         </span>
                                     </div>
                                 </div>
-                            </article>
+                            </GlassCard>
                         ))}
                     </div>
                 </div>

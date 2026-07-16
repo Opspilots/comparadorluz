@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { ArrowRight, Zap, TrendingUp, CheckCircle2, Clock, ShieldCheck } from 'lucide-react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { LandingButton } from '@/features/auth/components/landing/ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -12,7 +13,17 @@ interface HeroSectionProps {
 }
 
 function HeroVisual() {
+    const wrapRef = useRef<HTMLDivElement>(null)
+    const tiltRef = useRef<HTMLDivElement>(null)
     const [tilt, setTilt] = useState({ x: 0, y: 0 })
+    // Assume a fine pointer (mouse) until proven otherwise — avoids a flash of
+    // the wrong interaction mode on mount, and this is a SPA (no SSR mismatch).
+    const [isFinePointer, setIsFinePointer] = useState(true)
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+        setIsFinePointer(window.matchMedia('(pointer: fine)').matches)
+    }, [])
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect()
@@ -24,6 +35,31 @@ function HeroVisual() {
         })
     }
 
+    // Touch/coarse-pointer devices never fire mousemove, so the tilt above is
+    // invisible to roughly half the traffic. Give them a scroll-driven
+    // alternative instead: a subtle, continuous tilt tied to how far the
+    // mockup has travelled through the viewport, so it still "comes alive"
+    // without depending on hover.
+    useGSAP(() => {
+        if (isFinePointer || prefersReducedMotion() || !tiltRef.current) return
+
+        gsap.fromTo(
+            tiltRef.current,
+            { rotateX: 5, rotateY: -8 },
+            {
+                rotateX: -3,
+                rotateY: 7,
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: tiltRef.current,
+                    start: 'top bottom',
+                    end: 'bottom top',
+                    scrub: 1.4,
+                },
+            }
+        )
+    }, { scope: wrapRef, dependencies: [isFinePointer] })
+
     const rows = [
         { name: 'Endesa Green Plus', price: '0.118€', saving: '24%', w: '84%', best: true },
         { name: 'Holaluz Empresa', price: '0.126€', saving: '15%', w: '60%', best: false },
@@ -32,16 +68,18 @@ function HeroVisual() {
 
     return (
         <div
-            className="hero-visual relative w-full max-w-[480px] xl:max-w-[560px] mx-auto lg:mx-0"
+            ref={wrapRef}
+            className="hero-visual relative w-full max-w-[480px] md:max-w-[320px] lg:max-w-[460px] xl:max-w-[560px] mx-auto lg:mx-0"
             style={{ perspective: '1000px' }}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+            onMouseMove={isFinePointer ? handleMouseMove : undefined}
+            onMouseLeave={isFinePointer ? () => setTilt({ x: 0, y: 0 }) : undefined}
         >
             <div
+                ref={tiltRef}
                 className="relative"
                 style={{
-                    transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-                    transition: 'transform 0.15s ease-out',
+                    transform: isFinePointer ? `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` : undefined,
+                    transition: isFinePointer ? 'transform 0.15s ease-out' : undefined,
                     transformStyle: 'preserve-3d',
                 }}
             >
@@ -65,7 +103,7 @@ function HeroVisual() {
                 <div
                     className="relative rounded-2xl p-6"
                     style={{
-                        background: 'rgba(8,8,24,0.9)',
+                        background: 'var(--landing-bg-elevated)',
                         border: '1px solid rgba(255,255,255,0.09)',
                         backdropFilter: 'blur(24px)',
                         boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)',
@@ -136,13 +174,12 @@ function HeroVisual() {
 
                 {/* Floating speed badge */}
                 <div
-                    className="absolute -bottom-5 -left-3 flex items-center gap-2 px-3 py-2 rounded-xl"
+                    className="animate-float-card absolute -bottom-5 -left-3 flex items-center gap-2 px-3 py-2 rounded-xl"
                     style={{
-                        background: 'rgba(8,8,24,0.95)',
+                        background: 'var(--landing-bg-elevated)',
                         border: '1px solid rgba(37,99,235,0.3)',
                         backdropFilter: 'blur(16px)',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(37,99,235,0.1)',
-                        animation: 'floatCard 3s ease-in-out infinite',
                     }}
                 >
                     <Zap className="w-3.5 h-3.5 text-blue-400" strokeWidth={2.5} fill="currentColor" aria-hidden="true" />
@@ -151,13 +188,14 @@ function HeroVisual() {
 
                 {/* Floating contracts badge */}
                 <div
-                    className="absolute -top-4 -right-4 z-10 rounded-xl p-3 text-right"
+                    className="animate-float-card absolute -top-4 -right-4 z-10 rounded-xl p-3 text-right"
                     style={{
-                        background: 'rgba(8,8,24,0.95)',
+                        background: 'var(--landing-bg-elevated)',
                         border: '1px solid rgba(255,255,255,0.08)',
                         backdropFilter: 'blur(16px)',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                        animation: 'floatCard 3.5s ease-in-out infinite 0.5s',
+                        animationDuration: '3.5s',
+                        animationDelay: '0.5s',
                     }}
                 >
                     <div className="flex items-center gap-2 mb-0.5">
@@ -169,13 +207,14 @@ function HeroVisual() {
 
                 {/* Floating pending badge */}
                 <div
-                    className="absolute top-1/2 -right-8 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                    className="animate-float-card absolute top-1/2 -right-8 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
                     style={{
-                        background: 'rgba(8,8,24,0.95)',
+                        background: 'var(--landing-bg-elevated)',
                         border: '1px solid rgba(245,158,11,0.25)',
                         backdropFilter: 'blur(12px)',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-                        animation: 'floatCard 4s ease-in-out infinite 1s',
+                        animationDuration: '4s',
+                        animationDelay: '1s',
                     }}
                 >
                     <Clock className="w-3 h-3 text-amber-400" strokeWidth={2} aria-hidden="true" />
@@ -194,13 +233,22 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
 
         const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
 
-        tl.from('.hero-badge', { opacity: 0, y: 14, duration: 0.55 })
-          .from('.hero-h1', { opacity: 0, y: 30, duration: 0.65 }, '-=0.25')
-          .from('.hero-sub', { opacity: 0, y: 18, duration: 0.55 }, '-=0.3')
+        // The hero gets its own animation "signature" — a soft focus-pull on the
+        // H1 (blur -> sharp) instead of the plain y/opacity fade the rest of the
+        // sections use — plus a 3D swoop-in on the visual (scale+rotate, not just
+        // a slide) so the mockup reads as dimensional even before any interaction.
+        tl.from('.hero-badge', { opacity: 0, y: 14, scale: 0.94, duration: 0.5 })
+          .fromTo('.hero-h1', { opacity: 0, y: 26, filter: 'blur(9px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7 }, '-=0.25')
+          .from('.hero-sub', { opacity: 0, y: 18, duration: 0.55 }, '-=0.35')
           .from('.hero-cta-1', { opacity: 0, x: -16, duration: 0.45 }, '-=0.2')
           .from('.hero-cta-2', { opacity: 0, x: -12, duration: 0.4 }, '-=0.3')
           .from('.hero-trust', { opacity: 0, duration: 0.4 }, '-=0.1')
-          .from('.hero-visual', { opacity: 0, x: 36, duration: 0.75, ease: 'power2.out' }, '-=0.75')
+          .fromTo(
+              '.hero-visual',
+              { opacity: 0, x: 36, scale: 0.92, rotateY: -8, rotateX: 3, transformPerspective: 800 },
+              { opacity: 1, x: 0, scale: 1, rotateY: 0, rotateX: 0, duration: 0.85, ease: 'power2.out' },
+              '-=0.75'
+          )
 
         gsap.to('.hero-orb-1', {
             y: -80,
@@ -220,7 +268,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
         <section
             ref={containerRef}
             className="relative overflow-x-hidden flex items-center px-[5%]"
-            style={{ background: '#020209', minHeight: '100dvh' }}
+            style={{ background: 'var(--landing-bg)', minHeight: '100dvh' }}
         >
             {/* Animated orbs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -248,9 +296,12 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
                 }}
             />
 
-            {/* Content — padding-top matches the fixed header height + breathing room */}
+            {/* Content — padding-top matches the fixed header height + breathing room.
+                Grid goes 1 col -> 2 (narrow, md:) -> 2 (full, lg:) instead of jumping
+                straight from stacked to 2-col only at lg:, which used to push the CTA
+                below the fold on tablets. */}
             <div
-                className="relative z-10 w-full max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center pb-16 lg:pb-20"
+                className="relative z-10 w-full max-w-[1300px] mx-auto grid grid-cols-1 md:grid-cols-[1.15fr_1fr] lg:grid-cols-2 gap-10 md:gap-8 lg:gap-16 items-center pb-16 lg:pb-20"
                 style={{ paddingTop: 'calc(var(--header-h, 64px) + 40px)' }}
             >
                 {/* Left: text */}
@@ -269,10 +320,11 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
                         </span>
                     </div>
 
-                    {/* H1 */}
+                    {/* H1 — uses the shared fluid --landing-h1 token/class instead of a
+                        hand-written clamp(); values are unchanged (2.5rem -> 4.75rem). */}
                     <h1
-                        className="hero-h1 font-extrabold leading-[1.04] tracking-[-0.04em] text-white mb-6"
-                        style={{ fontSize: 'clamp(2.4rem, 5vw, 4.2rem)', textWrap: 'balance' } as React.CSSProperties}
+                        className="hero-h1 landing-h1 font-extrabold text-white mb-6"
+                        style={{ textWrap: 'balance' } as React.CSSProperties}
                     >
                         El CRM que Cierra<br />
                         más Contratos<br />
@@ -289,34 +341,36 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
 
                     {/* CTAs */}
                     <div className="flex flex-col sm:flex-row gap-3 mb-10">
-                        <button
+                        <LandingButton
+                            size="lg"
+                            icon={<ArrowRight strokeWidth={2.5} />}
                             onClick={() => onOpenAuth('signup')}
-                            className="hero-cta-1 group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-[#2563eb] text-white font-bold text-[14px] cursor-pointer border-none btn-directional landing-glow-blue"
+                            className="hero-cta-1"
                         >
                             Empezar gratis — sin tarjeta
-                            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
-                        </button>
-                        <a
-                            href="#como-funciona"
-                            className="hero-cta-2 inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-slate-300 font-semibold text-[14px] hover:text-white transition-all duration-300"
-                            style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid rgba(255,255,255,0.09)',
-                            }}
-                        >
-                            <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} aria-hidden="true" />
-                            Ver cómo funciona
-                        </a>
+                        </LandingButton>
+                        <LandingButton variant="secondary" size="lg" asChild className="hero-cta-2">
+                            <a href="#como-funciona">
+                                <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} aria-hidden="true" />
+                                Ver cómo funciona
+                            </a>
+                        </LandingButton>
                     </div>
 
-                    {/* Trust row */}
-                    <div className="hero-trust flex flex-wrap items-center gap-x-6 gap-y-2.5">
+                    {/* Trust row — below sm: each stat becomes a small chip with its own
+                        subtle background so items stay visually separated even without
+                        the vertical divider (which only appears from sm: up). */}
+                    <div className="hero-trust flex flex-wrap items-center gap-2 sm:gap-x-6 sm:gap-y-2.5">
                         {[
                             { icon: ShieldCheck, v: 'RGPD', l: 'compliant' },
                             { icon: null, v: '200+', l: 'tarifas disponibles' },
                             { icon: null, v: '< 2 min', l: 'por comparativa' },
                         ].map((s, i) => (
-                            <div key={i} className="flex items-center gap-1.5">
+                            <div
+                                key={i}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full sm:px-0 sm:py-0 sm:rounded-none sm:bg-transparent"
+                                style={{ background: 'rgba(255,255,255,0.035)' }}
+                            >
                                 {s.icon && <s.icon className="w-3.5 h-3.5 text-emerald-400" strokeWidth={2} aria-hidden="true" />}
                                 <span className="text-white font-bold text-sm tracking-tight">{s.v}</span>
                                 <span className="text-slate-500 text-sm">{s.l}</span>
@@ -333,7 +387,7 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
             </div>
 
             {/* Bottom fade */}
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#020209] to-transparent pointer-events-none z-20" />
+            <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-20" style={{ background: 'linear-gradient(to top, var(--landing-bg), transparent)' }} />
         </section>
     )
 }

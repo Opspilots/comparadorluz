@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { LandingButton, SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -16,14 +17,16 @@ export function CTASection({ onOpenAuth }: CTASectionProps) {
 
     useGSAP(() => {
         if (prefersReducedMotion()) return
+        // The final CTA gets the boldest entrance of the page — a touch of scale
+        // on top of the usual fade/rise, reserved for this closing moment only.
         gsap.from('.cta-content', {
-            opacity: 0, y: 32, duration: 0.75, ease: 'power3.out',
+            opacity: 0, y: 32, scale: 0.96, duration: 0.7, ease: 'expo.out',
             scrollTrigger: { trigger: '.cta-content', start: 'top 80%', once: true },
         })
     }, { scope: sectionRef })
 
     return (
-        <section ref={sectionRef} className="relative py-32 lg:py-40 px-[5%] overflow-hidden" style={{ background: '#020209' }}>
+        <section ref={sectionRef} className="relative py-32 lg:py-40 px-[5%] overflow-hidden" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             {/* Layered glows */}
@@ -42,31 +45,20 @@ export function CTASection({ onOpenAuth }: CTASectionProps) {
                     <span className="text-[12px] font-medium text-slate-400">Empieza gratis hoy — sin tarjeta</span>
                 </div>
 
-                <h2
-                    className="text-3xl sm:text-4xl lg:text-[3.2rem] font-extrabold tracking-[-0.03em] leading-tight mb-6"
-                    style={{ textWrap: 'balance' } as React.CSSProperties}
-                >
-                    <span className="text-white">Empieza a vender energía </span>
-                    <span className="gradient-text-bp">de otra manera</span>
-                </h2>
-                <p className="text-base text-slate-500 mb-10 leading-relaxed">
-                    Únete a los asesores energéticos y corredurías que ya usan EnergyDeal para gestionar clientes, comparar tarifas y cerrar más contratos.
-                </p>
+                <SectionHeading
+                    className="mb-10"
+                    title={<><span className="text-white">Empieza a vender energía </span><span className="gradient-text-bp">de otra manera</span></>}
+                    subtitle="Únete a los asesores energéticos y corredurías que ya usan EnergyDeal para gestionar clientes, comparar tarifas y cerrar más contratos."
+                    subtitleMaxWidth="560px"
+                />
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                        onClick={() => onOpenAuth('signup')}
-                        className="group inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-[#2563eb] text-white border-none rounded-xl font-bold text-[15px] cursor-pointer landing-glow-blue btn-directional transition-all duration-300 hover:bg-[#3b82f6] active:scale-[0.98]"
-                    >
+                    <LandingButton onClick={() => onOpenAuth('signup')} icon={<ArrowRight aria-hidden="true" />}>
                         Crear cuenta gratis
-                        <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" strokeWidth={2.5} aria-hidden="true" />
-                    </button>
-                    <button
-                        onClick={() => onOpenAuth('login')}
-                        className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-white/[0.04] text-slate-300 border border-white/[0.08] font-semibold text-[14px] cursor-pointer hover:bg-white/[0.07] hover:text-white transition-all duration-300 active:scale-[0.98]"
-                    >
+                    </LandingButton>
+                    <LandingButton variant="secondary" onClick={() => onOpenAuth('login')}>
                         Ya tengo cuenta
-                    </button>
+                    </LandingButton>
                 </div>
 
                 {/* Social proof bottom */}

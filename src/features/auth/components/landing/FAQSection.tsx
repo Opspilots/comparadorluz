@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -49,33 +50,25 @@ export function FAQSection() {
     useGSAP(() => {
         if (prefersReducedMotion()) return
         gsap.from('.faq-header', {
-            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            opacity: 0, y: 20, duration: 0.5, ease: 'power2.out',
             scrollTrigger: { trigger: '.faq-header', start: 'top 85%', once: true },
         })
         gsap.from('.faq-container', {
-            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            opacity: 0, y: 16, scale: 0.985, duration: 0.55, ease: 'power2.out',
             scrollTrigger: { trigger: '.faq-container', start: 'top 88%', once: true },
         })
     }, { scope: sectionRef })
 
     return (
-        <section ref={sectionRef} id="faq" className="relative py-28 lg:py-36 px-[5%]" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="faq" className="relative py-28 lg:py-36 px-[5%]" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             <div className="max-w-[800px] mx-auto">
-                <div className="faq-header text-center mb-14">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                        Preguntas Frecuentes sobre EnergyDeal CRM
-                    </span>
-                    <h2
-                        className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em]"
-                        style={{ textWrap: 'balance' } as React.CSSProperties}
-                    >
-                        Todo lo que necesitas
-                        <br />
-                        <span className="gradient-text-bp">saber sobre EnergyDeal</span>
-                    </h2>
-                </div>
+                <SectionHeading
+                    className="faq-header mb-14"
+                    kicker="Preguntas Frecuentes sobre EnergyDeal CRM"
+                    title={<>Todo lo que necesitas<br /><span className="gradient-text-bp">saber sobre EnergyDeal</span></>}
+                />
 
                 <div
                     className="faq-container"

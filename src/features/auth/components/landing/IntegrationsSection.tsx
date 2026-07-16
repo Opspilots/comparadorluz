@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Mail, MessageCircle, Globe, Shield, Zap, FileText, Link2, BookOpen } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -22,46 +23,51 @@ const tickerItems = [...integrations, ...integrations]
 
 export function IntegrationsSection() {
     const sectionRef = useRef<HTMLElement>(null)
+    const [paused, setPaused] = useState(false)
 
     useGSAP(() => {
         if (prefersReducedMotion()) return
         gsap.from('.integrations-header', {
-            opacity: 0, y: 24, duration: 0.65, ease: 'power3.out',
+            opacity: 0, y: 24, scale: 0.97, duration: 0.5, ease: 'power2.out',
             scrollTrigger: { trigger: '.integrations-header', start: 'top 85%', once: true },
         })
     }, { scope: sectionRef })
 
+    // Pause the infinite ticker on hover (desktop) and on touch (mobile) so
+    // users can actually read the badges instead of chasing a moving target.
+    const pauseHandlers = {
+        onMouseEnter: () => setPaused(true),
+        onMouseLeave: () => setPaused(false),
+        onTouchStart: () => setPaused(true),
+        onTouchEnd: () => setPaused(false),
+        onTouchCancel: () => setPaused(false),
+    }
+
     return (
-        <section ref={sectionRef} id="integraciones" className="relative py-24 lg:py-32 overflow-hidden" style={{ background: '#020209' }}>
+        <section ref={sectionRef} id="integraciones" className="relative py-24 lg:py-32 overflow-hidden" style={{ background: 'var(--landing-bg)' }}>
             <div className="divider-v2 absolute top-0 left-[10%] right-[10%]" />
 
             {/* Header */}
             <div className="max-w-[1100px] mx-auto px-[5%] mb-14">
-                <div className="integrations-header text-center">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                        Integraciones
-                    </span>
-                    <h2
-                        className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em]"
-                        style={{ textWrap: 'balance' } as React.CSSProperties}
-                    >
-                        Conectado con las herramientas
-                        <br />
-                        <span className="gradient-text-bp">que ya utilizas</span>
-                    </h2>
-                    <p className="text-slate-500 text-base mt-4 max-w-[500px] mx-auto">
-                        EnergyDeal se integra con Gmail, WhatsApp Business, la CNMC y las APIs de las principales comercializadoras del mercado libre.
-                    </p>
-                </div>
+                <SectionHeading
+                    className="integrations-header"
+                    kicker="Integraciones"
+                    title={<>Conectado con las herramientas<br /><span className="gradient-text-bp">que ya utilizas</span></>}
+                    subtitle="EnergyDeal se integra con Gmail, WhatsApp Business, la CNMC y las APIs de las principales comercializadoras del mercado libre."
+                    subtitleMaxWidth="500px"
+                />
             </div>
 
-            {/* Infinite ticker */}
-            <div className="relative overflow-hidden">
+            {/* Infinite ticker — pauses on hover (desktop) and touch (mobile) for readability */}
+            <div className="relative overflow-hidden" {...pauseHandlers}>
                 {/* Fade masks */}
-                <div className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(90deg, #020209, transparent)' }} />
-                <div className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(-90deg, #020209, transparent)' }} />
+                <div className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(90deg, var(--landing-bg), transparent)' }} />
+                <div className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(-90deg, var(--landing-bg), transparent)' }} />
 
-                <div className="ticker-track flex gap-4 px-4 w-max">
+                <div
+                    className="ticker-track flex gap-4 px-4 w-max"
+                    style={{ animationPlayState: paused ? 'paused' : 'running' }}
+                >
                     {tickerItems.map((item, i) => {
                         const Icon = item.icon
                         return (

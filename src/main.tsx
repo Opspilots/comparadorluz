@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import * as Sentry from '@sentry/react'
 import App from './App'
+import './shared/lib/fonts'
 import './index.css'
 // PDF worker configuration moved to src/shared/lib/pdf-utils.ts
 // so it's only loaded when PDF features are actually used (lazy routes).

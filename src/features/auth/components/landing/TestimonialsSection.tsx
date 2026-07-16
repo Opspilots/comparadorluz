@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Star } from 'lucide-react'
 import { prefersReducedMotion } from '@/shared/lib/motion-preferences'
+import { GlassCard, SectionHeading } from './ui'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -73,31 +74,21 @@ export function TestimonialsSection() {
             />
 
             <div className="max-w-[1100px] mx-auto relative z-10">
-                <div className="testimonials-header text-center mb-14">
-                    <span className="inline-block text-[11px] font-bold text-blue-400/70 tracking-[0.15em] uppercase mb-5">
-                        Testimonios
-                    </span>
-                    <h2
-                        className="text-3xl sm:text-4xl lg:text-[2.8rem] font-extrabold text-white tracking-[-0.03em]"
-                        style={{ textWrap: 'balance' } as React.CSSProperties}
-                    >
-                        Lo que dicen los asesores
-                        <br />
-                        <span className="gradient-text-bp">que ya usan EnergyDeal</span>
-                    </h2>
+                <div className="testimonials-header mb-14">
+                    <SectionHeading
+                        kicker="Testimonios"
+                        title={<>Lo que dicen los asesores<br /><span className="gradient-text-bp">que ya usan EnergyDeal</span></>}
+                    />
                 </div>
 
                 {/* Asymmetric layout: 1 featured + 2 stacked */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                     {/* Featured testimonial */}
-                    <div
+                    <GlassCard
+                        hover="lift"
+                        padding="none"
                         className="testimonial-card lg:col-span-7 rounded-2xl p-8 lg:p-10 flex flex-col justify-between"
-                        style={{
-                            opacity: 0,
-                            transform: 'translateY(24px)',
-                            background: 'rgba(255,255,255,0.022)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                        }}
+                        style={{ opacity: 0, transform: 'translateY(24px)' }}
                     >
                         <div>
                             {/* Stars */}
@@ -134,20 +125,17 @@ export function TestimonialsSection() {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </GlassCard>
 
                     {/* Two smaller testimonials */}
                     <div className="lg:col-span-5 flex flex-col gap-4">
                         {rest.map((t, i) => (
-                            <div
+                            <GlassCard
                                 key={i}
+                                hover="lift"
+                                padding="none"
                                 className="testimonial-card flex-1 rounded-2xl p-7 flex flex-col justify-between"
-                                style={{
-                                    opacity: 0,
-                                    transform: 'translateY(24px)',
-                                    background: 'rgba(255,255,255,0.018)',
-                                    border: '1px solid rgba(255,255,255,0.065)',
-                                }}
+                                style={{ opacity: 0, transform: 'translateY(24px)' }}
                             >
                                 <div className="flex gap-0.5 mb-4">
                                     {Array.from({ length: t.stars }).map((_, si) => (
@@ -167,7 +155,7 @@ export function TestimonialsSection() {
                                         <div className="text-[11px] text-slate-600">{t.role}</div>
                                     </div>
                                 </div>
-                            </div>
+                            </GlassCard>
                         ))}
                     </div>
                 </div>

@@ -1,4 +1,11 @@
-import { Linkedin, Twitter, Mail, Zap } from 'lucide-react'
+import { Mail, Zap } from 'lucide-react'
+
+// Only real, working links are shown here. EnergyDeal has no public
+// LinkedIn/X account yet — a dead `href="#"` social icon reads worse than
+// omitting it, so those are intentionally left out until real profiles exist.
+const socialLinks = [
+    { Icon: Mail, label: 'Email', href: 'mailto:hola@energydeal.es' },
+]
 
 const footerLinks = {
     Producto: [
@@ -47,11 +54,7 @@ export function LandingFooter() {
                             El CRM para asesores energéticos que cierra más contratos.
                         </p>
                         <div className="flex gap-2">
-                            {[
-                                { Icon: Linkedin, label: 'LinkedIn', href: '#' },
-                                { Icon: Twitter, label: 'Twitter / X', href: '#' },
-                                { Icon: Mail, label: 'Email', href: 'mailto:hola@energydeal.es' },
-                            ].map(({ Icon, label, href }) => (
+                            {socialLinks.map(({ Icon, label, href }) => (
                                 <a
                                     key={label}
                                     href={href}

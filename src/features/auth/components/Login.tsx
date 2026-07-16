@@ -2,18 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import { loginSchema, signupSchema, getFirstZodError } from '@/shared/lib/validations'
-import { LandingHeader } from './landing/LandingHeader'
-import { HeroSection } from './landing/HeroSection'
-import { StatsSection } from './landing/StatsSection'
-import { FeaturesSection } from './landing/FeaturesSection'
-import { HowItWorksSection } from './landing/HowItWorksSection'
-import { IntegrationsSection } from './landing/IntegrationsSection'
-import { PricingSection } from './landing/PricingSection'
-import { BlogSection } from './landing/BlogSection'
-import { FAQSection } from './landing/FAQSection'
-import { ContactSection } from './landing/ContactSection'
-import { CTASection } from './landing/CTASection'
-import { LandingFooter } from './landing/LandingFooter'
+import { LandingPage } from './landing/LandingPage'
 import { AuthModal } from './landing/AuthModal'
 
 export function Login() {
@@ -140,27 +129,8 @@ export function Login() {
     }
 
     return (
-        <div className="min-h-screen overflow-x-hidden scroll-smooth" style={{ background: '#020209' }}>
-            <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-white focus:text-[#0f172a] focus:font-semibold focus:shadow-lg"
-            >
-                Saltar al contenido principal
-            </a>
-            <LandingHeader onOpenAuth={openAuth} />
-            <main id="main-content">
-                <HeroSection onOpenAuth={openAuth} />
-                <StatsSection />
-                <FeaturesSection />
-                <HowItWorksSection />
-                <IntegrationsSection />
-                <PricingSection onOpenAuth={openAuth} />
-                <BlogSection />
-                <FAQSection />
-                <ContactSection />
-                <CTASection onOpenAuth={openAuth} />
-            </main>
-            <LandingFooter />
+        <>
+            <LandingPage onOpenAuth={openAuth} />
             <AuthModal
                 open={showAuthModal}
                 onOpenChange={setShowAuthModal}
@@ -176,6 +146,6 @@ export function Login() {
                 onSubmit={authMode === 'login' ? handleLogin : handleSignUp}
                 onGoogleLogin={handleGoogleLogin}
             />
-        </div>
+        </>
     )
 }
