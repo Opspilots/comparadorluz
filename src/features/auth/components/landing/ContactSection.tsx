@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin, ArrowRight, CheckCircle2 } from 'lucide-react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { supabase } from '@/shared/lib/supabase'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -18,6 +19,7 @@ export function ContactSection() {
     const [form, setForm] = useState<FormState>({ nombre: '', email: '', empresa: '', mensaje: '' })
     const [sending, setSending] = useState(false)
     const [sent, setSent] = useState(false)
+    const [submitError, setSubmitError] = useState<string | null>(null)
 
     useGSAP(() => {
         gsap.from('.contact-left', {
@@ -33,9 +35,21 @@ export function ContactSection() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setSending(true)
-        await new Promise(r => setTimeout(r, 1200))
-        setSending(false)
-        setSent(true)
+        setSubmitError(null)
+        try {
+            const { error } = await supabase.from('contact_requests').insert({
+                nombre: form.nombre,
+                email: form.email,
+                empresa: form.empresa || null,
+                mensaje: form.mensaje,
+            })
+            if (error) throw error
+            setSent(true)
+        } catch (err) {
+            setSubmitError('No se pudo enviar el mensaje. Inténtalo de nuevo.')
+        } finally {
+            setSending(false)
+        }
     }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -106,6 +120,11 @@ export function ContactSection() {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {submitError && (
+                                <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                                    {submitError}
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[12px] font-semibold text-slate-400 mb-1.5">Nombre *</label>
