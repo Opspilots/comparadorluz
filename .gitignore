@@ -30,3 +30,10 @@ dist-ssr
 
 # Supabase
 .supabase
+
+# Vite temp config artifacts
+vite.config.ts.timestamp-*.mjs
+
+# Claude Code local tooling state
+.claude/worktrees/
+.claude/scheduled_tasks.lock
