@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/shared/lib/supabase'
 import {
     LayoutDashboard, Users, FileText, Scale, FileSignature,
     HelpCircle, Settings, Wallet, MessageSquare, Building2, Shield, X, CreditCard, Lock
@@ -10,6 +8,7 @@ import type { PlanFeatures } from '@/shared/types'
 import { useTour } from '@/features/guide/useTour'
 import { usePlan } from '@/features/billing/hooks/usePlan'
 import { PLAN_DISPLAY, PLAN_COLORS } from '@/features/billing/lib/plans'
+import { useCompanyBranding } from '@/shared/hooks/useCompanyBranding'
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
     if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return { h: 221, s: 83, l: 53 }
@@ -76,30 +75,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const { startTour } = useTour()
     const { tier, canUseFeature } = usePlan()
 
-    const { data: sidebarData } = useQuery({
-        queryKey: ['company-branding'],
-        queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return null
-
-            const { data: profile } = await supabase
-                .from('users')
-                .select('company_id, role')
-                .eq('id', user.id)
-                .maybeSingle()
-
-            if (!profile?.company_id) return null
-
-            const { data: company } = await supabase
-                .from('companies')
-                .select('*')
-                .eq('id', profile.company_id)
-                .maybeSingle()
-
-            return { company, userRole: profile.role as string | null }
-        },
-        staleTime: 5 * 60 * 1000,
-    })
+    const { data: sidebarData } = useCompanyBranding()
 
     const companyData = sidebarData?.company
     const canManageBilling = sidebarData?.userRole === 'admin' || sidebarData?.userRole === 'manager'

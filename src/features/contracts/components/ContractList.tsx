@@ -344,7 +344,7 @@ export function ContractList() {
                                                         <button
                                                             onClick={() => setSwitchingContract(contract)}
                                                             className="btn btn-secondary"
-                                                            style={{ padding: '0.4rem', fontSize: '0.8rem', color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                            style={{ padding: '0.4rem', fontSize: '0.8rem', color: 'var(--color-primary)', borderColor: '#bfdbfe', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                             title="Iniciar Traspaso"
                                                         >
                                                             <ArrowRightLeft size={14} />
@@ -409,7 +409,7 @@ export function ContractList() {
                                                     style={{ padding: '0.3rem', fontSize: '0.8rem', border: 'none', background: 'transparent', cursor: 'pointer' }}
                                                     title="Iniciar Traspaso"
                                                 >
-                                                    <ArrowRightLeft size={16} color="#2563eb" />
+                                                    <ArrowRightLeft size={16} color="var(--color-primary)" />
                                                 </button>
                                             )}
                                             {contract.switching_status && contract.switching_status !== 'completed' && contract.switching_status !== 'rejected' && (
@@ -520,7 +520,7 @@ export function ContractList() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{
                                     width: 36, height: 36, borderRadius: 10,
-                                    background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
                                 }}>
                                     <ArrowRightLeft size={18} color="#fff" />
@@ -568,7 +568,7 @@ export function ContractList() {
                                         {switchingActionContract.origin_supplier_name || switchingActionContract.supply_points?.current_supplier || '—'}
                                     </div>
                                 </div>
-                                <ChevronRight size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+                                <ChevronRight size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                                 <div style={{
                                     flex: 1, padding: '0.5rem 0.75rem', borderRadius: 8,
                                     background: '#f0fdf4', border: '1px solid #bbf7d0',
@@ -645,7 +645,7 @@ export function ContractList() {
                                         style={{
                                             height: 34, padding: '0 16px', borderRadius: 8, fontSize: '0.8125rem',
                                             fontWeight: 600, border: 'none',
-                                            background: switchingActionContract.switching_status === 'in_progress' ? '#15803d' : '#2563eb',
+                                            background: switchingActionContract.switching_status === 'in_progress' ? '#15803d' : 'var(--color-primary)',
                                             color: '#fff', cursor: switchingUpdating ? 'not-allowed' : 'pointer',
                                             opacity: switchingUpdating ? 0.7 : 1,
                                             display: 'flex', alignItems: 'center', gap: 6,

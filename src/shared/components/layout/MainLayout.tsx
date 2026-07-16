@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Menu } from 'lucide-react'
+import { useCompanyBranding } from '@/shared/hooks/useCompanyBranding'
 
 interface MainLayoutProps {
     children: React.ReactNode
@@ -8,6 +9,8 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const { data: brandingData } = useCompanyBranding()
+    const companyName = brandingData?.company?.name || 'Mi Empresa'
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-background)' }}>
@@ -47,8 +50,11 @@ export function MainLayout({ children }: MainLayoutProps) {
                         fontWeight: 700,
                         color: 'var(--text-main)',
                         letterSpacing: '-0.02em',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                     }}>
-                        EnergyDeal
+                        {companyName}
                     </span>
                     <div style={{ width: '40px' }} />
                 </header>

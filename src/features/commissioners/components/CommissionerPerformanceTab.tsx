@@ -101,7 +101,7 @@ export function CommissionerPerformanceTab({ commissionerId }: CommissionerPerfo
             {/* Total Contracts */}
             <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#64748b' }}>
-                    <div style={{ padding: '0.5rem', background: '#e0f2fe', borderRadius: '8px', color: '#0ea5e9' }}>
+                    <div style={{ padding: '0.5rem', background: 'var(--primary-light)', borderRadius: '8px', color: 'var(--color-primary)' }}>
                         <FileCheck size={20} />
                     </div>
                     <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Contratos Totales</span>

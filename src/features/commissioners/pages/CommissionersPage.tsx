@@ -257,7 +257,7 @@ export function CommissionersPage() {
                                             <span style={{
                                                 fontSize: '0.925rem',
                                                 fontWeight: 700,
-                                                color: '#0ea5e9'
+                                                color: 'var(--color-primary)'
                                             }}>
                                                 {commissioner.commission_default_pct}%
                                             </span>
