@@ -218,6 +218,7 @@ export function DashboardPage() {
                                         <Link
                                             key={contract.id}
                                             to={`/contracts/${contract.id}`}
+                                            className="row-hover-bg"
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -226,10 +227,7 @@ export function DashboardPage() {
                                                 borderBottom: '1px solid var(--border-light)',
                                                 textDecoration: 'none',
                                                 color: 'var(--text-main)',
-                                                transition: 'background 0.15s',
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-background)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.125rem' }}>

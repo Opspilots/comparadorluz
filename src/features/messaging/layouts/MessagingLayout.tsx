@@ -60,7 +60,9 @@ const S = {
         borderWidth: '1px',
         borderStyle: 'solid',
         borderColor: '#e2e8f0',
-        background: '#fff',
+        // No `background` here on purpose — the resting/hover background now
+        // comes from the `.icon-btn-hover` CSS class (see index.css), which
+        // lets :hover actually apply. A static inline background would block it.
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -134,8 +136,10 @@ const S = {
         padding: '0.875rem 1rem',
         borderBottom: '1px solid #f1f5f9',
         cursor: 'pointer',
-        transition: 'background 0.15s',
-        background: active ? '#eff6ff' : 'transparent',
+        // `background` is only set inline when active — leaving it unset the rest
+        // of the time lets the `.row-hover-bg` CSS class's :hover rule apply
+        // (an inline `background: 'transparent'` would otherwise block it).
+        ...(active ? { background: '#eff6ff' } : {}),
     }),
     convName: {
         fontWeight: 600,
@@ -227,23 +231,21 @@ export default function MessagingLayout() {
                         <h2 style={S.heading}>Mensajería</h2>
                         <div style={S.topActions}>
                             <button
+                                className="icon-btn-hover"
                                 style={{
                                     ...S.iconBtn,
                                     ...(isCampaignsRoute ? { background: '#eff6ff', borderColor: '#93c5fd', color: '#2563eb' } : {})
                                 }}
                                 title="Campañas"
                                 onClick={() => navigate('/admin/messages/campaigns')}
-                                onMouseEnter={e => { if (!isCampaignsRoute) e.currentTarget.style.background = '#f8fafc'; }}
-                                onMouseLeave={e => { if (!isCampaignsRoute) e.currentTarget.style.background = '#fff'; }}
                             >
                                 <Megaphone style={{ width: 16, height: 16 }} />
                             </button>
                             <button
+                                className="icon-btn-hover"
                                 style={S.iconBtn}
                                 title="Nuevo mensaje"
                                 onClick={() => setIsNewMessageOpen(true)}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                             >
                                 <Plus style={{ width: 16, height: 16 }} />
                             </button>
@@ -302,10 +304,9 @@ export default function MessagingLayout() {
                                     searchResults?.map(customer => (
                                         <div
                                             key={customer.id}
+                                            className="search-item-hover"
                                             style={S.searchItem}
                                             onClick={() => handleSelectCustomer(customer.id)}
-                                            onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                                         >
                                             {customer.name}
                                         </div>
@@ -343,13 +344,12 @@ export default function MessagingLayout() {
                             return (
                                 <div
                                     key={`${conv.customer.id}-${activeChannel}`}
+                                    className="row-hover-bg"
                                     style={S.convItem(isActive)}
                                     onClick={() => {
                                         setMobileSidebarOpen(false);
                                         navigate(`/admin/messages/${conv.customer.id}`);
                                     }}
-                                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f8fafc'; }}
-                                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <p style={S.convName}>

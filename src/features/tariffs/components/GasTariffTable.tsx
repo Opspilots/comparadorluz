@@ -78,12 +78,12 @@ export function GasTariffTable({ tariffs, selectedIds, onSelectionChange, viewDa
                             onClick={() => navigate(`/admin/tariffs/${tariff.id}`)}
                             style={{
                                 cursor: 'pointer',
-                                transition: 'background-color 0.2s',
                                 borderBottom: '1px solid #f1f5f9',
-                                background: selectedIds.includes(tariff.id) ? '#f0f9ff' : 'transparent'
+                                // Only set an inline background when selected — leaving it unset
+                                // otherwise lets the global `tbody tr:hover` rule (index.css) apply
+                                // on hover, and keeps the selection tint visible while hovering too.
+                                ...(selectedIds.includes(tariff.id) ? { background: '#f0f9ff' } : {}),
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         >
                             <td style={{ padding: '1rem' }} onClick={(e) => e.stopPropagation()}>
                                 <input

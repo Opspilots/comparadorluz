@@ -235,6 +235,75 @@ a {
 }
 
 /* ============================================================
+   HOVER UTILITY CLASSES
+   Reusable :hover treatments so components don't need to mutate
+   inline styles from onMouseEnter/onMouseLeave — that pattern breaks
+   whenever the element also needs a *static* inline background/border/
+   shadow, since inline styles always win over stylesheet rules (a
+   plain CSS :hover can never "un-set" a value the element already has
+   inline). Moving the resting value into the class (or leaving it out
+   of the inline style entirely) lets :hover do its job normally.
+   ============================================================ */
+.row-hover-bg {
+  transition: background-color 0.15s ease;
+}
+.row-hover-bg:hover {
+  background-color: var(--color-background);
+}
+
+.icon-btn-hover {
+  background-color: #fff;
+  transition: background-color 0.15s;
+}
+.icon-btn-hover:hover {
+  background-color: var(--color-background);
+}
+
+.search-item-hover:hover {
+  background-color: #f1f5f9;
+}
+
+.card-hover-shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.15s ease-in-out;
+}
+.card-hover-shadow:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn-hover-gray-bg {
+  background-color: #fff;
+  transition: background-color 0.15s;
+}
+.btn-hover-gray-bg:hover {
+  background-color: #f9fafb;
+}
+
+.dropzone-hover-bg {
+  background-color: #f9fafb;
+  transition: background-color 0.2s;
+}
+.dropzone-hover-bg.is-interactive:hover {
+  background-color: #f3f4f6;
+}
+
+.schedule-option-card {
+  border: 1px solid #e5e7eb;
+  transition: border-color 0.2s;
+}
+.schedule-option-card:hover {
+  border-color: #2563eb;
+}
+
+.link-back-hover {
+  padding-left: 0;
+  transition: padding-left 0.15s ease;
+}
+.link-back-hover:hover {
+  padding-left: 0.5rem;
+}
+
+/* ============================================================
    BUTTON BASE CLASSES
    ============================================================ */
 .btn {

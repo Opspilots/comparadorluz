@@ -121,10 +121,10 @@ export function ContactsListPage() {
                                     key={contact.id}
                                     style={{
                                         borderBottom: idx < contacts.length - 1 ? '1px solid var(--border-light)' : 'none',
-                                        transition: 'background 0.15s',
                                     }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background)')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                    // Background hover handled by the global `tbody tr:hover` rule
+                                    // in index.css (already matches var(--color-background)) — no
+                                    // need to mutate inline style on mouse events.
                                 >
                                     <td style={{ padding: '0.875rem 1rem', fontWeight: 500, fontSize: '0.875rem' }}>
                                         {contact.first_name} {contact.last_name}

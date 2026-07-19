@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/components/ui
 
 import { TariffRate, TariffVersion, Supplier, TariffStructure, TariffSchedule } from '@/shared/types';
 import { findActiveRate, hasRateHistory, toPowerMonthly } from '../lib/tariffUtils';
+import { getBooleanStatusChipClass } from '@/shared/lib/statusColors';
 
 interface JoinedTariff extends TariffVersion {
     tariff_rates: TariffRate[];
@@ -175,18 +176,6 @@ export default function TariffDetailsPage() {
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Loader2 className="animate-spin" /></div>;
     if (!tariff) return <div>Tarifa no encontrada</div>;
 
-    const badgeStyle = (isActive: boolean) => ({
-        padding: '0.25rem 0.75rem',
-        borderRadius: '9999px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        textTransform: 'uppercase' as const,
-        border: '1px solid transparent',
-        background: isActive ? '#dcfce7' : '#f3f4f6',
-        color: isActive ? '#15803d' : '#4b5563',
-        borderColor: isActive ? '#bbf7d0' : '#e5e7eb'
-    });
-
     const durationKeys = Array.from(groupedRates.keys());
 
     return (
@@ -203,7 +192,7 @@ export default function TariffDetailsPage() {
                     <div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, color: '#111827' }}>
                             {removeEmojis(tariff.tariff_name || tariff.name || '')}
-                            <span style={badgeStyle(tariff.is_active)}>
+                            <span className={getBooleanStatusChipClass(tariff.is_active)}>
                                 {tariff.is_active ? 'Activa' : 'Inactiva'}
                             </span>
                         </div>

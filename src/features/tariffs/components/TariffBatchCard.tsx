@@ -25,14 +25,12 @@ export function TariffBatchCard({ batch }: TariffBatchCardProps) {
     };
 
     return (
-        <div style={{
-            backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-            transition: 'box-shadow 0.15s ease-in-out',
-            display: 'flex', flexDirection: 'column'
-        }}
-            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'}
-            onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'}
+        <div
+            className="card-hover-shadow"
+            style={{
+                backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb',
+                display: 'flex', flexDirection: 'column'
+            }}
         >
             <div style={{ padding: '1.5rem', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h3 style={{ fontSize: '0.875rem', fontWeight: 500, margin: 0, lineHeight: 1 }}>
@@ -59,15 +57,14 @@ export function TariffBatchCard({ batch }: TariffBatchCardProps) {
             </div>
             <div style={{ padding: '1.5rem', paddingTop: 0 }}>
                 <button
+                    className="btn-hover-gray-bg"
                     onClick={() => navigate(`/admin/tariffs/${batch.id}`)}
                     style={{
                         width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, borderRadius: '0.375rem',
-                        border: '1px solid #e5e7eb', backgroundColor: 'white', color: '#1f2937',
-                        cursor: 'pointer', transition: 'background-color 0.15s'
+                        border: '1px solid #e5e7eb', color: '#1f2937',
+                        cursor: 'pointer',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                 >
                     Ver Detalles
                     <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} />

@@ -401,15 +401,13 @@ export function TariffUploadDialog({ companyId, onUploadSuccess }: TariffUploadD
                         <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
                             <div className="grid gap-4 py-4">
                                 <div
+                                    className={`dropzone-hover-bg ${isUploading ? '' : 'is-interactive'}`}
                                     style={{
                                         border: '2px dashed #e5e7eb', borderRadius: '0.5rem', padding: '2rem',
-                                        textAlign: 'center', transition: 'background-color 0.2s',
+                                        textAlign: 'center',
                                         cursor: isUploading ? 'not-allowed' : 'pointer',
                                         opacity: isUploading ? 0.5 : 1,
-                                        backgroundColor: '#f9fafb'
                                     }}
-                                    onMouseEnter={(e) => { if (!isUploading) e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
-                                    onMouseLeave={(e) => { if (!isUploading) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     <input

@@ -208,9 +208,8 @@ export function RecentActivity() {
                                 <Link
                                     key={item.id}
                                     to={link}
+                                    className="row-hover-bg"
                                     style={rowStyle}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-background)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                 >
                                     {inner}
                                 </Link>
@@ -220,9 +219,8 @@ export function RecentActivity() {
                         return (
                             <div
                                 key={item.id}
+                                className="row-hover-bg"
                                 style={rowStyle}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-background)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                             >
                                 {inner}
                             </div>

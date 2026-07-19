@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract } from '@/shared/types'
 import { Eye } from 'lucide-react'
+import { getStatusChipClass } from '@/shared/lib/statusColors'
 
 interface CommissionerContractsTabProps {
     commissionerId: string
@@ -56,17 +57,6 @@ export function CommissionerContractsTab({ commissionerId }: CommissionerContrac
         'completed': 'Completado'
     }
 
-    const badgeStyle = (status: string) => {
-        const base = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' as const, border: '1px solid transparent' }
-        switch (status) {
-            case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
-            case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
-            case 'pending': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
-            case 'cancelled': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
-            default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
-        }
-    }
-
     if (loading) {
         return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Cargando contratos...</div>
     }
@@ -108,7 +98,7 @@ export function CommissionerContractsTab({ commissionerId }: CommissionerContrac
                                     <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{contract.tariff_versions?.suppliers?.name}</div>
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem' }}>
-                                    <span style={badgeStyle(contract.status)}>
+                                    <span className={getStatusChipClass(contract.status)}>
                                         {statusLabels[contract.status] || contract.status}
                                     </span>
                                 </td>

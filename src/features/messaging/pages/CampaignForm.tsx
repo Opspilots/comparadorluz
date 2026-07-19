@@ -36,7 +36,8 @@ const STYLES = {
         height: 40,
         borderRadius: '10px',
         border: '1px solid var(--color-border)',
-        background: 'var(--surface)',
+        // No `background` here — comes from the `.icon-btn-hover` CSS class
+        // (index.css) so its :hover rule can actually apply.
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -780,10 +781,9 @@ export function CampaignForm() {
                 {/* Header */}
                 <div style={STYLES.headerRow}>
                     <button
+                        className="icon-btn-hover"
                         style={STYLES.backBtn}
                         onClick={() => navigate('/admin/messages/campaigns')}
-                        onMouseEnter={e => { (e.currentTarget.style.background = '#f8fafc'); }}
-                        onMouseLeave={e => { (e.currentTarget.style.background = 'var(--surface)'); }}
                     >
                         <ArrowLeft style={{ width: 18, height: 18, color: '#475569' }} />
                     </button>

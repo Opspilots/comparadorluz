@@ -128,9 +128,8 @@ export function Step4ScheduleRules({ data, onChange }: Step4Props) {
                                 onChange && onChange(schedules);
                                 setMode('custom');
                             }}
-                            style={{ padding: '1rem', background: 'white', border: '1px solid #e5e7eb', borderRadius: '0.5rem', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#2563eb')}
-                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e7eb')}
+                            className="schedule-option-card"
+                            style={{ padding: '1rem', background: 'white', borderRadius: '0.5rem', cursor: 'pointer', textAlign: 'left' }}
                         >
                             <div style={{ fontWeight: 600, color: '#111827' }}>24 Horas</div>
                             <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Un único periodo (P1) todo el día</div>
@@ -154,9 +153,8 @@ export function Step4ScheduleRules({ data, onChange }: Step4Props) {
                                 onChange && onChange(schedules);
                                 setMode('custom');
                             }}
-                            style={{ padding: '1rem', background: 'white', border: '1px solid #e5e7eb', borderRadius: '0.5rem', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#2563eb')}
-                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e7eb')}
+                            className="schedule-option-card"
+                            style={{ padding: '1rem', background: 'white', borderRadius: '0.5rem', cursor: 'pointer', textAlign: 'left' }}
                         >
                             <div style={{ fontWeight: 600, color: '#111827' }}>Punta, Llano, Valle (2.0TD)</div>
                             <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Configuración estándar española</div>

@@ -128,10 +128,10 @@ export function SupplyPointsListPage() {
                                         key={sp.id}
                                         style={{
                                             borderBottom: idx < supplyPoints.length - 1 ? '1px solid var(--border-light)' : 'none',
-                                            transition: 'background 0.15s',
                                         }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background)')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                        // Background hover handled by the global `tbody tr:hover` rule
+                                        // in index.css (already matches var(--color-background)) — no
+                                        // need to mutate inline style on mouse events.
                                     >
                                         <td style={{ padding: '0.875rem 1rem' }}>
                                             <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-main)' }}>

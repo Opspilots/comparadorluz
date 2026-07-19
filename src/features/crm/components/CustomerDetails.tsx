@@ -5,6 +5,7 @@ import { Mail, Phone, MessageSquare, Database, Users, Zap } from 'lucide-react';
 import { SipsImportDialog } from './SipsImportDialog'
 import type { Customer, Contact, SupplyPoint, Contract } from '@/shared/types'
 import { useState } from 'react'
+import { getStatusChipClass } from '@/shared/lib/statusColors'
 
 function SupplyPointWithConsumption({ sp, onRefresh }: {
     sp: SupplyPoint
@@ -73,22 +74,6 @@ function SupplyPointWithConsumption({ sp, onRefresh }: {
             )}
         </div>
     )
-}
-
-const badgeStyle = (status: string): React.CSSProperties => {
-    const base: React.CSSProperties = { padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', border: '1px solid transparent', display: 'inline-block' }
-    switch (status) {
-        case 'active': return { ...base, background: '#dcfce7', color: '#15803d', borderColor: '#bbf7d0' }
-        case 'signed': return { ...base, background: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' }
-        case 'pending': return { ...base, background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
-        case 'cancelled': return { ...base, background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }
-        case 'cliente': return { ...base, background: '#dcfce7', color: '#10b981', borderColor: '#bbf7d0' }
-        case 'perdido': return { ...base, background: '#fee2e2', color: '#ef4444', borderColor: '#fecaca' }
-        case 'propuesta': return { ...base, background: '#e0f2fe', color: '#0ea5e9', borderColor: '#bae6fd' }
-        case 'negociacion': return { ...base, background: '#fef3c7', color: '#f59e0b', borderColor: '#fde68a' }
-        case 'contactado': return { ...base, background: '#f3e8ff', color: '#8b5cf6', borderColor: '#e9d5ff' }
-        default: return { ...base, background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }
-    }
 }
 
 const statusLabels: Record<string, string> = {
@@ -161,7 +146,7 @@ export function CustomerDetails() {
                     >
                         Enviar Mensaje
                     </Link>
-                    <span style={badgeStyle(customer.status)}>
+                    <span className={getStatusChipClass(customer.status)}>
                         {statusLabels[customer.status] || customer.status}
                     </span>
                 </div>
@@ -185,7 +170,7 @@ export function CustomerDetails() {
                                         <div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                                                 <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{contract.contract_number}</span>
-                                                <span style={badgeStyle(contract.status)}>{contract.status}</span>
+                                                <span className={getStatusChipClass(contract.status)}>{contract.status}</span>
                                             </div>
                                             <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                                 {contract.tariff_versions?.suppliers?.name || 'Comercializadora desconocida'} - {contract.tariff_versions?.tariff_name}

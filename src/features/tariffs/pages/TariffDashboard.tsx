@@ -342,7 +342,7 @@ export default function TariffDashboard() {
     if (!companyId) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '24rem' }}>
-                <Loader2 className="animate-spin" style={{ color: '#0ea5e9', width: '2.5rem', height: '2.5rem' }} />
+                <Loader2 className="animate-spin" style={{ color: 'var(--color-primary)', width: '2.5rem', height: '2.5rem' }} />
             </div>
         );
     }

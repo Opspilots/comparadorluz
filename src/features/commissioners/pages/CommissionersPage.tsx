@@ -217,11 +217,11 @@ export function CommissionersPage() {
                                             alignItems: 'center',
                                             gap: '0.375rem',
                                             padding: '0.25rem 0.75rem',
-                                            background: '#eff6ff',
+                                            background: 'var(--primary-light)',
                                             borderRadius: '999px',
                                             fontSize: '0.875rem',
                                             fontWeight: 600,
-                                            color: '#1d4ed8'
+                                            color: 'var(--color-primary-hover)'
                                         }}>
                                             <FileCheck size={14} />
                                             {commissioner.stats?.total_contracts || 0}
@@ -236,11 +236,11 @@ export function CommissionersPage() {
                                         <span style={{
                                             display: 'inline-block',
                                             padding: '0.25rem 0.625rem',
-                                            background: (commissioner.stats?.pending_commission_eur || 0) > 0 ? '#fef3c7' : '#f1f5f9',
+                                            background: (commissioner.stats?.pending_commission_eur || 0) > 0 ? 'var(--warning-light)' : 'var(--border-light)',
                                             borderRadius: '6px',
                                             fontSize: '0.875rem',
                                             fontWeight: 600,
-                                            color: (commissioner.stats?.pending_commission_eur || 0) > 0 ? '#92400e' : '#64748b'
+                                            color: (commissioner.stats?.pending_commission_eur || 0) > 0 ? 'var(--warning)' : 'var(--text-muted)'
                                         }}>
                                             €{commissioner.stats?.pending_commission_eur.toFixed(2) || '0.00'}
                                         </span>

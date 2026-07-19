@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
@@ -52,6 +52,18 @@ export function ContractList() {
     const [switchingUpdating, setSwitchingUpdating] = useState(false)
     const { toast } = useToast()
     const queryClient = useQueryClient()
+
+    // Both switching dialogs stay mounted permanently once opened for the first time
+    // (instead of unmounting whenever the triggering contract goes back to null) so
+    // Radix's close animation/Presence can actually play. Only the `open` boolean
+    // toggles; the last non-null contract is kept around to render the closing frame.
+    const lastSwitchingContractRef = useRef<ContractWithRelations | null>(null)
+    if (switchingContract) lastSwitchingContractRef.current = switchingContract
+    const activeSwitchingContract = switchingContract ?? lastSwitchingContractRef.current
+
+    const lastSwitchingActionContractRef = useRef<ContractWithRelations | null>(null)
+    if (switchingActionContract) lastSwitchingActionContractRef.current = switchingActionContract
+    const activeSwitchingActionContract = switchingActionContract ?? lastSwitchingActionContractRef.current
 
     const { data: contracts = [], isLoading: loading, isError } = useQuery({
         queryKey: ['contracts'],
@@ -481,9 +493,9 @@ export function ContractList() {
                 onCancel={() => setDeleteTarget(null)}
             />
 
-            {switchingContract && (
+            {activeSwitchingContract && (
                 <SwitchingDialog
-                    contract={switchingContract}
+                    contract={activeSwitchingContract}
                     open={!!switchingContract}
                     onOpenChange={(open) => { if (!open) setSwitchingContract(null) }}
                     onSuccess={() => queryClient.invalidateQueries({ queryKey: ['contracts'] })}
@@ -491,7 +503,7 @@ export function ContractList() {
             )}
 
             {/* Switching Action Dialog — advance or confirm switching */}
-            {switchingActionContract && (
+            {activeSwitchingActionContract && (
                 <Dialog
                     open={!!switchingActionContract}
                     onOpenChange={(open) => { if (!open) setSwitchingActionContract(null) }}
@@ -515,7 +527,7 @@ export function ContractList() {
                                     <div>
                                         <DialogTitle className="text-[1.0625rem]">Gestionar Traspaso</DialogTitle>
                                         <DialogDescription className="mt-0.5">
-                                            {removeEmojis(switchingActionContract.customers?.name || 'Cliente')}
+                                            {removeEmojis(activeSwitchingActionContract.customers?.name || 'Cliente')}
                                         </DialogDescription>
                                     </div>
                                 </div>
@@ -528,18 +540,18 @@ export function ContractList() {
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem',
                                 padding: '0.625rem 0.875rem', borderRadius: 10,
-                                background: switchingActionContract.switching_status === 'in_progress' ? '#dbeafe' : '#fef3c7',
-                                border: `1px solid ${switchingActionContract.switching_status === 'in_progress' ? '#bfdbfe' : '#fde68a'}`,
+                                background: activeSwitchingActionContract.switching_status === 'in_progress' ? '#dbeafe' : '#fef3c7',
+                                border: `1px solid ${activeSwitchingActionContract.switching_status === 'in_progress' ? '#bfdbfe' : '#fde68a'}`,
                             }}>
                                 <div style={{
                                     width: 8, height: 8, borderRadius: '50%',
-                                    background: switchingActionContract.switching_status === 'in_progress' ? '#3b82f6' : '#f59e0b',
+                                    background: activeSwitchingActionContract.switching_status === 'in_progress' ? '#3b82f6' : '#f59e0b',
                                 }} />
                                 <span style={{
                                     fontSize: '0.8125rem', fontWeight: 600,
-                                    color: switchingActionContract.switching_status === 'in_progress' ? '#1d4ed8' : '#b45309',
+                                    color: activeSwitchingActionContract.switching_status === 'in_progress' ? '#1d4ed8' : '#b45309',
                                 }}>
-                                    Estado actual: {switchingStatusLabel[switchingActionContract.switching_status || ''] || switchingActionContract.switching_status}
+                                    Estado actual: {switchingStatusLabel[activeSwitchingActionContract.switching_status || ''] || activeSwitchingActionContract.switching_status}
                                 </span>
                             </div>
 
@@ -551,7 +563,7 @@ export function ContractList() {
                                 }}>
                                     <div style={{ fontSize: '0.625rem', color: '#991b1b', fontWeight: 600, textTransform: 'uppercase' }}>Desde</div>
                                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#7f1d1d' }}>
-                                        {switchingActionContract.origin_supplier_name || switchingActionContract.supply_points?.current_supplier || '—'}
+                                        {activeSwitchingActionContract.origin_supplier_name || activeSwitchingActionContract.supply_points?.current_supplier || '—'}
                                     </div>
                                 </div>
                                 <ChevronRight size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
@@ -561,13 +573,13 @@ export function ContractList() {
                                 }}>
                                     <div style={{ fontSize: '0.625rem', color: '#15803d', fontWeight: 600, textTransform: 'uppercase' }}>Hacia</div>
                                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#14532d' }}>
-                                        {removeEmojis(switchingActionContract.tariff_versions?.suppliers?.name || switchingActionContract.tariff_versions?.supplier_name || '—')}
+                                        {removeEmojis(activeSwitchingActionContract.tariff_versions?.suppliers?.name || activeSwitchingActionContract.tariff_versions?.supplier_name || '—')}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Confirmation message for completing */}
-                            {switchingActionContract.switching_status === 'in_progress' && (
+                            {activeSwitchingActionContract.switching_status === 'in_progress' && (
                                 <div style={{
                                     padding: '0.75rem', borderRadius: 10, marginBottom: '1rem',
                                     background: '#f0fdf4', border: '1px solid #bbf7d0',
@@ -596,7 +608,7 @@ export function ContractList() {
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button
                                     onClick={() => {
-                                        if (switchingActionContract) handleAdvanceSwitching(switchingActionContract, 'rejected')
+                                        if (activeSwitchingActionContract) handleAdvanceSwitching(activeSwitchingActionContract, 'rejected')
                                     }}
                                     disabled={switchingUpdating}
                                     style={{
@@ -621,36 +633,36 @@ export function ContractList() {
                                 >
                                     Cancelar
                                 </button>
-                                {getNextSwitchingStatus(switchingActionContract.switching_status) && (
+                                {getNextSwitchingStatus(activeSwitchingActionContract.switching_status) && (
                                     <button
                                         onClick={() => {
-                                            const next = getNextSwitchingStatus(switchingActionContract.switching_status)
-                                            if (next) handleAdvanceSwitching(switchingActionContract, next)
+                                            const next = getNextSwitchingStatus(activeSwitchingActionContract.switching_status)
+                                            if (next) handleAdvanceSwitching(activeSwitchingActionContract, next)
                                         }}
                                         disabled={switchingUpdating}
                                         style={{
                                             height: 34, padding: '0 16px', borderRadius: 8, fontSize: '0.8125rem',
                                             fontWeight: 600, border: 'none',
-                                            background: switchingActionContract.switching_status === 'in_progress' ? '#15803d' : 'var(--color-primary)',
+                                            background: activeSwitchingActionContract.switching_status === 'in_progress' ? '#15803d' : 'var(--color-primary)',
                                             color: '#fff', cursor: switchingUpdating ? 'not-allowed' : 'pointer',
                                             opacity: switchingUpdating ? 0.7 : 1,
                                             display: 'flex', alignItems: 'center', gap: 6,
-                                            boxShadow: switchingActionContract.switching_status === 'in_progress'
+                                            boxShadow: activeSwitchingActionContract.switching_status === 'in_progress'
                                                 ? '0 2px 8px rgba(21,128,61,0.3)'
                                                 : '0 2px 8px rgba(37,99,235,0.3)',
                                         }}
                                     >
                                         {switchingUpdating
                                             ? <Loader2 size={14} className="animate-spin" />
-                                            : switchingActionContract.switching_status === 'in_progress'
+                                            : activeSwitchingActionContract.switching_status === 'in_progress'
                                                 ? <CheckCircle2 size={14} />
                                                 : <ChevronRight size={14} />
                                         }
                                         {switchingUpdating
                                             ? 'Procesando...'
-                                            : switchingActionContract.switching_status === 'in_progress'
+                                            : activeSwitchingActionContract.switching_status === 'in_progress'
                                                 ? 'Confirmar Completado'
-                                                : `Avanzar a ${switchingStatusLabel[getNextSwitchingStatus(switchingActionContract.switching_status) || ''] || ''}`
+                                                : `Avanzar a ${switchingStatusLabel[getNextSwitchingStatus(activeSwitchingActionContract.switching_status) || ''] || ''}`
                                         }
                                     </button>
                                 )}

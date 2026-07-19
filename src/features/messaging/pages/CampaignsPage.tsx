@@ -238,10 +238,8 @@ export function CampaignsPage() {
                                 </tr>
                             ) : (
                                 filteredCampaigns.map((campaign) => (
-                                    <tr key={campaign.id} style={{ transition: 'background 0.15s', borderBottom: '1px solid var(--border-light)' }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                    >
+                                    // Background hover handled by the global `tbody tr:hover` rule in index.css
+                                    <tr key={campaign.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                         <td style={{ ...STYLES.td, fontWeight: 600, color: '#0f172a' }}>
                                             <div>
                                                 {removeEmojis(campaign.name)}

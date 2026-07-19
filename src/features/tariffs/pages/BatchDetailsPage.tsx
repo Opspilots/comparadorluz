@@ -103,14 +103,13 @@ export default function BatchDetailsPage() {
         <div style={{ maxWidth: '64rem', margin: '0 auto', padding: '2rem 1rem', animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ marginBottom: '1.5rem' }}>
                 <button
+                    className="link-back-hover"
                     onClick={() => navigate('/admin/tariffs')}
                     style={{
-                        marginBottom: '1rem', paddingLeft: 0, background: 'transparent',
+                        marginBottom: '1rem', background: 'transparent',
                         border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
                         color: '#4b5563', fontSize: '0.875rem'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.paddingLeft = '0.5rem'}
-                    onMouseLeave={(e) => e.currentTarget.style.paddingLeft = '0'}
                 >
                     <ArrowLeft size={16} style={{ marginRight: '0.5rem' }} />
                     Volver al Dashboard
@@ -150,14 +149,11 @@ export default function BatchDetailsPage() {
                         batch.files.map((file, idx) => (
                             <div
                                 key={file.id}
+                                className="btn-hover-gray-bg"
                                 style={{
                                     padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    backgroundColor: 'white',
                                     borderBottom: idx < batch.files.length - 1 ? '1px solid #f3f4f6' : 'none',
-                                    transition: 'background-color 0.2s'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{ padding: '0.5rem', backgroundColor: '#eff6ff', borderRadius: '0.25rem', color: '#3b82f6' }}>
