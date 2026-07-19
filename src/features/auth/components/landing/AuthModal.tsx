@@ -69,7 +69,7 @@ export function AuthModal({
 
                         <div className="relative z-10 space-y-3">
                             {[
-                                '500+ asesores activos',
+                                '500+ corredurías activas',
                                 '200+ comercializadoras',
                                 'IA integrada en cada paso',
                             ].map((text, i) => (
@@ -87,7 +87,7 @@ export function AuthModal({
                     <div className="flex-1 flex flex-col justify-center">
                         {/* Compact brand/social-proof strip — mobile only.
                             The left brand panel is hidden below md, so this keeps
-                            the "500+ asesores activos" trust signal visible instead
+                            the "500+ corredurías activas" trust signal visible instead
                             of losing it entirely on mobile. */}
                         <div
                             className="md:hidden flex items-center justify-center gap-2 py-2.5 px-4 text-center"
@@ -95,7 +95,7 @@ export function AuthModal({
                         >
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" aria-hidden="true" />
                             <span className="text-[12px] font-semibold text-slate-200 tracking-tight">
-                                500+ asesores activos ya usan EnergyDeal
+                                500+ corredurías activas ya usan EnergyDeal
                             </span>
                         </div>
 

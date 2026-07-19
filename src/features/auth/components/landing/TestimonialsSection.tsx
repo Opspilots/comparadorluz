@@ -11,8 +11,8 @@ gsap.registerPlugin(useGSAP, ScrollTrigger)
 const testimonials = [
     {
         name: 'Carlos Mendoza',
-        role: 'Asesor energético independiente',
-        location: 'Madrid',
+        role: 'Responsable de Energía',
+        location: 'Correduría Aliaga Seguros, Madrid',
         initials: 'CM',
         color: '#2563eb',
         quote: 'Antes tardaba 30 minutos en preparar una comparativa. Con EnergyDeal lo hago en menos de 2 y el cliente ve el ahorro al instante. He cerrado un 40% más de contratos este trimestre.',
@@ -33,8 +33,8 @@ const testimonials = [
     },
     {
         name: 'Javier Ruiz',
-        role: 'CEO · EnergíaPymes.es',
-        location: 'Sevilla',
+        role: 'Director de Negocio',
+        location: 'Seguros Mediterráneo, Sevilla',
         initials: 'JR',
         color: '#059669',
         quote: 'Gestionamos más de 400 clientes con EnergyDeal. El módulo de comisiones nos ahorra horas de cálculos manuales cada mes.',
@@ -77,7 +77,7 @@ export function TestimonialsSection() {
                 <div className="testimonials-header mb-14">
                     <SectionHeading
                         kicker="Testimonios"
-                        title={<>Lo que dicen los asesores<br /><span className="gradient-text-bp">que ya usan EnergyDeal</span></>}
+                        title={<>Lo que dicen las corredurías<br /><span className="gradient-text-bp">que ya usan EnergyDeal</span></>}
                     />
                 </div>
 

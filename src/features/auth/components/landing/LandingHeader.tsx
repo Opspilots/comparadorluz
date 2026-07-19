@@ -43,7 +43,13 @@ interface LandingHeaderProps {
 // `tier: 'core'` links stay visible from `lg:` (1024px) up — the tablet range
 // gets SOME anchor navigation instead of the previous logo+hamburger-only dead
 // zone. `tier: 'more'` links only join at `xl:` (1280px) once there's room for
-// all six without cramping the header.
+// all six without cramping the header. Because of that split, the hamburger
+// menu (which lists ALL links, core + more) is kept mounted through the same
+// `lg:`-`xl:` gap instead of disappearing at `lg:` — otherwise 1024-1279px would
+// have no way to reach Integraciones/Blog. This trades a brief overlap (a few
+// core links visible in both the inline nav and the hamburger panel between
+// 1024-1279px) for guaranteed access, which is safer than widening the inline
+// nav and risking it colliding with the logo/actions at 1024px.
 const navLinks = [
     { label: 'Funcionalidades', href: '#funcionalidades', tier: 'core' as const },
     { label: 'Cómo funciona', href: '#como-funciona', tier: 'core' as const },
@@ -161,10 +167,12 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                                 Empezar gratis
                             </LandingButton>
 
-                            {/* Mobile toggle */}
+                            {/* Mobile toggle — stays through xl: (not lg:) so the 1024-1279px
+                                range keeps a way to reach the tier:'more' links (Integraciones,
+                                Blog) that only join the inline nav at xl:. */}
                             <button
                                 onClick={() => setMobileOpen(!mobileOpen)}
-                                className="lg:hidden bg-transparent border-none cursor-pointer text-slate-300 rounded-lg hover:bg-white/[0.06] transition-colors ml-1 flex items-center justify-center"
+                                className="xl:hidden bg-transparent border-none cursor-pointer text-slate-300 rounded-lg hover:bg-white/[0.06] transition-colors ml-1 flex items-center justify-center"
                                 style={{ minWidth: '44px', minHeight: '44px' }}
                                 aria-label="Menú"
                                 aria-expanded={mobileOpen}
@@ -175,11 +183,11 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                         </div>
                     </div>
 
-                    {/* Mobile menu */}
+                    {/* Mobile menu — mirrors the xl: cutoff on the toggle button above */}
                     <div
                         id="mobile-nav-menu"
                         ref={mobileNavRef}
-                        className={`lg:hidden overflow-hidden transition-all duration-300 ${mobileOpen ? 'max-h-[480px] opacity-100' : 'max-h-0 opacity-0'}`}
+                        className={`xl:hidden overflow-hidden transition-all duration-300 ${mobileOpen ? 'max-h-[480px] opacity-100' : 'max-h-0 opacity-0'}`}
                         style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
                     >
                         <nav className="flex flex-col px-6 pb-6 pt-3 gap-0.5" aria-label="Navegación móvil">
@@ -221,7 +229,7 @@ export function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
                 target. Sits below the header's z-50 so the panel itself stays crisp. */}
             {mobileOpen && (
                 <div
-                    className="fixed inset-0 z-40 lg:hidden transition-opacity duration-300"
+                    className="fixed inset-0 z-40 xl:hidden transition-opacity duration-300"
                     style={{
                         top: 'var(--header-h, 64px)',
                         background: 'rgba(2,2,9,0.6)',

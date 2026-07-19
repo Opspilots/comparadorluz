@@ -161,7 +161,7 @@ export function FeaturesSection() {
                     className="features-header mb-16"
                     kicker="Funcionalidades del CRM Energético"
                     title={<>Herramientas diseñadas para{' '}<span style={{ color: 'var(--landing-accent-blue-soft)' }}>cerrar operaciones</span></>}
-                    subtitle="Todo lo que un asesor energético necesita, sin complicaciones."
+                    subtitle="Todo lo que una correduría necesita para vender energía, sin complicaciones."
                     subtitleMaxWidth="500px"
                 />
 

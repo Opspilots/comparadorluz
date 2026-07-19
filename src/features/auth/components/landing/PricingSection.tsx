@@ -29,7 +29,7 @@ const tiers = [
     },
     {
         name: 'Estándar',
-        desc: 'Para asesores en activo',
+        desc: 'Para corredurías en marcha',
         monthly: 19,
         yearly: 17,
         features: [

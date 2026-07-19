@@ -306,17 +306,20 @@ export function HeroSection({ onOpenAuth }: HeroSectionProps) {
             >
                 {/* Left: text */}
                 <div className="flex flex-col">
-                    {/* Eyebrow badge */}
+                    {/* Eyebrow badge — items-center keeps the dot vertically centered even if
+                        the copy wraps to 2 lines; the max-[413px]: variants shrink text/tracking/
+                        padding only below the breakpoint where the longer copy no longer fits on
+                        one line, so 414px+ (incl. the 768px+ layouts) is untouched. */}
                     <div
-                        className="hero-badge inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full mb-8 w-fit"
+                        className="hero-badge inline-flex items-center gap-2.5 max-[413px]:gap-1.5 px-3.5 max-[413px]:px-2.5 py-1.5 rounded-full mb-8 w-fit"
                         style={{
                             background: 'rgba(37,99,235,0.08)',
                             border: '1px solid rgba(37,99,235,0.2)',
                         }}
                     >
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[11px] font-semibold text-blue-300/80 tracking-[0.06em] uppercase">
-                            CRM para asesores energéticos
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                        <span className="text-[11px] max-[413px]:text-[9.5px] font-semibold text-blue-300/80 tracking-[0.06em] max-[413px]:tracking-[0.02em] uppercase">
+                            CRM para aseguradoras y corredurías
                         </span>
                     </div>
 

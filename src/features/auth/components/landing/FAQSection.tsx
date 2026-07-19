@@ -11,11 +11,11 @@ gsap.registerPlugin(useGSAP, ScrollTrigger)
 const faqs = [
     {
         q: '¿Qué es EnergyDeal y para quién está pensado?',
-        a: 'EnergyDeal es un CRM especializado en el sector energético, diseñado para asesores energéticos independientes, corredurías de seguros que ofrecen energía y agencias comercializadoras. Centraliza el comparador de tarifas, la gestión de clientes, contratos y mensajería en una sola plataforma.',
+        a: 'EnergyDeal es un CRM especializado en el sector energético, pensado para aseguradoras y corredurías de seguros que quieren vender energía a su cartera de clientes. Centraliza el comparador de tarifas, la gestión de clientes, contratos y mensajería en una sola plataforma.',
     },
     {
-        q: '¿Puedo usar EnergyDeal si tengo una correduría de seguros?',
-        a: 'Sí, absolutamente. Muchas corredurías de seguros están incorporando la venta de energía como servicio adicional. EnergyDeal está adaptado para este perfil, permitiéndote gestionar tanto clientes de seguros como suministros energéticos desde el mismo panel.',
+        q: '¿Puedo usar EnergyDeal si soy una aseguradora o correduría de seguros?',
+        a: 'Sí, EnergyDeal está pensado precisamente para esto. Muchas corredurías y aseguradoras añaden la venta de energía como línea de ingresos adicional sobre la cartera de pólizas que ya gestionan. Gestionas clientes de seguros y suministros energéticos desde el mismo panel.',
     },
     {
         q: '¿Cuántas tarifas puedo comparar con la plataforma?',
@@ -39,7 +39,7 @@ const faqs = [
     },
     {
         q: '¿Puedo gestionar varios comerciales o usuarios?',
-        a: 'Sí, según el plan. El plan Profesional permite usuarios ilimitados, ideal para agencias o corredurías con equipos comerciales. Cada usuario tiene su propio acceso y puedes controlar los permisos desde el panel de administración.',
+        a: 'Sí, según el plan. El plan Profesional permite usuarios ilimitados, ideal para aseguradoras o corredurías con equipos comerciales. Cada usuario tiene su propio acceso y puedes controlar los permisos desde el panel de administración.',
     },
 ]
 

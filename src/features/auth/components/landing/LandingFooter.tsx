@@ -52,7 +52,7 @@ export function LandingFooter() {
                             </span>
                         </div>
                         <p className="text-[13px] text-slate-600 leading-relaxed mb-5 max-w-[200px]">
-                            El CRM para asesores energéticos que cierra más contratos.
+                            El CRM para corredurías y aseguradoras que cierra más contratos de energía.
                         </p>
                         <div className="flex gap-2">
                             {socialLinks.map(({ Icon, label, href }) => (

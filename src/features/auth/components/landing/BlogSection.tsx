@@ -21,7 +21,7 @@ const posts = [
     {
         category: 'CRM',
         catColor: '#7c3aed',
-        title: 'Gestión de cartera de clientes para asesores energéticos',
+        title: 'Gestión de cartera de clientes para corredurías de seguros',
         excerpt: 'Cómo organizar tu cartera con CIF y CUPS, automatizar el seguimiento y aumentar tu tasa de conversión.',
         date: '28 Mar 2026',
         readTime: '6 min',

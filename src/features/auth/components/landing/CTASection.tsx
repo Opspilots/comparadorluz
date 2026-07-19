@@ -48,7 +48,7 @@ export function CTASection({ onOpenAuth }: CTASectionProps) {
                 <SectionHeading
                     className="mb-10"
                     title={<><span className="text-white">Empieza a vender energía </span><span className="gradient-text-bp">de otra manera</span></>}
-                    subtitle="Únete a los asesores energéticos y corredurías que ya usan EnergyDeal para gestionar clientes, comparar tarifas y cerrar más contratos."
+                    subtitle="Únete a las aseguradoras y corredurías que ya usan EnergyDeal para gestionar su cartera, comparar tarifas y cerrar más contratos."
                     subtitleMaxWidth="560px"
                 />
 
