@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
 // No user auth — Stripe calls this directly with its own signature header.
-
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // ── Stripe webhook signature verification ────────────────────────────────────
@@ -98,7 +98,7 @@ async function isProtectedPlan(supabase: ReturnType<typeof createClient>, compan
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+serve(async (req: Request) => {
     // Webhook endpoints should return 200 quickly — never redirect Stripe.
     // CORS is not needed here (Stripe is a server, not a browser).
 
@@ -143,10 +143,26 @@ Deno.serve(async (req: Request) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    const eventId = event.id as string
     const eventType = event.type as string
     const eventData = (event.data as Record<string, unknown>).object as Record<string, unknown>
 
-    console.log(`Stripe webhook received: ${eventType}`)
+    console.log(`Stripe webhook received: ${eventType} (event_id: ${eventId})`)
+
+    // ── Idempotency check: avoid processing duplicate events ────────────────
+    const { data: existingEvent } = await supabase
+        .from('stripe_webhook_events')
+        .select('id')
+        .eq('stripe_event_id', eventId)
+        .single()
+
+    if (existingEvent) {
+        console.log(`Stripe event ${eventId} already processed — returning 200`)
+        return new Response(JSON.stringify({ received: true, duplicate: true }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+        })
+    }
 
     try {
         switch (eventType) {
@@ -311,6 +327,21 @@ Deno.serve(async (req: Request) => {
             default:
                 console.log(`Stripe webhook: unhandled event type "${eventType}" — ignoring`)
         }
+
+        // ── Record event as processed ───────────────────────────────────────
+        const { error: insertErr } = await supabase
+            .from('stripe_webhook_events')
+            .insert({
+                stripe_event_id: eventId,
+                event_type: eventType,
+                company_id: null, // Will be null for most events; specific handlers could override
+            })
+
+        if (insertErr) {
+            console.error('Failed to record processed event:', insertErr.message)
+            // Continue anyway — we already processed the event
+        }
+
     } catch (handlerErr: unknown) {
         const msg = handlerErr instanceof Error ? handlerErr.message : String(handlerErr)
         console.error(`Error handling Stripe event "${eventType}":`, msg)

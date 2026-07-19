@@ -129,8 +129,7 @@ export function ContractList() {
             setSwitchingActionContract(null)
             queryClient.invalidateQueries({ queryKey: ['contracts'] })
         } catch (err) {
-            const e = err as Error
-            toast({ title: 'Error', description: getErrorMessage(e), variant: 'destructive' })
+            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
         } finally {
             setSwitchingUpdating(false)
         }

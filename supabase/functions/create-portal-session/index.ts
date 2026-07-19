@@ -1,5 +1,5 @@
 // deno-lint-ignore-file
-
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 import { getCorsHeaders } from "../_shared/cors.ts"
@@ -26,7 +26,7 @@ async function stripeRequest(
     return { ok: res.ok, status: res.status, data }
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req)
 
     if (req.method === 'OPTIONS') {
@@ -80,7 +80,21 @@ Deno.serve(async (req: Request) => {
 
         const companyId: string = callerUser.company_id
 
-        // ── 3. Parse request body ───────────────────────────────────────────
+        // ── 3. Check role (RBAC) ────────────────────────────────────────────
+        const { data: userRole, error: roleError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (roleError || !userRole?.role || !['admin', 'manager'].includes(userRole.role)) {
+            return new Response(JSON.stringify({ error: 'No tienes permiso para acceder al portal de facturación' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403,
+            })
+        }
+
+        // ── 4. Parse request body ───────────────────────────────────────────
         const body = await req.json()
         const { return_url } = body as { return_url: string }
 

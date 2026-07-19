@@ -90,7 +90,7 @@ export function StatsSection() {
                                     {stat.prefix}0{stat.value !== 0 ? stat.suffix : ''}
                                 </span>
                             </div>
-                            <div className="text-sm text-slate-400 font-medium leading-snug">{stat.label}</div>
+                            <div className="text-sm text-slate-500 font-medium leading-snug">{stat.label}</div>
                         </div>
                     ))}
                 </div>

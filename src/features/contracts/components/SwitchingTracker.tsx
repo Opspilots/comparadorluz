@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import type { Contract, SwitchingStatus } from '@/shared/types'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/shared/lib/errors'
 import {
     ArrowRightLeft,
     Clock,
@@ -159,7 +158,7 @@ export function SwitchingTracker({ contract, onStatusChange }: SwitchingTrackerP
             onStatusChange?.()
         } catch (err) {
             const e = err as Error
-            toast({ title: 'Error', description: getErrorMessage(e), variant: 'destructive' })
+            toast({ title: 'Error', description: e.message, variant: 'destructive' })
         } finally {
             setUpdating(false)
         }

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/shared/lib/errors'
 import type { DataRetentionPolicy, DataCategory } from '@/shared/types'
 import {
     Save,
@@ -107,7 +106,7 @@ export function DataRetentionSettings({ companyId }: Props) {
             setEditedAutoDelete({})
             load()
         } catch (err) {
-            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+            toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' })
         } finally {
             setSaving(false)
         }

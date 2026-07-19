@@ -1,7 +1,7 @@
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
-import { Mail, Phone, MessageSquare, Database } from 'lucide-react';
+import { Mail, Phone, MessageSquare, Database, Users, Zap } from 'lucide-react';
 import { SipsImportDialog } from './SipsImportDialog'
 import type { Customer, Contact, SupplyPoint, Contract } from '@/shared/types'
 import { useState } from 'react'
@@ -206,7 +206,19 @@ export function CustomerDetails() {
                     {/* Section: Supply Points */}
                     <section className="card-padded tour-customer-supply-points">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Zap size={16} color="var(--color-primary)" />
+                                <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>Puntos de Suministro</span>
+                                <span style={{ padding: '0.125rem 0.5rem', background: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: '9999px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    {supplyPoints.length}
+                                </span>
+                            </div>
+                            <Link
+                                to={`/crm/${id}/supply-points`}
+                                style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                                Gestionar →
+                            </Link>
                         </div>
                         {supplyPoints.length === 0 ? (
                             <p style={{ color: 'var(--text-muted)' }}>No hay puntos de suministro registrados.</p>
@@ -230,7 +242,19 @@ export function CustomerDetails() {
                     {/* Contacts Section */}
                     <div style={{ background: 'white', padding: '1.5rem', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Users size={15} color="var(--color-primary)" />
+                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Contactos</span>
+                                <span style={{ padding: '0.1rem 0.4rem', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '9999px', fontSize: '0.7rem', color: '#64748b' }}>
+                                    {contacts.length}
+                                </span>
+                            </div>
+                            <Link
+                                to={`/crm/${id}/contacts`}
+                                style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'none' }}
+                            >
+                                Ver todos →
+                            </Link>
                         </div>
 
                         {/* Emails Section */}

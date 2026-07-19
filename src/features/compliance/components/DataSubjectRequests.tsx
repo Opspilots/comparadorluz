@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/shared/lib/errors'
 import type { DataSubjectRequest, DataSubjectRequestType, DataSubjectRequestStatus, Customer } from '@/shared/types'
 import {
     Shield,
@@ -110,7 +109,7 @@ export function DataSubjectRequests({ companyId }: Props) {
             setFormDescription('')
             load()
         } catch (err) {
-            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+            toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' })
         } finally {
             setSaving(false)
         }
@@ -140,7 +139,7 @@ export function DataSubjectRequests({ companyId }: Props) {
             .eq('company_id', companyId)
 
         if (error) {
-            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
+            toast({ title: 'Error', description: error.message, variant: 'destructive' })
         } else {
             toast({ title: `Solicitud marcada como: ${STATUS_CONFIG[newStatus].label}` })
             load()

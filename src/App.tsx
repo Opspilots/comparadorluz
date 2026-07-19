@@ -13,7 +13,6 @@ const Login = lazy(() => import('@/features/auth/components/Login').then(m => ({
 const ConsentSignPage = lazy(() => import('@/features/compliance/pages/ConsentSignPage').then(m => ({ default: m.ConsentSignPage })))
 const LegalPage = lazy(() => import('@/features/landing/pages/LegalPage').then(m => ({ default: m.LegalPage })))
 const BlogPage = lazy(() => import('@/features/landing/pages/BlogPage').then(m => ({ default: m.BlogPage })))
-const BlogArticlePage = lazy(() => import('@/features/landing/pages/BlogArticlePage').then(m => ({ default: m.BlogArticlePage })))
 const TariffDashboard = lazy(() => import('@/features/tariffs/pages/TariffDashboard'))
 const TariffEditorPage = lazy(() => import('@/features/tariffs/pages/TariffEditorPage').then(m => ({ default: m.TariffEditorPage })))
 const TariffDetailsPage = lazy(() => import('@/features/tariffs/pages/TariffDetailsPage'))
@@ -31,6 +30,8 @@ const ComparisonHistory = lazy(() => import('@/features/comparator/pages/Compari
 const ContactForm = lazy(() => import('@/features/crm/components/ContactForm').then(m => ({ default: m.ContactForm })))
 const SupplyPointForm = lazy(() => import('@/features/crm/components/SupplyPointForm').then(m => ({ default: m.SupplyPointForm })))
 const CustomerForm = lazy(() => import('@/features/crm/components/CustomerForm').then(m => ({ default: m.CustomerForm })))
+const ContactsListPage = lazy(() => import('@/features/crm/pages/ContactsListPage').then(m => ({ default: m.ContactsListPage })))
+const SupplyPointsListPage = lazy(() => import('@/features/crm/pages/SupplyPointsListPage').then(m => ({ default: m.SupplyPointsListPage })))
 const CampaignsPage = lazy(() => import('@/features/messaging/pages/CampaignsPage').then(m => ({ default: m.CampaignsPage })))
 const CampaignForm = lazy(() => import('@/features/messaging/pages/CampaignForm').then(m => ({ default: m.CampaignForm })))
 const ContractList = lazy(() => import('@/features/contracts/components/ContractList').then(m => ({ default: m.ContractList })))
@@ -188,7 +189,7 @@ function App() {
                     <Routes>
                         <Route path="/login" element={<Login />} />
                         <Route path="/blog" element={<BlogPage />} />
-                        <Route path="/blog/:slug" element={<BlogArticlePage />} />
+                        <Route path="/blog/:slug" element={<BlogPage />} />
                         <Route path="/legal/:page" element={<LegalPage />} />
                         <Route path="/consent/sign/:token" element={<ConsentSignPage />} />
                         <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
@@ -197,13 +198,15 @@ function App() {
                             <Route path="/comparator" element={<FeatureGate feature="comparator"><ComparatorForm /></FeatureGate>} />
                             <Route path="/comparator/history" element={<FeatureGate feature="comparator"><ComparisonHistory /></FeatureGate>} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/settings/subscription" element={<AdminRoute><SubscriptionPage /></AdminRoute>} />
+                            <Route path="/settings/subscription" element={<SubscriptionPage />} />
                             <Route path="/admin/plans" element={<AdminRoute><AdminPlansPage /></AdminRoute>} />
                             <Route path="/crm" element={<FeatureGate feature="crm"><CustomerList /></FeatureGate>} />
                             <Route path="/crm/new" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
                             <Route path="/crm/:id" element={<FeatureGate feature="crm"><CustomerDetails /></FeatureGate>} />
                             <Route path="/crm/:id/edit" element={<FeatureGate feature="crm"><CustomerForm /></FeatureGate>} />
+                            <Route path="/crm/:customerId/contacts" element={<FeatureGate feature="crm"><ContactsListPage /></FeatureGate>} />
                             <Route path="/crm/:customerId/contacts/new" element={<FeatureGate feature="crm"><ContactForm /></FeatureGate>} />
+                            <Route path="/crm/:customerId/supply-points" element={<FeatureGate feature="crm"><SupplyPointsListPage /></FeatureGate>} />
                             <Route path="/crm/:customerId/supply-points/new" element={<FeatureGate feature="crm"><SupplyPointForm /></FeatureGate>} />
                             <Route path="/commissioners" element={<FeatureGate feature="commissioners"><CommissionersPage /></FeatureGate>} />
                             <Route path="/commissioners/:id" element={<FeatureGate feature="commissioners"><CommissionerDetailPage /></FeatureGate>} />

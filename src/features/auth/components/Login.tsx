@@ -15,7 +15,10 @@ export function Login() {
     const [showAuthModal, setShowAuthModal] = useState(false)
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
 
-
+    // Safety-net redirect: if a user with an existing/refreshed session lands
+    // on /login (bookmark, back button, stale tab), bounce them to the app
+    // instead of showing the marketing page. The Google OAuth callback itself
+    // redirects straight to '/' now, so this only fires for the other paths.
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
@@ -109,7 +112,7 @@ export function Login() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/login`,
+                    redirectTo: `${window.location.origin}/`,
                 },
             })
             if (error) throw error

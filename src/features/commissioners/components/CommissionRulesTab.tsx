@@ -5,7 +5,6 @@ import type { CommissionRule } from '@/shared/types'
 import { CreateRuleDialog } from './CreateRuleDialog'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/shared/lib/errors'
 import { Plus, Trash2, ToggleLeft, ToggleRight, Pencil } from 'lucide-react'
 
 interface CommissionRulesTabProps {
@@ -88,7 +87,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
             .eq('company_id', companyId)
 
         if (error) {
-            toast({ title: 'Error', description: 'No se pudo eliminar la regla: ' + getErrorMessage(error), variant: 'destructive' })
+            toast({ title: 'Error', description: 'No se pudo eliminar la regla: ' + error.message, variant: 'destructive' })
         } else {
             toast({ title: 'Regla eliminada', description: 'La regla se ha eliminado permanentemente' })
             fetchRules()
@@ -116,7 +115,7 @@ export function CommissionRulesTab({ commissionerId }: CommissionRulesTabProps =
             .eq('company_id', companyId)
 
         if (error) {
-            toast({ title: 'Error', description: 'No se pudo actualizar la regla: ' + getErrorMessage(error), variant: 'destructive' })
+            toast({ title: 'Error', description: 'No se pudo actualizar la regla: ' + error.message, variant: 'destructive' })
         } else {
             toast({ title: 'Regla actualizada', description: `Porcentaje cambiado a ${pct}%` })
             setEditingRule(null)

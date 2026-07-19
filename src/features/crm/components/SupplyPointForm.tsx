@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '@/shared/lib/supabase'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/shared/lib/errors'
 
 export function SupplyPointForm() {
     const { customerId } = useParams<{ customerId: string }>()
@@ -60,7 +59,7 @@ export function SupplyPointForm() {
 
             navigate(`/crm/${customerId}`)
         } catch (err: unknown) {
-            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' })
+            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Error al guardar punto de suministro', variant: 'destructive' })
         } finally {
             setLoading(false)
         }
