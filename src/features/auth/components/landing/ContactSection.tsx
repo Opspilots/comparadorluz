@@ -35,18 +35,46 @@ export function ContactSection() {
         })
     }, { scope: sectionRef })
 
+    // Mirrors the required (*) fields in the JSX below — nombre, email, mensaje.
+    // `noValidate` on the <form> disables native browser validation (it fought
+    // with the custom error UI), so this is now the only gate before the insert.
+    const validateForm = (): string | null => {
+        if (!form.nombre.trim()) return 'Por favor, indica tu nombre.'
+        if (!form.email.trim()) return 'Por favor, indica tu email.'
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(form.email.trim())) return 'Introduce un email válido.'
+        if (!form.mensaje.trim()) return 'Cuéntanos brevemente en qué podemos ayudarte.'
+        return null
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        const validationError = validateForm()
+        if (validationError) {
+            setSubmitError(validationError)
+            return
+        }
         setSending(true)
         setSubmitError(null)
         try {
-            const { error } = await supabase.from('contact_requests').insert({
-                nombre: form.nombre,
-                email: form.email,
-                empresa: form.empresa || null,
-                mensaje: form.mensaje,
+            const { error } = await supabase.functions.invoke('submit-contact-request', {
+                body: {
+                    nombre: form.nombre,
+                    email: form.email,
+                    empresa: form.empresa || null,
+                    mensaje: form.mensaje,
+                },
             })
-            if (error) throw error
+            if (error) {
+                // supabase.functions.invoke surfaces non-2xx as a FunctionsHttpError
+                // whose `context` is the raw Response — inspect it for a 429.
+                const status = (error as { context?: Response })?.context?.status
+                if (status === 429) {
+                    setSubmitError('Demasiados intentos. Prueba de nuevo en unos minutos.')
+                    return
+                }
+                throw error
+            }
             setSent(true)
         } catch (err) {
             setSubmitError('No se pudo enviar el mensaje. Inténtalo de nuevo.')
@@ -137,6 +165,7 @@ export function ContactSection() {
                                         value={form.nombre}
                                         onChange={handleChange}
                                         required
+                                        maxLength={120}
                                         placeholder="Tu nombre"
                                         className="contact-input"
                                         aria-invalid={submitError ? true : undefined}
@@ -152,6 +181,7 @@ export function ContactSection() {
                                         value={form.email}
                                         onChange={handleChange}
                                         required
+                                        maxLength={200}
                                         placeholder="tu@email.com"
                                         className="contact-input"
                                         aria-invalid={submitError ? true : undefined}
@@ -166,6 +196,7 @@ export function ContactSection() {
                                     name="empresa"
                                     value={form.empresa}
                                     onChange={handleChange}
+                                    maxLength={160}
                                     placeholder="Nombre de tu empresa o agencia"
                                     className="contact-input"
                                 />
@@ -178,6 +209,7 @@ export function ContactSection() {
                                     value={form.mensaje}
                                     onChange={handleChange}
                                     required
+                                    maxLength={4000}
                                     rows={4}
                                     placeholder="Cuéntanos en qué podemos ayudarte..."
                                     className="contact-input"

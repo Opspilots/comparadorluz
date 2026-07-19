@@ -149,14 +149,36 @@ serve(async (req: Request) => {
 
     console.log(`Stripe webhook received: ${eventType} (event_id: ${eventId})`)
 
-    // ── Idempotency check: avoid processing duplicate events ────────────────
-    const { data: existingEvent } = await supabase
+    // ── Idempotency: INSERT-first to claim the event atomically ─────────────
+    // Two concurrent duplicate deliveries could both pass a SELECT-then-INSERT
+    // check and process the event twice. Instead we attempt the insert FIRST
+    // (ON CONFLICT (stripe_event_id) DO NOTHING via upsert+ignoreDuplicates).
+    // Only the delivery that actually inserts a new row proceeds; a duplicate
+    // gets zero rows back and returns early without reprocessing.
+    const { data: claimedEvent, error: claimError } = await supabase
         .from('stripe_webhook_events')
+        .upsert(
+            {
+                stripe_event_id: eventId,
+                event_type: eventType,
+                company_id: null, // Specific handlers could override in the future
+            },
+            { onConflict: 'stripe_event_id', ignoreDuplicates: true }
+        )
         .select('id')
-        .eq('stripe_event_id', eventId)
-        .single()
 
-    if (existingEvent) {
+    if (claimError) {
+        // Genuine DB error (not a conflict — conflicts are ignored above).
+        // Return 500 so Stripe retries later rather than silently dropping.
+        console.error('Idempotency claim failed:', claimError.message)
+        return new Response(JSON.stringify({ error: 'Idempotency check failed' }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 500,
+        })
+    }
+
+    if (!claimedEvent || claimedEvent.length === 0) {
+        // Row already existed — another delivery claimed/processed this event.
         console.log(`Stripe event ${eventId} already processed — returning 200`)
         return new Response(JSON.stringify({ received: true, duplicate: true }), {
             headers: { 'Content-Type': 'application/json' },
@@ -328,19 +350,8 @@ serve(async (req: Request) => {
                 console.log(`Stripe webhook: unhandled event type "${eventType}" — ignoring`)
         }
 
-        // ── Record event as processed ───────────────────────────────────────
-        const { error: insertErr } = await supabase
-            .from('stripe_webhook_events')
-            .insert({
-                stripe_event_id: eventId,
-                event_type: eventType,
-                company_id: null, // Will be null for most events; specific handlers could override
-            })
-
-        if (insertErr) {
-            console.error('Failed to record processed event:', insertErr.message)
-            // Continue anyway — we already processed the event
-        }
+        // The event was already recorded up-front (INSERT-first idempotency),
+        // so there is no post-processing insert to perform here.
 
     } catch (handlerErr: unknown) {
         const msg = handlerErr instanceof Error ? handlerErr.message : String(handlerErr)

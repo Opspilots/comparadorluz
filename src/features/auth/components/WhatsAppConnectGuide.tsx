@@ -189,7 +189,7 @@ export function WhatsAppConnectGuide({ open, onOpenChange, onConnect, connecting
                     </div>
 
                     <p className="text-[11px] text-[#94a3b8] text-center -mt-2">
-                        Tus credenciales se almacenan cifradas y nunca se comparten con terceros.
+                        Tus credenciales se almacenan de forma segura y nunca se comparten con terceros.
                     </p>
                 </div>
             </DialogContent>

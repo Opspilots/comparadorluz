@@ -20,6 +20,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getCorsHeaders } from "../_shared/cors.ts"
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts"
 
 const META_GRAPH_URL = "https://graph.facebook.com/v18.0"
 
@@ -66,6 +67,17 @@ Deno.serve(async (req: Request) => {
 
         const companyId = callerUser.company_id
 
+        // Rate limit: max 10 connect/disconnect operations per hour per company.
+        // The OAuth token exchange fans out to several Meta Graph API calls, so
+        // this guards against abuse and accidental request storms.
+        const rl = await checkRateLimit({
+            action: "whatsapp-connect",
+            companyId,
+            maxRequests: 10,
+            windowSeconds: 3600,
+        })
+        if (!rl.allowed) return rateLimitResponse(rl, corsHeaders)
+
         // DELETE: disconnect WhatsApp
         if (req.method === "DELETE") {
             await supabaseAdmin.from("company_whatsapp_config").delete().eq("company_id", companyId)
@@ -77,7 +89,7 @@ Deno.serve(async (req: Request) => {
         // POST: connect WhatsApp
         if (req.method === "POST") {
             const { code, phone_number_id, waba_id } = await req.json()
-            if (!code || !phone_number_id) return new Response(JSON.stringify({ error: "Missing code or phone_number_id" }), {
+            if (!code || !phone_number_id || !waba_id) return new Response(JSON.stringify({ error: "Missing code, phone_number_id or waba_id" }), {
                 headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400
             })
 
@@ -103,14 +115,37 @@ Deno.serve(async (req: Request) => {
             const extendData = await extendRes.json()
             const accessToken = extendRes.ok && extendData.access_token ? extendData.access_token : tokenData.access_token
 
-            // 3. Fetch phone number details
+            // 3. Verify the client-supplied phone_number_id actually belongs to
+            //    the WABA tied to the token we just exchanged. Without this a
+            //    caller could persist a phone_number_id it does not own. Listing
+            //    the WABA's phone numbers with the freshly obtained access_token
+            //    also implicitly confirms the token controls this waba_id.
+            const wabaPhonesRes = await fetch(
+                `${META_GRAPH_URL}/${waba_id}/phone_numbers?fields=id&access_token=${accessToken}`
+            )
+            const wabaPhonesData = await wabaPhonesRes.json()
+            if (!wabaPhonesRes.ok || !Array.isArray(wabaPhonesData.data)) {
+                console.error("WABA phone_numbers fetch error:", JSON.stringify(wabaPhonesData))
+                throw new Error("No se pudieron verificar los números de la cuenta de WhatsApp Business. Inténtalo de nuevo.")
+            }
+            const phoneBelongsToWaba = wabaPhonesData.data.some(
+                (p: { id?: string }) => p.id === phone_number_id
+            )
+            if (!phoneBelongsToWaba) {
+                console.warn(`whatsapp-connect: phone_number_id ${phone_number_id} does not belong to waba_id ${waba_id} for company ${companyId}`)
+                return new Response(JSON.stringify({ error: "El número de teléfono no pertenece a la cuenta de WhatsApp Business autorizada." }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400
+                })
+            }
+
+            // 4. Fetch phone number details
             const phoneRes = await fetch(
                 `${META_GRAPH_URL}/${phone_number_id}?fields=id,display_phone_number,verified_name,quality_rating&access_token=${accessToken}`
             )
             const phoneData = await phoneRes.json()
             const qualityRating = phoneData.quality_rating?.quality_score ?? "GREEN"
 
-            // 4. Upsert config
+            // 5. Upsert config
             const { error: upsertError } = await supabaseAdmin
                 .from("company_whatsapp_config")
                 .upsert({
