@@ -19,9 +19,9 @@ CREATE TABLE public.commissioners (
 -- 2. Enable RLS
 ALTER TABLE public.commissioners ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view commissioners from their company" 
-ON public.commissioners FOR SELECT 
-USING (company_id = auth.company_id());
+CREATE POLICY "Users can view commissioners from their company"
+ON public.commissioners FOR SELECT
+USING (company_id = public.get_auth_company_id());
 
 CREATE POLICY "Admins/Managers can manage commissioners" 
 ON public.commissioners FOR ALL 
@@ -48,28 +48,25 @@ ALTER TABLE public.contracts
     FOREIGN KEY (commercial_id) REFERENCES public.commissioners(id);
 
 -- Commission Rules: Rename user_id -> commissioner_id and update FK
-ALTER TABLE public.commission_rules
-    DROP CONSTRAINT IF EXISTS commission_rules_user_id_fkey,
-    RENAME COLUMN user_id TO commissioner_id;
-
+-- NOTE: RENAME COLUMN cannot be combined with other actions in the same
+-- ALTER TABLE statement (PostgreSQL syntax restriction) — kept as separate
+-- statements below.
+ALTER TABLE public.commission_rules DROP CONSTRAINT IF EXISTS commission_rules_user_id_fkey;
+ALTER TABLE public.commission_rules RENAME COLUMN user_id TO commissioner_id;
 ALTER TABLE public.commission_rules
     ADD CONSTRAINT commission_rules_commissioner_id_fkey
     FOREIGN KEY (commissioner_id) REFERENCES public.commissioners(id);
 
 -- Commission Events: Rename user_id -> commissioner_id and update FK
-ALTER TABLE public.commission_events
-    DROP CONSTRAINT IF EXISTS commission_events_user_id_fkey,
-    RENAME COLUMN user_id TO commissioner_id;
-
+ALTER TABLE public.commission_events DROP CONSTRAINT IF EXISTS commission_events_user_id_fkey;
+ALTER TABLE public.commission_events RENAME COLUMN user_id TO commissioner_id;
 ALTER TABLE public.commission_events
     ADD CONSTRAINT commission_events_commissioner_id_fkey
     FOREIGN KEY (commissioner_id) REFERENCES public.commissioners(id);
 
 -- Payouts: Rename user_id -> commissioner_id and update FK
-ALTER TABLE public.payouts
-    DROP CONSTRAINT IF EXISTS payouts_user_id_fkey,
-    RENAME COLUMN user_id TO commissioner_id;
-
+ALTER TABLE public.payouts DROP CONSTRAINT IF EXISTS payouts_user_id_fkey;
+ALTER TABLE public.payouts RENAME COLUMN user_id TO commissioner_id;
 ALTER TABLE public.payouts
     ADD CONSTRAINT payouts_commissioner_id_fkey
     FOREIGN KEY (commissioner_id) REFERENCES public.commissioners(id);
