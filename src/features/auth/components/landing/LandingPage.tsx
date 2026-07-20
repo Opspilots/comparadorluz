@@ -2,7 +2,6 @@ import { LandingHeader } from './LandingHeader'
 import { HeroSection } from './HeroSection'
 import { StatsSection } from './StatsSection'
 import { FeaturesSection } from './FeaturesSection'
-import { MethodSection } from './MethodSection'
 import { HowItWorksSection } from './HowItWorksSection'
 import { IntegrationsSection } from './IntegrationsSection'
 import { TestimonialsSection } from './TestimonialsSection'
@@ -25,11 +24,9 @@ export interface LandingPageProps {
  * down `onOpenAuth` so this tree stays a dumb, easily reusable layout.
  *
  * Section order follows a problem -> solution -> proof -> price -> close arc:
- * Hero/Stats set the stakes, Features/Method show the product (Method reuses
- * real product screenshots as deeper proof right after the feature list),
- * HowItWorks/Integrations explain the mechanics, Testimonials closes the
- * trust gap right before the pricing ask, then Blog/FAQ/Contact/CTA close
- * the page out.
+ * Hero/Stats set the stakes, Features shows the product, HowItWorks/Integrations
+ * explain the mechanics, Testimonials closes the trust gap right before the
+ * pricing ask, then Blog/FAQ/Contact/CTA close the page out.
  */
 export function LandingPage({ onOpenAuth }: LandingPageProps) {
     return (
@@ -45,7 +42,6 @@ export function LandingPage({ onOpenAuth }: LandingPageProps) {
                 <HeroSection onOpenAuth={onOpenAuth} />
                 <StatsSection />
                 <FeaturesSection />
-                <MethodSection />
                 <HowItWorksSection />
                 <IntegrationsSection />
                 <TestimonialsSection />

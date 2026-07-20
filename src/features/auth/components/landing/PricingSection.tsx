@@ -120,15 +120,25 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                     </span>
                 </div>
 
-                {/* Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                {/* Cards — asymmetric spotlight layout instead of 3 equal columns:
+                    Profesional (the recommended tier) occupies a tall card on the
+                    right that visually spans the combined height of Gratis +
+                    Estándar, which stack as compact secondary cards on the left.
+                    On mobile everything collapses to one clean column in plan order. */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-4 lg:gap-5 items-stretch">
                     {tiers.map((tier, i) => (
                         <GlassCard
                             key={i}
                             as="article"
                             padding="none"
                             hover={tier.highlight ? 'none' : 'lift'}
-                            className={`pricing-card rounded-2xl text-left overflow-hidden ${tier.highlight ? 'md:-mt-6 md:mb-[-24px]' : ''}`}
+                            className={`pricing-card rounded-2xl text-left overflow-hidden flex flex-col h-full ${
+                                tier.highlight
+                                    ? 'lg:[grid-column:2] lg:[grid-row:1/3]'
+                                    : i === 0
+                                        ? 'lg:[grid-column:1] lg:[grid-row:1]'
+                                        : 'lg:[grid-column:1] lg:[grid-row:2]'
+                            }`}
                             style={{
                                 opacity: 0,
                                 transform: 'translateY(24px)',
@@ -137,16 +147,17 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                     ? '1px solid rgba(37,99,235,0.35)'
                                     : '1px solid rgba(255,255,255,0.07)',
                                 boxShadow: tier.highlight
-                                    // Permanent colored glow (not just the md:-mt-6 desktop "pop") so the
-                                    // recommended tier still reads as elevated once stacked on mobile.
-                                    ? '0 0 50px rgba(37,99,235,0.22), 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(37,99,235,0.12), inset 0 1px 0 rgba(255,255,255,0.06)'
+                                    // Permanent colored glow so the recommended tier reads as
+                                    // elevated in both the desktop spotlight layout and the
+                                    // single-column mobile stack.
+                                    ? '0 0 60px rgba(37,99,235,0.24), 0 32px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(37,99,235,0.12), inset 0 1px 0 rgba(255,255,255,0.06)'
                                     : 'none',
                             }}
                         >
                             {/* Popular badge */}
                             {tier.highlight && (
                                 <div
-                                    className="flex items-center justify-center gap-2 px-6 py-2.5"
+                                    className="flex items-center justify-center gap-2 px-6 py-3"
                                     style={{ background: 'linear-gradient(90deg, #1d4ed8, #2563eb, #3b82f6)' }}
                                 >
                                     <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} fill="currentColor" aria-hidden="true" />
@@ -154,21 +165,21 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                 </div>
                             )}
 
-                            <div className="p-7 lg:p-8">
+                            <div className={`flex flex-col flex-1 ${tier.highlight ? 'p-8 lg:p-10' : 'p-6 lg:p-7'}`}>
                                 {/* Plan name */}
-                                <h3 className="text-lg font-bold mb-1 text-white">{tier.name}</h3>
+                                <h3 className={`font-bold mb-1 text-white ${tier.highlight ? 'text-xl' : 'text-base'}`}>{tier.name}</h3>
                                 <p className={`text-xs mb-6 ${tier.highlight ? 'text-slate-400' : 'text-slate-500'}`}>{tier.desc}</p>
 
                                 {/* Price */}
-                                <div className="mb-7 flex items-end gap-1.5">
-                                    <span className="text-5xl font-extrabold tracking-[-0.04em] tabular-nums text-white">
+                                <div className={`flex items-end gap-1.5 ${tier.highlight ? 'mb-8' : 'mb-6'}`}>
+                                    <span className={`font-extrabold tracking-[-0.04em] tabular-nums text-white ${tier.highlight ? 'text-6xl' : 'text-4xl'}`}>
                                         {billing === 'monthly' ? tier.monthly : tier.yearly}€
                                     </span>
                                     <span className={`text-sm font-medium pb-1.5 ${tier.highlight ? 'text-slate-500' : 'text-slate-600'}`}>/mes</span>
                                 </div>
 
                                 {/* Features */}
-                                <ul className="space-y-3 mb-8">
+                                <ul className="space-y-3 mb-8 flex-1">
                                     {tier.features.map((feat, idx) => (
                                         <li key={idx} className="flex items-start gap-3">
                                             <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${tier.highlight ? 'bg-emerald-500/15 border border-emerald-500/20' : 'bg-white/[0.05] border border-white/[0.08]'}`}>
@@ -183,7 +194,7 @@ export function PricingSection({ onOpenAuth }: PricingSectionProps) {
                                 <LandingButton
                                     onClick={() => onOpenAuth('signup')}
                                     variant={tier.highlight ? 'primary' : 'secondary'}
-                                    size="md"
+                                    size={tier.highlight ? 'lg' : 'md'}
                                     fullWidth
                                     icon={tier.highlight ? <ArrowRight aria-hidden="true" /> : undefined}
                                 >
