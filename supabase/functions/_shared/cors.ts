@@ -2,7 +2,6 @@
 const PRODUCTION_ORIGINS = [
   'https://energydeal.es',
   'https://www.energydeal.es',
-  'https://comparadorluz.vercel.app',
 ]
 
 const DEV_ORIGINS = [

@@ -171,7 +171,7 @@ graph LR
 - **Edge Functions**: Supabase Edge Functions for background jobs
 
 ### Infrastructure
-- **Hosting**: Vercel (frontend) + Supabase Cloud (backend)
+- **Hosting**: VPS propio (frontend) + Supabase Cloud (backend)
 - **Jobs**: Supabase pg_cron for scheduled tasks
 - **Monitoring**: Sentry (errors) + PostHog (analytics)
 - **CI/CD**: GitHub Actions

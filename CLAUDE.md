@@ -28,7 +28,7 @@ EnergyDeal CRM — a multi-tenant B2B SaaS platform for Spanish energy compariso
 - **State**: React Query for server state, local React state for UI
 - **Forms**: React Hook Form + Zod validation
 - **Backend**: Supabase (PostgreSQL + Auth + Storage + Edge Functions)
-- **Hosting**: Vercel (frontend) + Supabase Cloud (backend)
+- **Hosting**: VPS propio (frontend) + Supabase Cloud (backend)
 
 ### Path Alias
 `@/*` maps to `./src/*` (configured in tsconfig.json and vite.config.ts).

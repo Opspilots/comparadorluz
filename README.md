@@ -70,7 +70,7 @@
 - pg_cron for scheduled tasks
 
 **Infrastructure**:
-- Vercel (frontend hosting)
+- VPS propio (frontend hosting)
 - Supabase Cloud (backend)
 - GitHub Actions (CI/CD)
 
