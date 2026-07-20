@@ -233,35 +233,46 @@ npm install
 
 ## Deployment
 
-### Staging Environment
+Hosting is a self-managed VPS. There is no Vercel integration in this repo — deploys run entirely through GitHub Actions over SSH.
 
-1. Push code to `develop` branch
-2. Vercel auto-deploys to staging URL
-3. Supabase staging project: `<project-name>-staging`
+### How it works (confirmed from `.github/workflows/deploy.yml`)
+
+- **Trigger**: `push` to `main`, or manual `workflow_dispatch`. This is the only workflow in `.github/workflows/`, and it does not trigger on `develop` or any other branch.
+- **Pipeline**: `deploy.yml` calls a reusable workflow hosted in a different repo, `Opspilots/agenciaopspilot/.github/workflows/deploy-vps.yml@main`, with:
+  - `project_name: comparadorluz`
+  - `deploy_path: /var/www/energydeal/dist`
+  - `test_command: npm test -- --run`
+- **Secrets used**: `VPS_HOST`, `VPS_USER`, `VPS_SSH_PRIVATE_KEY` (mapped from this repo's `VPS_SSH_KEY` secret).
+- The exact build/rsync/restart steps executed on the VPS live inside `deploy-vps.yml` in the `agenciaopspilot` repo, which is not part of this checkout — check that repo for the literal step-by-step.
 
 ### Production Deployment
 
-1. Merge `develop` → `main`
-2. Tag release: `git tag v1.0.0`
-3. Push: `git push origin main --tags`
-4. Vercel auto-deploys to production
-5. Run production migrations:
+1. Merge your PR (or push directly) to `main`.
+2. GitHub Actions runs `deploy.yml` automatically: it runs `npm test -- --run`, then deploys to the VPS at `deploy_path: /var/www/energydeal/dist`.
+3. Apply any pending database migrations manually:
 
 ```bash
-# Connect to production project
+# Connect to the production Supabase project
 supabase link --project-ref <prod-project-ref>
 
 # Apply migrations
 supabase db push
 ```
 
+> The production Supabase project ref is not documented anywhere in this repo — confirm it with whoever administers the Supabase Cloud org before running this.
+
+### Staging Environment
+
+There is currently no staging environment or staging deploy pipeline. `.github/workflows/` contains only `deploy.yml`, and it only triggers on `main`. There is also no separate CI workflow that runs on pull requests — the only automated check before a change reaches production is the `test_command` (`npm test -- --run`) executed as part of the production deploy itself. To validate changes before merging to `main`, rely on local testing (`npm run dev`, local Supabase, `npm run typecheck && npm run lint && npm test`) and manual code review.
+
 ### Environment-Specific Configs
 
-| Environment | Supabase Project | Vercel URL |
-|-------------|------------------|------------|
-| Local | localhost:54321 | localhost:5173 |
-| Staging | energydeal-staging | staging.energydeal.app |
-| Production | energydeal-prod | app.energydeal.app |
+| Environment | Supabase Project | App URL |
+|-------------|------------------|---------|
+| Local | `crmluz` (local, via `supabase start`) | `localhost:5173` |
+| Production | Not documented in this repo — link manually with `supabase link --project-ref <prod-project-ref>` | `energydeal.es` (confirmed in `index.html` canonical URL, `public/sitemap.xml`, `public/robots.txt`, and the CORS allow-list in `supabase/functions/_shared/cors.ts`) |
+
+No staging row: no staging environment exists today (see above).
 
 ## Monitoring
 
@@ -341,7 +352,7 @@ supabase migration list
 Before deploying to production:
 - [ ] All RLS policies are in place
 - [ ] No service_role key in client code
-- [ ] Environment variables are set in Vercel
+- [ ] Environment variables required for the build (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, etc.) are correctly configured for the deploy pipeline — the exact mechanism (GitHub Actions secrets/vars vs. a `.env` file on the VPS) is defined in the external `deploy-vps.yml` reusable workflow (`Opspilots/agenciaopspilot`), not in this repo; verify there before assuming
 - [ ] CORS is configured correctly
 - [ ] Rate limiting is enabled (Supabase Edge Functions)
 - [ ] All user inputs are validated with Zod
